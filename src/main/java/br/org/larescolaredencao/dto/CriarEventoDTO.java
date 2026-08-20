@@ -3,6 +3,8 @@ package br.org.larescolaredencao.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import br.org.larescolaredencao.model.enums.TipoEvento;
 
 public class CriarEventoDTO {
@@ -11,7 +13,7 @@ public class CriarEventoDTO {
     private String descricao;
     private LocalDateTime dataEvento;
     private String endereco;
-    private String imagem;
+    private MultipartFile imagem;
     private BigDecimal valor;
     private TipoEvento tipoEvento;
 
@@ -47,11 +49,11 @@ public class CriarEventoDTO {
         this.endereco = endereco;
     }
 
-    public String getImagem() {
+    public MultipartFile getImagem() {
         return imagem;
     }
 
-    public void setImagem(String imagem) {
+    public void setImagem(MultipartFile imagem) {
         this.imagem = imagem;
     }
 

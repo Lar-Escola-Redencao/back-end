@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,12 +41,12 @@ public class EventoController {
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
-    public EventoResponseDTO criarEvento(@RequestBody CriarEventoDTO criarEventoDTO) {
+    public EventoResponseDTO criarEvento(@ModelAttribute CriarEventoDTO criarEventoDTO) {
         return eventoService.criarEvento(criarEventoDTO);
     }
 
     @PutMapping("/atualizar/{id}")
-    public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @RequestBody AtualizarEventoDTO atualizarEventoDTO) {
+    public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @ModelAttribute AtualizarEventoDTO atualizarEventoDTO) {
         return eventoService.atualizarEvento(id, atualizarEventoDTO);
     }
 
