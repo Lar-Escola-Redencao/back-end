@@ -2,6 +2,7 @@ package br.org.larescolaredencao.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,6 +18,7 @@ public class AtualizarEventoDTO {
     private BigDecimal valor;
     private TipoEvento tipoEvento;
     private String comentarioPosEvento;
+    private List<Integer> parceirosIds;
 
     public String getTitulo() {
         return titulo;
@@ -80,5 +82,13 @@ public class AtualizarEventoDTO {
 
     public void setComentarioPosEvento(String comentarioPosEvento) {
         this.comentarioPosEvento = comentarioPosEvento;
+    }
+    
+    public List<Integer> getParceirosIds() {
+        return parceirosIds;
+    }
+
+    public void setParceirosIds(List<Integer> parceirosIds) {
+        this.parceirosIds = parceirosIds;
     }
 }

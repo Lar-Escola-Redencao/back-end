@@ -14,6 +14,12 @@ import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import java.util.ArrayList;
+import java.util.List;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
+import br.org.larescolaredencao.model.Parceiro;
 
 @Entity
 public class Evento {
@@ -46,6 +52,14 @@ public class Evento {
 
     @Column(columnDefinition = "TEXT")
     private String comentarioPosEvento;
+    
+    @ManyToMany
+    @JoinTable(
+        name = "parceiro_evento",
+        joinColumns = @JoinColumn(name = "id_evento"),
+        inverseJoinColumns = @JoinColumn(name = "id_parceiro")
+    )
+    private List<Parceiro> parceiros = new ArrayList<>();
 
     public Integer getId() {
         return id;
@@ -117,5 +131,13 @@ public class Evento {
 
     public void setComentarioPosEvento(String comentarioPosEvento) {
         this.comentarioPosEvento = comentarioPosEvento;
+    }
+    
+    public List<Parceiro> getParceiros() {
+        return parceiros;
+    }
+
+    public void setParceiros(List<Parceiro> parceiros) {
+        this.parceiros = parceiros;
     }
 }

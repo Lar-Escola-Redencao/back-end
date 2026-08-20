@@ -13,20 +13,24 @@ import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.Evento;
+import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.repository.EventoRepository;
+import br.org.larescolaredencao.repository.ParceiroRepository;
 
 @Service
 public class EventoService {
 
     private final EventoRepository eventoRepository;
     private final ArquivoService arquivoService;
+    private final ParceiroRepository parceiroRepository;
     
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
 
-    public EventoService(EventoRepository eventoRepository, ArquivoService arquivoService) {
+    public EventoService(EventoRepository eventoRepository, ArquivoService arquivoService, ParceiroRepository parceiroRepository) {
         this.eventoRepository = eventoRepository;
         this.arquivoService = arquivoService;
+        this.parceiroRepository = parceiroRepository;
     }
 
     public List<EventoResponseDTO> getAllEventos() {
@@ -57,6 +61,11 @@ public class EventoService {
         if (dto.getValor() != null) {
             evento.setValor(dto.getValor());
         }
+
+        if (dto.getParceirosIds() != null && !dto.getParceirosIds().isEmpty()) {
+            List<Parceiro> parceiros = parceiroRepository.findAllById(dto.getParceirosIds());
+            evento.setParceiros(parceiros);
+        }
         
         String caminhoImagem = arquivoService.salvarArquivo(dto.getImagem(), "eventos/");
         evento.setImagem(caminhoImagem);
@@ -79,6 +88,8 @@ public class EventoService {
                                    .equals(dto.getDataEvento().truncatedTo(ChronoUnit.SECONDS)));
 
         boolean imagemFoiEnviada = dto.getImagem() != null && !dto.getImagem().isEmpty();
+        
+        boolean parceirosIguais = isListasParceirosIguais(evento.getParceiros(), dto.getParceirosIds());
 
         boolean nenhumaAlteracao = isTextoIgual(evento.getTitulo(), dto.getTitulo()) &&
                 isTextoIgual(evento.getDescricao(), dto.getDescricao()) &&
@@ -87,6 +98,7 @@ public class EventoService {
                 valorIgual &&
                 evento.getTipoEvento() == dto.getTipoEvento() &&
                 isTextoIgual(evento.getComentarioPosEvento(), dto.getComentarioPosEvento()) &&
+                parceirosIguais &&
                 !imagemFoiEnviada;
 
         if (nenhumaAlteracao) {
@@ -106,6 +118,15 @@ public class EventoService {
         
         evento.setTipoEvento(dto.getTipoEvento());
         evento.setComentarioPosEvento(dto.getComentarioPosEvento());
+        
+        if (!parceirosIguais) {
+            if (dto.getParceirosIds() != null && !dto.getParceirosIds().isEmpty()) {
+                List<Parceiro> parceiros = parceiroRepository.findAllById(dto.getParceirosIds());
+                evento.setParceiros(parceiros);
+            } else {
+                evento.getParceiros().clear();
+            }
+        }
 
         if (imagemFoiEnviada) {
             String novoCaminho = arquivoService.salvarArquivo(dto.getImagem(), "eventos/");
@@ -135,5 +156,17 @@ public class EventoService {
         String s1 = (str1 == null) ? "" : str1.trim();
         String s2 = (str2 == null) ? "" : str2.trim();
         return s1.equals(s2);
+    }
+    
+    private boolean isListasParceirosIguais(List<Parceiro> parceirosAtuais, List<Integer> parceirosIdsNovos) {
+        boolean atuaisVazio = (parceirosAtuais == null || parceirosAtuais.isEmpty());
+        boolean novosVazio = (parceirosIdsNovos == null || parceirosIdsNovos.isEmpty());
+        
+        if (atuaisVazio && novosVazio) return true;
+        if (atuaisVazio || novosVazio) return false;
+        if (parceirosAtuais.size() != parceirosIdsNovos.size()) return false;
+        
+        List<Integer> idsAtuais = parceirosAtuais.stream().map(Parceiro::getId).collect(Collectors.toList());
+        return idsAtuais.containsAll(parceirosIdsNovos) && parceirosIdsNovos.containsAll(idsAtuais);
     }
 }

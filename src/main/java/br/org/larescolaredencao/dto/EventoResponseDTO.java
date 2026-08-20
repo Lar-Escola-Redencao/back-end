@@ -2,7 +2,9 @@ package br.org.larescolaredencao.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
+import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 
@@ -17,6 +19,7 @@ public class EventoResponseDTO {
     private BigDecimal valor;
     private TipoEvento tipoEvento;
     private String comentarioPosEvento;
+    private List<Parceiro> parceiros;
 
     public EventoResponseDTO(Evento evento) {
         this.id = evento.getId();
@@ -28,6 +31,7 @@ public class EventoResponseDTO {
         this.valor = evento.getValor();
         this.tipoEvento = evento.getTipoEvento();
         this.comentarioPosEvento = evento.getComentarioPosEvento();
+        this.parceiros = evento.getParceiros();
     }
 
     public Integer getId() {
@@ -64,5 +68,9 @@ public class EventoResponseDTO {
 
     public String getComentarioPosEvento() {
         return comentarioPosEvento;
+    }
+    
+    public List<Parceiro> getParceiros() {
+        return parceiros;
     }
 }
