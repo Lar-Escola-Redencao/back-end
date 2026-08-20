@@ -1,0 +1,82 @@
+package br.org.larescolaredencao.dto;
+
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
+import br.org.larescolaredencao.model.enums.TipoEvento;
+
+public class AtualizarEventoDTO {
+
+    private String titulo;
+    private String descricao;
+    private LocalDateTime dataEvento;
+    private String endereco;
+    private String imagem;
+    private BigDecimal valor;
+    private TipoEvento tipoEvento;
+    private String comentarioPosEvento;
+
+    public String getTitulo() {
+        return titulo;
+    }
+
+    public void setTitulo(String titulo) {
+        this.titulo = titulo;
+    }
+
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
+    public LocalDateTime getDataEvento() {
+        return dataEvento;
+    }
+
+    public void setDataEvento(LocalDateTime dataEvento) {
+        this.dataEvento = dataEvento;
+    }
+
+    public String getEndereco() {
+        return endereco;
+    }
+
+    public void setEndereco(String endereco) {
+        this.endereco = endereco;
+    }
+
+    public String getImagem() {
+        return imagem;
+    }
+
+    public void setImagem(String imagem) {
+        this.imagem = imagem;
+    }
+
+    public BigDecimal getValor() {
+        return valor;
+    }
+
+    public void setValor(BigDecimal valor) {
+        this.valor = valor;
+    }
+
+    public TipoEvento getTipoEvento() {
+        return tipoEvento;
+    }
+
+    public void setTipoEvento(TipoEvento tipoEvento) {
+        this.tipoEvento = tipoEvento;
+    }
+
+    public String getComentarioPosEvento() {
+        return comentarioPosEvento;
+    }
+
+    public void setComentarioPosEvento(String comentarioPosEvento) {
+        this.comentarioPosEvento = comentarioPosEvento;
+    }
+}
