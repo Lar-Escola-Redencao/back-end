@@ -1,6 +1,8 @@
 package br.org.larescolaredencao.service;
 
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -41,6 +43,13 @@ public class MembroService {
     }
 
     public MembroResponseDTO criarMembro(CriarMembroDTO dto) {
+    	if (membroRepository.findByEmail(dto.getEmail()).isPresent()) {
+            throw new RuntimeException("Este e-mail já está cadastrado no sistema.");
+        }
+        if (membroRepository.findByCpf(dto.getCpf()).isPresent()) {
+            throw new RuntimeException("Este CPF já está cadastrado no sistema.");
+        }
+        
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new RuntimeException("Papel não encontrado"));
 
@@ -60,6 +69,27 @@ public class MembroService {
     public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Membro não encontrado"));
+        
+        boolean nenhumaAlteracao = Objects.equals(membro.getNomeCompleto(), dto.getNomeCompleto()) &&
+                Objects.equals(membro.getEmail(), dto.getEmail()) &&
+                Objects.equals(membro.getCpf(), dto.getCpf()) &&
+                Objects.equals(membro.getEndereco(), dto.getEndereco()) &&
+                Objects.equals(membro.getTelefone(), dto.getTelefone()) &&
+                Objects.equals(membro.getPapel().getId(), dto.getIdPapel());
+
+        if (nenhumaAlteracao) {
+            throw new RuntimeException("Nenhum dado foi alterado. A atualização não foi realizada.");
+        }
+        
+        Optional<Membro> membroComEmail = membroRepository.findByEmail(dto.getEmail());
+        if (membroComEmail.isPresent() && !membroComEmail.get().getId().equals(id)) {
+            throw new RuntimeException("Este e-mail já está em uso por outro usuário.");
+        }
+
+        Optional<Membro> membroComCpf = membroRepository.findByCpf(dto.getCpf());
+        if (membroComCpf.isPresent() && !membroComCpf.get().getId().equals(id)) {
+            throw new RuntimeException("Este CPF já está em uso por outro usuário.");
+        }
 
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new RuntimeException("Papel não encontrado"));

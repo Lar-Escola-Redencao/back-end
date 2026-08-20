@@ -1,4 +1,10 @@
-package br.org.larescolaredencao.config;
+
+
+/* esse arquivo está liberando proteções do security pra poder realizar test via get no postman, liberando acesso a todas as portas
+posteriormente, será necessário atualizar esse arquivo bloqueando as rotas de acordo com cada papel adm, coordenador e monitor. */
+
+
+package br.org.larescolaredencao.security;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

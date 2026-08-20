@@ -34,7 +34,7 @@ public class MembroController {
     }
 
     @GetMapping("/{id}")
-    public MembroResponseDTO buscarMembro(@PathVariable Integer id) {
+    public MembroResponseDTO buscarMembro(@PathVariable("id") Integer id) {
         return membroService.getMembroById(id);
     }
 
@@ -45,13 +45,13 @@ public class MembroController {
     }
 
     @PutMapping("/atualizar/{id}")
-    public MembroResponseDTO atualizarMembro(@PathVariable Integer id, @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
+    public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
         return membroService.atualizarMembro(id, atualizarMembroDTO);
     }
 
     @DeleteMapping("/deletar/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarMembro(@PathVariable Integer id) {
+    public void deletarMembro(@PathVariable("id") Integer id) {
         membroService.deletarMembro(id);
     }
 }
