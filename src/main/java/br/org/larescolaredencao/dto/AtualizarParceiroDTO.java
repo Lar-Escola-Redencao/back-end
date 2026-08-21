@@ -2,14 +2,10 @@ package br.org.larescolaredencao.dto;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
-
-public class CriarParceiroDTO {
-	@NotBlank
-	@Size(min = 3, max = 50)
+public class AtualizarParceiroDTO {
 	private String nome;
 	private MultipartFile logo;
+	private Boolean ativo;
 
 	public String getNome() {
 		return nome;
@@ -22,5 +18,11 @@ public class CriarParceiroDTO {
 	}
 	public void setLogo(MultipartFile logo) {
 		this.logo = logo;
+	}
+	public Boolean getAtivo() {
+		return ativo;
+	}
+	public void setAtivo(Boolean ativo) {
+		this.ativo = ativo;
 	}
 }
