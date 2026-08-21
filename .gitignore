@@ -1,4 +1,5 @@
 *#
+/uploads/
 *.iml
 *.ipr
 *.iws
