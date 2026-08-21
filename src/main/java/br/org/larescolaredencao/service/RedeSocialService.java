@@ -2,11 +2,12 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarRedeSocialDTO;
 import br.org.larescolaredencao.dto.CriarRedeSocialDTO;
-import br.org.larescolaredencao.exception.ApiException;
 import br.org.larescolaredencao.model.RedeSocial;
 import br.org.larescolaredencao.repository.RedeSocialRepository;
 
@@ -29,7 +30,7 @@ public class RedeSocialService {
 
 	public RedeSocial getRedeSocialById(Long id) {
 		return redeSocialRepository.findById(id)
-				.orElseThrow(() -> ApiException.naoEncontrado("Rede social não encontrada."));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rede social não encontrada."));
 	}
 
 	public RedeSocial criarRedeSocial(CriarRedeSocialDTO criarRedeSocialDTO) {

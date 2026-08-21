@@ -10,11 +10,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import br.org.larescolaredencao.exception.ApiException;
 
 @Service
 public class ArquivoService {
@@ -43,7 +40,7 @@ public class ArquivoService {
 
             return "/uploads/" + subPasta + nomeArquivoUnico;
         } catch (IOException e) {
-            throw new ApiException(HttpStatus.INTERNAL_SERVER_ERROR, "Falha ao salvar o arquivo.", e);
+            throw new RuntimeException("Falha ao salvar o arquivo.", e);
         }
     }
 

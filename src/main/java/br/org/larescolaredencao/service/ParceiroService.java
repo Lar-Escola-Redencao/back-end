@@ -2,11 +2,12 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarParceiroDTO;
 import br.org.larescolaredencao.dto.CriarParceiroDTO;
-import br.org.larescolaredencao.exception.ApiException;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
@@ -29,7 +30,7 @@ public class ParceiroService {
 
 	public Parceiro getParceiroById(Long id) {
 		return parceiroRepository.findById(id)
-				.orElseThrow(() -> ApiException.naoEncontrado("Parceiro não encontrado."));
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Parceiro não encontrado."));
 	}
 
 	public Parceiro criarParceiro(CriarParceiroDTO criarParceiroDTO) {

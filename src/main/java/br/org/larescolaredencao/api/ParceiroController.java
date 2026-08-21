@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+
 import br.org.larescolaredencao.dto.AtualizarParceiroDTO;
 import br.org.larescolaredencao.dto.CriarParceiroDTO;
 import br.org.larescolaredencao.model.Parceiro;
@@ -37,7 +39,7 @@ public class ParceiroController {
 	}
 
 	@PostMapping(value = "/criar", consumes = "multipart/form-data")
-	public Parceiro criarParceiro(@ModelAttribute CriarParceiroDTO criarParceiroDTO) {
+	public Parceiro criarParceiro(@Valid @ModelAttribute CriarParceiroDTO criarParceiroDTO) {
 		return parceiroService.criarParceiro(criarParceiroDTO);
 	}
 
