@@ -158,7 +158,7 @@ public class EventoService {
         return s1.equals(s2);
     }
     
-    private boolean isListasParceirosIguais(List<Parceiro> parceirosAtuais, List<Integer> parceirosIdsNovos) {
+    private boolean isListasParceirosIguais(List<Parceiro> parceirosAtuais, List<Long> parceirosIdsNovos) {
         boolean atuaisVazio = (parceirosAtuais == null || parceirosAtuais.isEmpty());
         boolean novosVazio = (parceirosIdsNovos == null || parceirosIdsNovos.isEmpty());
         
@@ -166,7 +166,7 @@ public class EventoService {
         if (atuaisVazio || novosVazio) return false;
         if (parceirosAtuais.size() != parceirosIdsNovos.size()) return false;
         
-        List<Integer> idsAtuais = parceirosAtuais.stream().map(Parceiro::getId).collect(Collectors.toList());
+        List<Long> idsAtuais = parceirosAtuais.stream().map(Parceiro::getId).collect(Collectors.toList());
         return idsAtuais.containsAll(parceirosIdsNovos) && parceirosIdsNovos.containsAll(idsAtuais);
     }
 }

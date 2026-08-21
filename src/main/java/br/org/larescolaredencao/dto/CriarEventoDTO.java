@@ -17,7 +17,7 @@ public class CriarEventoDTO {
     private MultipartFile imagem;
     private BigDecimal valor;
     private TipoEvento tipoEvento;
-    private List<Integer> parceirosIds;
+    private List<Long> parceirosIds;
 
     public String getTitulo() {
         return titulo;
@@ -75,11 +75,11 @@ public class CriarEventoDTO {
         this.tipoEvento = tipoEvento;
     }
     
-    public List<Integer> getParceirosIds() {
+    public List<Long> getParceirosIds() {
         return parceirosIds;
     }
 
-    public void setParceirosIds(List<Integer> parceirosIds) {
+    public void setParceirosIds(List<Long> parceirosIds) {
         this.parceirosIds = parceirosIds;
     }
 }
