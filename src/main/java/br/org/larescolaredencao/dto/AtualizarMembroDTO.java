@@ -1,13 +1,23 @@
 package br.org.larescolaredencao.dto;
 
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Size;
+
 public class AtualizarMembroDTO {
+	
+    @Size(max = 150)
     private String nomeCompleto;
+    
+    @Email
+    @Size(max = 100)
     private String email;
+    
+    @Size(max = 14)
     private String cpf;
     private String endereco;
     private String telefone;
     private Integer idPapel;
-
+    
     public String getNomeCompleto() {
         return nomeCompleto;
     }

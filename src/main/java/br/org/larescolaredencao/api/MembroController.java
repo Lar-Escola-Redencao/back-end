@@ -17,6 +17,7 @@ import br.org.larescolaredencao.dto.AtualizarMembroDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.service.MembroService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/membro")
@@ -40,12 +41,12 @@ public class MembroController {
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
-    public MembroResponseDTO criarMembro(@RequestBody CriarMembroDTO criarMembroDTO) {
+    public MembroResponseDTO criarMembro(@Valid @RequestBody CriarMembroDTO criarMembroDTO) {
         return membroService.criarMembro(criarMembroDTO);
     }
 
     @PutMapping("/atualizar/{id}")
-    public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
+    public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
         return membroService.atualizarMembro(id, atualizarMembroDTO);
     }
 
