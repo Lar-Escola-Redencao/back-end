@@ -34,7 +34,7 @@ public class ParceiroController {
 	}
 
 	@GetMapping("/{id}")
-	public Parceiro buscarParceiro(@PathVariable Long id) {
+	public Parceiro buscarParceiro(@PathVariable("id") Long id) {
 		return parceiroService.getParceiroById(id);
 	}
 
@@ -44,12 +44,12 @@ public class ParceiroController {
 	}
 
 	@PutMapping(value = "/{id}", consumes = "multipart/form-data")
-	public Parceiro atualizarParceiro(@PathVariable Long id, @ModelAttribute AtualizarParceiroDTO atualizarParceiroDTO) {
+	public Parceiro atualizarParceiro(@PathVariable("id") Long id, @ModelAttribute AtualizarParceiroDTO atualizarParceiroDTO) {
 		return parceiroService.atualizarParceiro(id, atualizarParceiroDTO);
 	}
 
 	@DeleteMapping("/{id}")
-	public void deletarParceiro(@PathVariable Long id) {
+	public void deletarParceiro(@PathVariable("id") Long id) {
 		parceiroService.deletarParceiro(id);
 	}
 }

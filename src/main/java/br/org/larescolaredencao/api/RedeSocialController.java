@@ -34,7 +34,7 @@ public class RedeSocialController {
 	}
 
 	@GetMapping("/{id}")
-	public RedeSocial buscarRedeSocial(@PathVariable Long id) {
+	public RedeSocial buscarRedeSocial(@PathVariable("id") Long id) {
 		return redeSocialService.getRedeSocialById(id);
 	}
 
@@ -44,12 +44,12 @@ public class RedeSocialController {
 	}
 
 	@PutMapping(value = "/{id}", consumes = "multipart/form-data")
-	public RedeSocial atualizarRedeSocial(@PathVariable Long id, @ModelAttribute AtualizarRedeSocialDTO atualizarRedeSocialDTO) {
+	public RedeSocial atualizarRedeSocial(@PathVariable("id") Long id, @ModelAttribute AtualizarRedeSocialDTO atualizarRedeSocialDTO) {
 		return redeSocialService.atualizarRedeSocial(id, atualizarRedeSocialDTO);
 	}
 
 	@DeleteMapping("/{id}")
-	public void deletarRedeSocial(@PathVariable Long id) {
+	public void deletarRedeSocial(@PathVariable("id") Long id) {
 		redeSocialService.deletarRedeSocial(id);
 	}
 }
