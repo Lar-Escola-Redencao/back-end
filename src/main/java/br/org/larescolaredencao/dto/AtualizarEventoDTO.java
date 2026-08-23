@@ -7,9 +7,11 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.org.larescolaredencao.model.enums.TipoEvento;
+import jakarta.validation.constraints.Size;
 
 public class AtualizarEventoDTO {
-
+	
+	@Size(max = 150, message = "O título não pode ter mais de 150 caracteres")
     private String titulo;
     private String descricao;
     private LocalDateTime dataEvento;

@@ -7,15 +7,28 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import br.org.larescolaredencao.model.enums.TipoEvento;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class CriarEventoDTO {
-
+	
+	@NotBlank
+	@Size(max = 150)
     private String titulo;
+	
+	@NotBlank
     private String descricao;
+	
+	@NotNull
     private LocalDateTime dataEvento;
+	
+	@NotBlank
     private String endereco;
     private MultipartFile imagem;
     private BigDecimal valor;
+    
+    @NotNull
     private TipoEvento tipoEvento;
     private List<Long> parceirosIds;
 

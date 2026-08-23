@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,6 +17,7 @@ import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.service.EventoService;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/evento")
@@ -41,12 +41,12 @@ public class EventoController {
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
-    public EventoResponseDTO criarEvento(@ModelAttribute CriarEventoDTO criarEventoDTO) {
+    public EventoResponseDTO criarEvento(@Valid @ModelAttribute CriarEventoDTO criarEventoDTO) {
         return eventoService.criarEvento(criarEventoDTO);
     }
 
     @PutMapping("/atualizar/{id}")
-    public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @ModelAttribute AtualizarEventoDTO atualizarEventoDTO) {
+    public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @Valid @ModelAttribute AtualizarEventoDTO atualizarEventoDTO) {
         return eventoService.atualizarEvento(id, atualizarEventoDTO);
     }
 
