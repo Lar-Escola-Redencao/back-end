@@ -150,12 +150,12 @@ public class EventoService {
     public void deletarEvento(Integer id) {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
+        
+        eventoRepository.delete(evento);
 
         if (evento.getImagem() != null) {
             arquivoService.deletarArquivo(evento.getImagem());
         }
-
-        eventoRepository.delete(evento);
     }
     
     private boolean isTextoIgual(String str1, String str2) {
