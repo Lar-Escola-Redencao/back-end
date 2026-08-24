@@ -4,14 +4,13 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
 
-public class CriarParceiroDTO {
+public class AtualizarParceiroDTO {
 	@NotBlank
-	@Size(min = 3, max = 50)
 	private String nome;
-	@NotNull
 	private MultipartFile logo;
+	@NotNull
+	private Boolean ativo;
 
 	public String getNome() {
 		return nome;
@@ -24,5 +23,11 @@ public class CriarParceiroDTO {
 	}
 	public void setLogo(MultipartFile logo) {
 		this.logo = logo;
+	}
+	public Boolean getAtivo() {
+		return ativo;
+	}
+	public void setAtivo(Boolean ativo) {
+		this.ativo = ativo;
 	}
 }

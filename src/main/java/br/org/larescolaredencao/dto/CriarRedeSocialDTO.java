@@ -6,12 +6,17 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public class CriarParceiroDTO {
+public class CriarRedeSocialDTO {
 	@NotBlank
-	@Size(min = 3, max = 50)
+	@Size(max = 50)
 	private String nome;
+
+	@NotBlank
+	@Size(max = 255)
+	private String url;
+
 	@NotNull
-	private MultipartFile logo;
+	private MultipartFile icone;
 
 	public String getNome() {
 		return nome;
@@ -19,10 +24,16 @@ public class CriarParceiroDTO {
 	public void setNome(String nome) {
 		this.nome = nome;
 	}
-	public MultipartFile getLogo() {
-		return logo;
+	public String getUrl() {
+		return url;
 	}
-	public void setLogo(MultipartFile logo) {
-		this.logo = logo;
+	public void setUrl(String url) {
+		this.url = url;
+	}
+	public MultipartFile getIcone() {
+		return icone;
+	}
+	public void setIcone(MultipartFile icone) {
+		this.icone = icone;
 	}
 }

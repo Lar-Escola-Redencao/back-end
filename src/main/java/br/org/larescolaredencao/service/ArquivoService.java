@@ -7,12 +7,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ArquivoService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ArquivoService.class);
 
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
@@ -52,7 +56,7 @@ public class ArquivoService {
             Path caminhoArquivo = Paths.get(uploadDir, caminhoRelativo);
             Files.deleteIfExists(caminhoArquivo);
         } catch (IOException e) {
-            System.err.println("Aviso: Falha ao deletar o arquivo físico: " + e.getMessage());
+            logger.warn("Falha ao deletar o arquivo físico: {}", caminhoNoBanco, e);
         }
     }
 }
