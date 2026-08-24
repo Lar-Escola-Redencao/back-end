@@ -45,12 +45,12 @@ public class MembroController {
         return membroService.criarMembro(criarMembroDTO);
     }
 
-    @PutMapping("/atualizar/{id}")
+    @PutMapping("/{id}")
     public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
         return membroService.atualizarMembro(id, atualizarMembroDTO);
     }
 
-    @DeleteMapping("/deletar/{id}")
+    @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarMembro(@PathVariable("id") Integer id) {
         membroService.deletarMembro(id);

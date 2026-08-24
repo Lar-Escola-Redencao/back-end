@@ -1,7 +1,6 @@
 package br.org.larescolaredencao.service;
 
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -72,51 +71,29 @@ public class MembroService {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         
-        boolean alterouAlgo = false;
-
-        if (dto.getNomeCompleto() != null && !dto.getNomeCompleto().trim().isEmpty() && !isTextoIgual(membro.getNomeCompleto(), dto.getNomeCompleto())) {
-            membro.setNomeCompleto(dto.getNomeCompleto());
-            alterouAlgo = true;
-        }
-
-        if (dto.getEmail() != null && !dto.getEmail().trim().isEmpty() && !isTextoIgual(membro.getEmail(), dto.getEmail())) {
+        if (!membro.getEmail().equals(dto.getEmail())) {
             Optional<Membro> membroComEmail = membroRepository.findByEmail(dto.getEmail());
-            if (membroComEmail.isPresent() && !membroComEmail.get().getId().equals(id)) {
+            if (membroComEmail.isPresent()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está em uso por outro usuário.");
             }
-            membro.setEmail(dto.getEmail());
-            alterouAlgo = true;
         }
 
-        if (dto.getCpf() != null && !dto.getCpf().trim().isEmpty() && !isTextoIgual(membro.getCpf(), dto.getCpf())) {
+        if (!membro.getCpf().equals(dto.getCpf())) {
             Optional<Membro> membroComCpf = membroRepository.findByCpf(dto.getCpf());
-            if (membroComCpf.isPresent() && !membroComCpf.get().getId().equals(id)) {
+            if (membroComCpf.isPresent()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está em uso por outro usuário.");
             }
-            membro.setCpf(dto.getCpf());
-            alterouAlgo = true;
         }
 
-        if (dto.getEndereco() != null && !isTextoIgual(membro.getEndereco(), dto.getEndereco())) {
-            membro.setEndereco(dto.getEndereco());
-            alterouAlgo = true;
-        }
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
 
-        if (dto.getTelefone() != null && !isTextoIgual(membro.getTelefone(), dto.getTelefone())) {
-            membro.setTelefone(dto.getTelefone());
-            alterouAlgo = true;
-        }
-
-        if (dto.getIdPapel() != null && !dto.getIdPapel().equals(membro.getPapel().getId())) {
-            Papel papel = papelRepository.findById(dto.getIdPapel())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
-            membro.setPapel(papel);
-            alterouAlgo = true;
-        }
-
-        if (!alterouAlgo) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nenhum dado foi alterado. A atualização não foi realizada.");
-        }
+        membro.setNomeCompleto(dto.getNomeCompleto());
+        membro.setEmail(dto.getEmail());
+        membro.setCpf(dto.getCpf());
+        membro.setEndereco(dto.getEndereco());
+        membro.setTelefone(dto.getTelefone());
+        membro.setPapel(papel);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -126,11 +103,5 @@ public class MembroService {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         membroRepository.delete(membro);
-    }
-    
-    private boolean isTextoIgual(String str1, String str2) {
-        String s1 = (str1 == null) ? "" : str1.trim();
-        String s2 = (str2 == null) ? "" : str2.trim();
-        return s1.equals(s2);
     }
 }
