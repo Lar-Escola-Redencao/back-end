@@ -36,7 +36,7 @@ public class DiretoriaController {
 	}
 
 	@GetMapping("/{id}")
-	public Diretoria buscarPorId(@PathVariable Long id) {
+	public Diretoria buscarPorId(@PathVariable("id") Long id) {
 		return diretoriaService.buscarPorId(id);
 	}
 
@@ -47,12 +47,12 @@ public class DiretoriaController {
 	}
 
 	@PutMapping(value = "/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public Diretoria atualizar(@PathVariable Long id, @Valid @ModelAttribute AtualizarDiretoriaDTO dto) {
+	public Diretoria atualizar(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarDiretoriaDTO dto) {
 		return diretoriaService.atualizar(id, dto);
 	}
 
 	@DeleteMapping("/{id}")
-	public ResponseEntity<Void> remover(@PathVariable Long id) {
+	public ResponseEntity<Void> remover(@PathVariable("id") Long id) {
 		diretoriaService.remover(id);
 		return ResponseEntity.noContent().build();
 	}
