@@ -21,7 +21,8 @@ public class RedeSocial {
 	@NotBlank
 	@Size(max = 255)
 	private String url;
-
+	
+	@NotBlank
 	@Size(max = 100)
 	private String icone;
 

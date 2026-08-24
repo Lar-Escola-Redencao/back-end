@@ -2,9 +2,14 @@ package br.org.larescolaredencao.dto;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class AtualizarParceiroDTO {
+	@NotBlank
 	private String nome;
 	private MultipartFile logo;
+	@NotNull
 	private Boolean ativo;
 
 	public String getNome() {

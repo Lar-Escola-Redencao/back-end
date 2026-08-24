@@ -3,6 +3,7 @@ package br.org.larescolaredencao.dto;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class CriarRedeSocialDTO {
@@ -14,6 +15,7 @@ public class CriarRedeSocialDTO {
 	@Size(max = 255)
 	private String url;
 
+	@NotNull
 	private MultipartFile icone;
 
 	public String getNome() {

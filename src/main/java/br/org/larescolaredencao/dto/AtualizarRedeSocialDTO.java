@@ -2,10 +2,16 @@ package br.org.larescolaredencao.dto;
 
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+
 public class AtualizarRedeSocialDTO {
+	@NotBlank
 	private String nome;
+	@NotBlank
 	private String url;
 	private MultipartFile icone;
+	@NotNull
 	private Boolean ativo;
 
 	public String getNome() {
