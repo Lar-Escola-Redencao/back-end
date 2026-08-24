@@ -36,7 +36,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
                     // Libera explicitamente APENAS o método POST na rota de login
-                    req.requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     // Exige autenticação para qualquer outra rota
                     req.anyRequest().authenticated();
                 })
