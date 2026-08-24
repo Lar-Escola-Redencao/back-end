@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
+import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.service.EventoService;
 import jakarta.validation.Valid;
 
@@ -38,6 +39,11 @@ public class EventoController {
     public EventoResponseDTO buscarEvento(@PathVariable("id") Integer id) {
         return eventoService.getEventoById(id);
     }
+    
+    @GetMapping("/tipos")
+    public TipoEvento[] listarTipos() {
+        return TipoEvento.values();
+    }
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
@@ -45,12 +51,12 @@ public class EventoController {
         return eventoService.criarEvento(criarEventoDTO);
     }
 
-    @PutMapping("/atualizar/{id}")
+    @PutMapping("/{id}")
     public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @Valid @ModelAttribute AtualizarEventoDTO atualizarEventoDTO) {
         return eventoService.atualizarEvento(id, atualizarEventoDTO);
     }
 
-    @DeleteMapping("/deletar/{id}")
+    @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarEvento(@PathVariable("id") Integer id) {
         eventoService.deletarEvento(id);
