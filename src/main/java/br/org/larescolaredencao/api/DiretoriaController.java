@@ -21,7 +21,7 @@ import br.org.larescolaredencao.service.DiretoriaService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("api/diretoria")
+@RequestMapping("/diretoria")
 public class DiretoriaController {
 
 	private final DiretoriaService diretoriaService;
