@@ -19,7 +19,7 @@ import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.service.ParceiroService;
 
 @RestController
-@RequestMapping("/parceiro")
+@RequestMapping("api/parceiro")
 public class ParceiroController {
 
 	private ParceiroService parceiroService;
