@@ -2,13 +2,13 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
-import br.org.larescolaredencao.exception.ArquivoInvalidoException;
-import br.org.larescolaredencao.exception.RecursoNaoEncontradoException;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -54,7 +54,7 @@ public class TransparenciaService {
 
     public Secao buscarSecaoPorId(Long id) {
         return secaoRepository.findById(id)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Seção não encontrada."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada."));
     }
 
     public Secao criarSecao(CriarSecaoDTO dto) {
@@ -102,7 +102,7 @@ public class TransparenciaService {
     public Documento adicionarDocumento(Long secaoId, String titulo, MultipartFile arquivo) {
         String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
         if (tituloSanitizado == null || tituloSanitizado.isEmpty()) {
-            throw new ArquivoInvalidoException("O título do documento é obrigatório.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título do documento é obrigatório.");
         }
 
         Secao secao = buscarSecaoPorId(secaoId);
@@ -119,7 +119,7 @@ public class TransparenciaService {
 
     public Documento buscarDocumentoPorId(Long id) {
         return documentoRepository.findById(id)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Documento não encontrado."));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento não encontrado."));
     }
 
     public void deletarDocumento(Long id) {

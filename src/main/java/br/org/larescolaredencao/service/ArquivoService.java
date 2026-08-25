@@ -12,10 +12,10 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-
-import br.org.larescolaredencao.exception.ArquivoInvalidoException;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class ArquivoService {
@@ -41,7 +41,7 @@ public class ArquivoService {
 
             Path caminhoArquivo = diretorioPath.resolve(nomeArquivoUnico).normalize();
             if (!caminhoArquivo.startsWith(diretorioPath)) {
-                throw new ArquivoInvalidoException("Nome de arquivo inválido.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome de arquivo inválido.");
             }
 
             Files.copy(arquivo.getInputStream(), caminhoArquivo, StandardCopyOption.REPLACE_EXISTING);
@@ -77,16 +77,16 @@ public class ArquivoService {
             Path caminhoArquivo = diretorioBase.resolve(caminhoRelativo).normalize();
 
             if (!caminhoArquivo.startsWith(diretorioBase)) {
-                throw new ArquivoInvalidoException("Caminho de arquivo inválido.");
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caminho de arquivo inválido.");
             }
 
             Resource recurso = new UrlResource(caminhoArquivo.toUri());
             if (recurso.exists() && recurso.isReadable()) {
                 return recurso;
             }
-            throw new ArquivoInvalidoException("Arquivo não encontrado no armazenamento.");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo não encontrado no armazenamento.");
         } catch (MalformedURLException e) {
-            throw new ArquivoInvalidoException("Caminho de arquivo inválido.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Caminho de arquivo inválido.");
         }
     }
 
@@ -97,12 +97,12 @@ public class ArquivoService {
                 + String.join(", ", tipo.getExtensoesPermitidas()).toUpperCase(Locale.ROOT) + ".";
 
         if (!tipo.getExtensoesPermitidas().contains(extensao)) {
-            throw new ArquivoInvalidoException(mensagemErro);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, mensagemErro);
         }
 
         String tipoMime = arquivo.getContentType();
         if (tipoMime == null || !tipo.getTiposMimePermitidos().contains(tipoMime)) {
-            throw new ArquivoInvalidoException(mensagemErro);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, mensagemErro);
         }
     }
 
@@ -127,7 +127,7 @@ public class ArquivoService {
     private String obterNomeOriginalSeguro(MultipartFile arquivo) {
         String nomeOriginal = arquivo.getOriginalFilename();
         if (nomeOriginal == null || nomeOriginal.trim().isEmpty()) {
-            throw new ArquivoInvalidoException("Nome do arquivo inválido.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome do arquivo inválido.");
         }
         return nomeOriginal;
     }

@@ -31,7 +31,7 @@ import br.org.larescolaredencao.service.TransparenciaService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("api/transparencia")
+@RequestMapping("/transparencia")
 public class TransparenciaController {
 
     private final TransparenciaService transparenciaService;
@@ -52,36 +52,36 @@ public class TransparenciaController {
         return transparenciaService.listarSecoes();
     }
 
-    @GetMapping("/secoes/{id}")
-    public Secao buscarSecao(@PathVariable Long id) {
+    @GetMapping("/secao/{id}")
+    public Secao buscarSecao(@PathVariable("id") Long id) {
         return transparenciaService.buscarSecaoPorId(id);
     }
 
-    @PostMapping("/secoes")
+    @PostMapping("/criar-secao")
     public Secao criarSecao(@Valid @ModelAttribute CriarSecaoDTO dto) {
         return transparenciaService.criarSecao(dto);
     }
 
-    @PutMapping("/secoes/{id}")
-    public Secao atualizarSecao(@PathVariable Long id, @Valid @ModelAttribute AtualizarSecaoDTO dto) {
+    @PutMapping("/{id}")
+    public Secao atualizarSecao(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarSecaoDTO dto) {
         return transparenciaService.atualizarSecao(id, dto);
     }
 
-    @DeleteMapping("/secoes/{id}")
+    @DeleteMapping("/secao/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarSecao(@PathVariable Long id) {
+    public void deletarSecao(@PathVariable("id") Long id) {
         transparenciaService.deletarSecao(id);
     }
 
-    @PostMapping("/secoes/{secaoId}/documentos")
-    public Documento adicionarDocumento(@PathVariable Long secaoId,
+    @PostMapping("/secao/{secaoId}/upload-documento")
+    public Documento adicionarDocumento(@PathVariable("secaoId") Long secaoId,
                                          @RequestParam("titulo") String titulo,
                                          @RequestParam("arquivo") MultipartFile arquivo) {
         return transparenciaService.adicionarDocumento(secaoId, titulo, arquivo);
     }
 
-    @GetMapping("/documentos/{id}/download")
-    public ResponseEntity<Resource> baixarDocumento(@PathVariable Long id) {
+    @GetMapping("/documento/{id}/download")
+    public ResponseEntity<Resource> baixarDocumento(@PathVariable("id") Long id) {
         Documento documento = transparenciaService.buscarDocumentoPorId(id);
         Resource recurso = arquivoService.carregarComoRecurso(documento.getArquivo());
 
@@ -100,9 +100,9 @@ public class TransparenciaController {
                 .body(recurso);
     }
 
-    @DeleteMapping("/documentos/{id}")
+    @DeleteMapping("/documento/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarDocumento(@PathVariable Long id) {
+    public void deletarDocumento(@PathVariable("id") Long id) {
         transparenciaService.deletarDocumento(id);
     }
 }
