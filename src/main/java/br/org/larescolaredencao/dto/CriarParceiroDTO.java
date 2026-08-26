@@ -1,9 +1,16 @@
 package br.org.larescolaredencao.dto;
 
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+
 public class CriarParceiroDTO {
+	@NotBlank
+	@Size(min = 3, max = 50)
 	private String nome;
+
+	@NotBlank
 	private String logo;
-	
+
 	public String getNome() {
 		return nome;
 	}

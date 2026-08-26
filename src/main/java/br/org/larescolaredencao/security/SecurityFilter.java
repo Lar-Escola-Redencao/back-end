@@ -36,7 +36,6 @@ public class SecurityFilter extends OncePerRequestFilter {
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 });
             } catch (RuntimeException exception) {
-                // token ausente/expirado/inválido: segue sem autenticar, endpoints protegidos retornarão 403
             }
         }
 

@@ -8,8 +8,7 @@ import com.auth0.jwt.exceptions.JWTVerificationException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.time.temporal.ChronoUnit;
 
 @Service
 public class TokenService {
@@ -17,14 +16,14 @@ public class TokenService {
     @Value("${api.security.token.secret}")
     private String secret;
 
-    public String gerarToken(Membro membro) {
+    public String gerarToken(Membro membro, boolean lembrarMe) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.create()
                     .withIssuer("lar-redencao-api")
                     .withSubject(membro.getEmail())
                     .withClaim("role", membro.getAuthorities().iterator().next().getAuthority())
-                    .withExpiresAt(gerarDataExpiracao())
+                    .withExpiresAt(gerarDataExpiracao(lembrarMe))
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
             throw new RuntimeException("Erro ao gerar token JWT", exception);
@@ -44,7 +43,9 @@ public class TokenService {
         }
     }
 
-    private Instant gerarDataExpiracao() {
-        return LocalDateTime.now().plusHours(2).toInstant(ZoneOffset.of("-03:00"));
+    private Instant gerarDataExpiracao(boolean lembrarMe) {
+        return lembrarMe
+                ? Instant.now().plus(7, ChronoUnit.DAYS)
+                : Instant.now().plus(4, ChronoUnit.HOURS);
     }
 }

@@ -2,6 +2,7 @@ package br.org.larescolaredencao.api;
 
 import java.util.List;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +29,7 @@ public class ParceiroController {
 	}
 	
 	@PostMapping("/criar")
-	public Parceiro criarParceiro(@RequestBody CriarParceiroDTO criarParceiroDTO) {
+	public Parceiro criarParceiro(@Valid @RequestBody CriarParceiroDTO criarParceiroDTO) {
 		return parceiroService.criarParceiro(criarParceiroDTO);
 	}
 }

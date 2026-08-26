@@ -26,7 +26,8 @@ public class AuthController {
         
         var authentication = manager.authenticate(authenticationToken);
 
-        var tokenJWT = tokenService.gerarToken((Membro) authentication.getPrincipal());
+        var lembrarMe = Boolean.TRUE.equals(dados.lembrarMe());
+        var tokenJWT = tokenService.gerarToken((Membro) authentication.getPrincipal(), lembrarMe);
 
         return ResponseEntity.ok(new LoginResponseDTO(tokenJWT));
     }

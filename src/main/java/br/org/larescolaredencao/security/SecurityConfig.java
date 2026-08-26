@@ -1,6 +1,7 @@
-package br.org.larescolaredencao.security;
+ package br.org.larescolaredencao.security;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -26,20 +27,28 @@ public class SecurityConfig {
     @Autowired
     private SecurityFilter securityFilter;
 
+    @Autowired
+    private CustomAuthenticationEntryPoint authenticationEntryPoint;
+
+    @Autowired
+    private CustomAccessDeniedHandler accessDeniedHandler;
+
+    @Value("${app.cors.allowed-origins}")
+    private List<String> allowedOrigins;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
-                // Habilita o CORS (para o navegador não bloquear requisições) e desabilita o CSRF
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
-                // Configura a API para ser Stateless (não guarda sessão em memória, usa apenas o token)
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
-                    // Libera explicitamente APENAS o método POST na rota de login
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
-                    // Exige autenticação para qualquer outra rota
                     req.anyRequest().authenticated();
                 })
+                .exceptionHandling(handling -> handling
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
                 .addFilterBefore(securityFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
@@ -54,14 +63,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder(); 
     }
 
-    // ==========================================
-    // CONFIGURAÇÃO DE CORS
-    // ==========================================
+
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permite requisições de qualquer origem (ideal para testes locais)
-        configuration.setAllowedOrigins(List.of("*")); 
+
+        configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         
