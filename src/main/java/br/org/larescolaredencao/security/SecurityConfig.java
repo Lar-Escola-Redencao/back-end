@@ -45,12 +45,15 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
-                    req.requestMatchers(HttpMethod.GET, 
-                            "/uploads/parceiros/**",
-                            "/uploads/diretoria/**",
-                            "/uploads/redes-sociais/**",
-                            "/uploads/eventos/**",
-                            "/uploads/transparencia/**").permitAll();
+                    req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/evento/**",
+                            "/parceiro/**",
+                            "/diretoria/**",
+                            "/rede-social/**",
+                            "/transparencia/**").permitAll();
+
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling
