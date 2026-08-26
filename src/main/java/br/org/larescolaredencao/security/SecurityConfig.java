@@ -46,6 +46,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
+                    req.requestMatchers(HttpMethod.GET,
+                            "/uploads/parceiros/**",
+                            "/uploads/diretoria/**",
+                            "/uploads/redes-sociais/**",
+                            "/uploads/eventos/**",
+                            "/uploads/transparencia/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
