@@ -1,45 +1,67 @@
 package br.org.larescolaredencao.model;
 
+import java.util.Collection;
+import java.util.List;
+
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.persistence.Table;
 
 @Entity
-public class Membro {
+@Table(name = "membro")
+public class Membro implements UserDetails {
 
-    @Id
+	private static final long serialVersionUID = 1L;
+
+	@Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @NotBlank
-    @Size(max = 150)
+    @Column(name = "nome_completo", nullable = false, length = 150)
     private String nomeCompleto;
 
-    @NotBlank
-    @Email
-    @Size(max = 100)
+    @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @NotBlank
+    @Column(nullable = false, length = 255)
     private String senha;
 
-    @NotBlank
-    @Size(max = 14)
+    @Column(nullable = false, unique = true, length = 14)
     private String cpf;
 
+    @Column(length = 255)
     private String endereco;
 
+    @Column(length = 20)
     private String telefone;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_papel", nullable = false)
     private Papel papel;
+
+    public Membro() {
+    }
+
+    public Membro(Integer id, String nomeCompleto, String email, String senha, String cpf, String endereco, String telefone, Papel papel) {
+        this.id = id;
+        this.nomeCompleto = nomeCompleto;
+        this.email = email;
+        this.senha = senha;
+        this.cpf = cpf;
+        this.endereco = endereco;
+        this.telefone = telefone;
+        this.papel = papel;
+    }
 
     public Integer getId() {
         return id;
@@ -103,5 +125,41 @@ public class Membro {
 
     public void setPapel(Papel papel) {
         this.papel = papel;
+    }
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Retorna a role (perfil) do membro associada ao papel dele (ex: ROLE_ADMINISTRADOR)
+        return List.of(new SimpleGrantedAuthority("ROLE_" + this.papel.getNomePapel()));
+    }
+
+    @Override
+    public String getPassword() {
+        return this.senha;
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email;
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true;
+    }
+    
+    @Override
+    public boolean isAccountNonLocked() {
+        return true;
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true;
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true;
     }
 }
