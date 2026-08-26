@@ -49,7 +49,8 @@ public class SecurityConfig {
                             "/uploads/parceiros/**",
                             "/uploads/diretoria/**",
                             "/uploads/redes-sociais/**",
-                            "/uploads/eventos/**").permitAll();
+                            "/uploads/eventos/**",
+                            "/uploads/transparencia/**").permitAll();
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling

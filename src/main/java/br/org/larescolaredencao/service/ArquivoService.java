@@ -26,6 +26,10 @@ public class ArquivoService {
 
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
+    
+    public String salvarArquivo(MultipartFile arquivo, String subPasta) {
+        return salvarArquivo(arquivo, subPasta, TipoArquivo.FOTO);
+    }
 
     public String salvarArquivo(MultipartFile arquivo, String subPasta, TipoArquivo tipo) {
         if (arquivo == null || arquivo.isEmpty()) {
