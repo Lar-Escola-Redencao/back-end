@@ -23,7 +23,7 @@ public class RedeSocial {
 	private String url;
 	
 	@NotBlank
-	@Size(max = 100)
+	@Size(max = 255)
 	private String icone;
 
 	private Boolean ativo;

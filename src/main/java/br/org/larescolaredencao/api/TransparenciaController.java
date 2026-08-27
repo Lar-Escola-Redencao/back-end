@@ -62,7 +62,7 @@ public class TransparenciaController {
         return transparenciaService.criarSecao(dto);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/secao/{id}")
     public Secao atualizarSecao(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarSecaoDTO dto) {
         return transparenciaService.atualizarSecao(id, dto);
     }
