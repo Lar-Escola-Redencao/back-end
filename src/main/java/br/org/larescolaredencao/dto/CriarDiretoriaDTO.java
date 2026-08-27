@@ -6,28 +6,35 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-public class CriarParceiroDTO {
-	
+public class CriarDiretoriaDTO {
+
 	@NotBlank
-	@Size(min = 3, max = 50)
+	@Size(max = 150)
 	private String nome;
-	
+
+	@NotBlank
+	@Size(max = 100)
+	private String cargo;
+
 	@NotNull
-	private MultipartFile logo;
+	private MultipartFile foto;
 
 	public String getNome() {
 		return nome;
 	}
-	
 	public void setNome(String nome) {
 		this.nome = nome;
 	}
-	
-	public MultipartFile getLogo() {
-		return logo;
+	public String getCargo() {
+		return cargo;
 	}
-	
-	public void setLogo(MultipartFile logo) {
-		this.logo = logo;
+	public void setCargo(String cargo) {
+		this.cargo = cargo;
+	}
+	public MultipartFile getFoto() {
+		return foto;
+	}
+	public void setFoto(MultipartFile foto) {
+		this.foto = foto;
 	}
 }
