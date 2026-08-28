@@ -56,9 +56,17 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
                             "/parceiro/**",
-                            "/diretoria/**",
-                            "/rede-social/**",
-                            "/transparencia/**").permitAll();
+                            "/diretoria/**").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/rede-social/todas",
+                            "/rede-social/{id:\\d+}").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/transparencia",
+                            "/transparencia/secoes",
+                            "/transparencia/secao/{id:\\d+}",
+                            "/transparencia/documento/{id:\\d+}/download").permitAll();
 
                     req.anyRequest().authenticated();
                 })

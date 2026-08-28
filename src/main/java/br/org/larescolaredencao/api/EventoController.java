@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.api;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -31,8 +31,8 @@ public class EventoController {
     }
 
     @GetMapping("/todos")
-    public List<EventoResponseDTO> listarEventos() {
-        return eventoService.getAllEventos();
+    public PagedModel<EventoResponseDTO> listarEventos(Pageable pageable) {
+        return new PagedModel<>(eventoService.getAllEventos(pageable));
     }
 
     @GetMapping("/{id}")

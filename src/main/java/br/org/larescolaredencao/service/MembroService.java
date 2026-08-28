@@ -1,9 +1,9 @@
 package br.org.larescolaredencao.service;
 
-import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -30,11 +30,9 @@ public class MembroService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
-    public List<MembroResponseDTO> getAllMembros() {
-        return membroRepository.findAll()
-                .stream()
-                .map(MembroResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable) {
+        return membroRepository.findAll(pageable)
+                .map(MembroResponseDTO::new);
     }
 
     public MembroResponseDTO getMembroById(Integer id) {

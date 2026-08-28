@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.api;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,8 +30,8 @@ public class MembroController {
     }
 
     @GetMapping("/todos")
-    public List<MembroResponseDTO> listarMembros() {
-        return membroService.getAllMembros();
+    public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable) {
+        return new PagedModel<>(membroService.getAllMembros(pageable));
     }
 
     @GetMapping("/{id}")
