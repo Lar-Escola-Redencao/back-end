@@ -58,7 +58,8 @@ public class SecurityConfig {
                             "/parceiro/**",
                             "/diretoria/**",
                             "/rede-social/**",
-                            "/transparencia/**").permitAll();
+                            "/transparencia/**",
+                            "/unidade/**").permitAll();
 
                     req.anyRequest().authenticated();
                 })
