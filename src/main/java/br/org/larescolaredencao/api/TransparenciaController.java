@@ -79,6 +79,14 @@ public class TransparenciaController {
                                          @RequestParam("arquivo") MultipartFile arquivo) {
         return transparenciaService.adicionarDocumento(secaoId, titulo, arquivo);
     }
+    
+    @PutMapping("/documento/{id}")
+    public Documento atualizarDocumento(@PathVariable("id") Long id,
+                                        @RequestParam("secaoId") Long secaoId,
+                                        @RequestParam("titulo") String titulo,
+                                        @RequestParam(value = "arquivo", required = false) MultipartFile arquivo) {
+        return transparenciaService.atualizarDocumento(id, secaoId, titulo, arquivo);
+    }
 
     @GetMapping("/documento/{id}/download")
     public ResponseEntity<Resource> baixarDocumento(@PathVariable("id") Long id) {
