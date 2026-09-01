@@ -1,6 +1,9 @@
 package br.org.larescolaredencao.dto;
 
+//import java.util.List;
+
 import br.org.larescolaredencao.model.Membro;
+//import br.org.larescolaredencao.model.Unidade;
 
 public class MembroResponseDTO {
     private Integer id;
@@ -11,6 +14,7 @@ public class MembroResponseDTO {
     private String telefone;
     private Integer idPapel;
     private String nomePapel;
+    // private List<Unidade> unidades;
 
     public MembroResponseDTO(Membro membro) {
         this.id = membro.getId();
@@ -21,6 +25,7 @@ public class MembroResponseDTO {
         this.telefone = membro.getTelefone();
         this.idPapel = membro.getPapel().getId();
         this.nomePapel = membro.getPapel().getNomePapel();
+        // this.unidades = membro.getUnidades();
     }
 
     public Integer getId() {
@@ -54,4 +59,8 @@ public class MembroResponseDTO {
     public String getNomePapel() {
         return nomePapel;
     }
+    
+    // public List<Unidade> getUnidades() {
+    //     return unidades;
+    // }
 }
