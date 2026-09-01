@@ -17,11 +17,14 @@ import br.org.larescolaredencao.repository.UnidadeRepository;
 public class UnidadeService {
 
     private static final String COR_HEX_PADRAO = "#F5F5F5";
+    private static final String PASTA_IMAGENS = "unidades/";
 
     private final UnidadeRepository unidadeRepository;
+    private final ArquivoService arquivoService;
 
-    public UnidadeService(UnidadeRepository unidadeRepository) {
+    public UnidadeService(UnidadeRepository unidadeRepository, ArquivoService arquivoService) {
         this.unidadeRepository = unidadeRepository;
+        this.arquivoService = arquivoService;
     }
 
     public List<Unidade> getAllUnidades() {
@@ -53,6 +56,10 @@ public class UnidadeService {
         unidade.setIdadeMax(dto.getIdadeMax());
         unidade.setCorHex(dto.getCorHex() != null && !dto.getCorHex().isBlank() ? dto.getCorHex() : COR_HEX_PADRAO);
 
+        if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
+            unidade.setImagem(arquivoService.salvarArquivo(dto.getImagem(), PASTA_IMAGENS));
+        }
+
         return unidadeRepository.save(unidade);
     }
 
@@ -80,12 +87,25 @@ public class UnidadeService {
         unidade.setIdadeMax(dto.getIdadeMax());
         unidade.setCorHex(dto.getCorHex() != null && !dto.getCorHex().isBlank() ? dto.getCorHex() : COR_HEX_PADRAO);
 
+        if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
+            String imagemAntiga = unidade.getImagem();
+            unidade.setImagem(arquivoService.salvarArquivo(dto.getImagem(), PASTA_IMAGENS));
+
+            if (imagemAntiga != null) {
+                arquivoService.deletarArquivo(imagemAntiga);
+            }
+        }
+
         return unidadeRepository.save(unidade);
     }
 
     public void deletarUnidade(Integer id) {
         Unidade unidade = getUnidadeById(id);
         unidadeRepository.delete(unidade);
+
+        if (unidade.getImagem() != null) {
+            arquivoService.deletarArquivo(unidade.getImagem());
+        }
     }
 
     private void validarFaixaEtaria(Integer idadeMin, Integer idadeMax) {

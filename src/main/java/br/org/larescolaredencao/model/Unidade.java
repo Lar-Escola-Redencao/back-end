@@ -72,6 +72,9 @@ public class Unidade {
     @Column(name = "cor_hex", length = 7)
     private String corHex = "#F5F5F5";
 
+    @Column(length = 255)
+    private String imagem;
+
     public Integer getId() {
         return id;
     }
@@ -158,5 +161,13 @@ public class Unidade {
 
     public void setCorHex(String corHex) {
         this.corHex = corHex;
+    }
+
+    public String getImagem() {
+        return imagem;
+    }
+
+    public void setImagem(String imagem) {
+        this.imagem = imagem;
     }
 }

@@ -2,6 +2,8 @@ package br.org.larescolaredencao.dto;
 
 import java.time.LocalTime;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -49,6 +51,8 @@ public class CriarUnidadeDTO {
 
     @Pattern(regexp = "^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$", message = "Cor hexadecimal inválida")
     private String corHex;
+
+    private MultipartFile imagem;
 
     public String getNome() {
         return nome;
@@ -128,5 +132,13 @@ public class CriarUnidadeDTO {
 
     public void setCorHex(String corHex) {
         this.corHex = corHex;
+    }
+
+    public MultipartFile getImagem() {
+        return imagem;
+    }
+
+    public void setImagem(MultipartFile imagem) {
+        this.imagem = imagem;
     }
 }
