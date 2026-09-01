@@ -13,6 +13,8 @@ public interface TokenRecuperacaoRepository extends JpaRepository<TokenRecuperac
 
     Optional<TokenRecuperacao> findByToken(String token);
 
+    Optional<TokenRecuperacao> findByMembro(Membro membro);
+
     @Modifying
     @Query("DELETE FROM TokenRecuperacao t WHERE t.membro = :membro")
     void deleteByMembro(@Param("membro") Membro membro);

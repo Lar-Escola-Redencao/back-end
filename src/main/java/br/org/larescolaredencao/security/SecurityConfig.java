@@ -45,9 +45,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();
                     
-                    // Liberação para o Spring conseguir exibir as mensagens de erro (400, 404, etc.) sem barrar no 401
                     req.requestMatchers("/error").permitAll();
                     
                     req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();

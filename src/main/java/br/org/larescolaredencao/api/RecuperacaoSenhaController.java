@@ -2,6 +2,7 @@ package br.org.larescolaredencao.api;
 
 import br.org.larescolaredencao.dto.RedefinirSenhaDTO;
 import br.org.larescolaredencao.dto.SolicitarRecuperacaoSenhaDTO;
+import br.org.larescolaredencao.dto.ValidarCodigoDTO;
 import br.org.larescolaredencao.service.RecuperacaoSenhaService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -23,6 +24,12 @@ public class RecuperacaoSenhaController {
     @PostMapping("/esqueci-minha-senha")
     public ResponseEntity<Void> solicitarRecuperacao(@Valid @RequestBody SolicitarRecuperacaoSenhaDTO dto) {
         recuperacaoSenhaService.solicitarRecuperacao(dto.getEmail());
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/validar-codigo")
+    public ResponseEntity<Void> validarCodigo(@Valid @RequestBody ValidarCodigoDTO dto) {
+        recuperacaoSenhaService.validarCodigo(dto.getToken());
         return ResponseEntity.ok().build();
     }
 

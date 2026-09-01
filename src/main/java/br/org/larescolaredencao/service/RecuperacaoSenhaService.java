@@ -44,9 +44,21 @@ public class RecuperacaoSenhaService {
 
         Membro membro = membroOpt.get();
 
-        tokenRecuperacaoRepository.deleteByMembro(membro);
+        Optional<TokenRecuperacao> tokenExistente = tokenRecuperacaoRepository.findByMembro(membro);
+        if (tokenExistente.isPresent()) {
+            LocalDateTime dataCriacao = tokenExistente.get().getDataExpiracao().minusMinutes(15);
+            if (LocalDateTime.now().isBefore(dataCriacao.plusMinutes(1))) {
+                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Aguarde antes de solicitar um novo código.");
+            }
+            tokenRecuperacaoRepository.delete(tokenExistente.get());
+        }
 
-        String codigoGerado = String.format("%06d", secureRandom.nextInt(1000000));
+        String caracteres = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        StringBuilder codigoBuilder = new StringBuilder(6);
+        for (int i = 0; i < 6; i++) {
+            codigoBuilder.append(caracteres.charAt(secureRandom.nextInt(caracteres.length())));
+        }
+        String codigoGerado = codigoBuilder.toString();
 
         TokenRecuperacao tokenRecuperacao = new TokenRecuperacao();
         tokenRecuperacao.setToken(codigoGerado);
@@ -56,6 +68,16 @@ public class RecuperacaoSenhaService {
         tokenRecuperacaoRepository.save(tokenRecuperacao);
 
         emailService.enviarEmailRecuperacao(membro.getEmail(), codigoGerado);
+    }
+
+    @Transactional(readOnly = true)
+    public void validarCodigo(String token) {
+        TokenRecuperacao tokenRecuperacao = tokenRecuperacaoRepository.findByToken(token)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou não encontrado."));
+
+        if (tokenRecuperacao.getDataExpiracao().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O código fornecido expirou.");
+        }
     }
 
     @Transactional
