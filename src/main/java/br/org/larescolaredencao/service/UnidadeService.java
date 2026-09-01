@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.service;
 
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -34,6 +35,7 @@ public class UnidadeService {
 
     public Unidade criarUnidade(CriarUnidadeDTO dto) {
         validarFaixaEtaria(dto.getIdadeMin(), dto.getIdadeMax());
+        validarHorarioFuncionamento(dto.getHorarioAbertura(), dto.getHorarioFechamento());
 
         if (unidadeRepository.findByNome(dto.getNome()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe uma unidade com este nome.");
@@ -45,6 +47,8 @@ public class UnidadeService {
         unidade.setTelefone(dto.getTelefone());
         unidade.setEmail(dto.getEmail());
         unidade.setDiasFuncionamento(dto.getDiasFuncionamento());
+        unidade.setHorarioAbertura(dto.getHorarioAbertura());
+        unidade.setHorarioFechamento(dto.getHorarioFechamento());
         unidade.setIdadeMin(dto.getIdadeMin());
         unidade.setIdadeMax(dto.getIdadeMax());
         unidade.setCorHex(dto.getCorHex() != null && !dto.getCorHex().isBlank() ? dto.getCorHex() : COR_HEX_PADRAO);
@@ -56,6 +60,7 @@ public class UnidadeService {
         Unidade unidade = getUnidadeById(id);
 
         validarFaixaEtaria(dto.getIdadeMin(), dto.getIdadeMax());
+        validarHorarioFuncionamento(dto.getHorarioAbertura(), dto.getHorarioFechamento());
 
         if (!unidade.getNome().equals(dto.getNome())) {
             Optional<Unidade> unidadeComNome = unidadeRepository.findByNome(dto.getNome());
@@ -69,6 +74,8 @@ public class UnidadeService {
         unidade.setTelefone(dto.getTelefone());
         unidade.setEmail(dto.getEmail());
         unidade.setDiasFuncionamento(dto.getDiasFuncionamento());
+        unidade.setHorarioAbertura(dto.getHorarioAbertura());
+        unidade.setHorarioFechamento(dto.getHorarioFechamento());
         unidade.setIdadeMin(dto.getIdadeMin());
         unidade.setIdadeMax(dto.getIdadeMax());
         unidade.setCorHex(dto.getCorHex() != null && !dto.getCorHex().isBlank() ? dto.getCorHex() : COR_HEX_PADRAO);
@@ -85,6 +92,13 @@ public class UnidadeService {
         if (idadeMin != null && idadeMax != null && idadeMin > idadeMax) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A idade mínima não pode ser maior que a idade máxima.");
+        }
+    }
+
+    private void validarHorarioFuncionamento(LocalTime horarioAbertura, LocalTime horarioFechamento) {
+        if (horarioAbertura != null && horarioFechamento != null && !horarioAbertura.isBefore(horarioFechamento)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O horário de abertura deve ser anterior ao horário de fechamento.");
         }
     }
 }

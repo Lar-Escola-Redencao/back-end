@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import java.time.LocalTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -47,6 +49,14 @@ public class Unidade {
     @Size(max = 150)
     @Column(name = "dias_funcionamento", nullable = false, length = 150)
     private String diasFuncionamento;
+
+    @NotNull
+    @Column(name = "horario_abertura", nullable = false)
+    private LocalTime horarioAbertura;
+
+    @NotNull
+    @Column(name = "horario_fechamento", nullable = false)
+    private LocalTime horarioFechamento;
 
     @NotNull
     @PositiveOrZero
@@ -108,6 +118,22 @@ public class Unidade {
 
     public void setDiasFuncionamento(String diasFuncionamento) {
         this.diasFuncionamento = diasFuncionamento;
+    }
+
+    public LocalTime getHorarioAbertura() {
+        return horarioAbertura;
+    }
+
+    public void setHorarioAbertura(LocalTime horarioAbertura) {
+        this.horarioAbertura = horarioAbertura;
+    }
+
+    public LocalTime getHorarioFechamento() {
+        return horarioFechamento;
+    }
+
+    public void setHorarioFechamento(LocalTime horarioFechamento) {
+        this.horarioFechamento = horarioFechamento;
     }
 
     public Integer getIdadeMin() {

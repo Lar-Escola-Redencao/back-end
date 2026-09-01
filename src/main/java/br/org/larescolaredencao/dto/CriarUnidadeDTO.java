@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import java.time.LocalTime;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -30,6 +32,12 @@ public class CriarUnidadeDTO {
     @NotBlank
     @Size(max = 150)
     private String diasFuncionamento;
+
+    @NotNull
+    private LocalTime horarioAbertura;
+
+    @NotNull
+    private LocalTime horarioFechamento;
 
     @NotNull
     @PositiveOrZero
@@ -80,6 +88,22 @@ public class CriarUnidadeDTO {
 
     public void setDiasFuncionamento(String diasFuncionamento) {
         this.diasFuncionamento = diasFuncionamento;
+    }
+
+    public LocalTime getHorarioAbertura() {
+        return horarioAbertura;
+    }
+
+    public void setHorarioAbertura(LocalTime horarioAbertura) {
+        this.horarioAbertura = horarioAbertura;
+    }
+
+    public LocalTime getHorarioFechamento() {
+        return horarioFechamento;
+    }
+
+    public void setHorarioFechamento(LocalTime horarioFechamento) {
+        this.horarioFechamento = horarioFechamento;
     }
 
     public Integer getIdadeMin() {
