@@ -1,44 +1,30 @@
 package br.org.larescolaredencao.dto;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.List;
 
 import br.org.larescolaredencao.model.Turma;
-import br.org.larescolaredencao.model.enums.DiaSemana;
+import br.org.larescolaredencao.model.enums.Periodo;
 
 public class TurmaResponseDTO {
 
     private Integer id;
-    private String nome;
     private Integer unidadeId;
     private String unidadeNome;
-    private List<DiaSemana> diasSemana;
+    private Periodo periodo;
     private LocalTime horaInicio;
     private LocalTime horaFim;
-    private LocalDate dataInicio;
-    private LocalDate dataFim;
-    private Integer vagas;
 
     public TurmaResponseDTO(Turma turma) {
         this.id = turma.getId();
-        this.nome = turma.getNome();
         this.unidadeId = turma.getUnidade().getId();
         this.unidadeNome = turma.getUnidade().getNome();
-        this.diasSemana = turma.getDiasSemana();
+        this.periodo = turma.getPeriodo();
         this.horaInicio = turma.getHoraInicio();
         this.horaFim = turma.getHoraFim();
-        this.dataInicio = turma.getDataInicio();
-        this.dataFim = turma.getDataFim();
-        this.vagas = turma.getVagas();
     }
 
     public Integer getId() {
         return id;
-    }
-
-    public String getNome() {
-        return nome;
     }
 
     public Integer getUnidadeId() {
@@ -49,8 +35,8 @@ public class TurmaResponseDTO {
         return unidadeNome;
     }
 
-    public List<DiaSemana> getDiasSemana() {
-        return diasSemana;
+    public Periodo getPeriodo() {
+        return periodo;
     }
 
     public LocalTime getHoraInicio() {
@@ -59,17 +45,5 @@ public class TurmaResponseDTO {
 
     public LocalTime getHoraFim() {
         return horaFim;
-    }
-
-    public LocalDate getDataInicio() {
-        return dataInicio;
-    }
-
-    public LocalDate getDataFim() {
-        return dataFim;
-    }
-
-    public Integer getVagas() {
-        return vagas;
     }
 }

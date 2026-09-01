@@ -6,7 +6,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
@@ -18,10 +17,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.server.ResponseStatusException;
 
+import br.org.larescolaredencao.dto.AtualizarTurmaDTO;
 import br.org.larescolaredencao.dto.CriarTurmaDTO;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
-import br.org.larescolaredencao.model.enums.DiaSemana;
+import br.org.larescolaredencao.model.enums.Periodo;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UnidadeRepository;
 
@@ -41,36 +41,26 @@ class TurmaServiceTest {
         turmaService = new TurmaService(turmaRepository, unidadeRepository);
     }
 
-    private CriarTurmaDTO criarDto(Integer unidadeId, List<DiaSemana> dias, LocalTime inicio, LocalTime fim,
-            LocalDate dataInicio, LocalDate dataFim) {
+    private CriarTurmaDTO criarDto(Integer unidadeId, Periodo periodo, LocalTime inicio, LocalTime fim) {
         CriarTurmaDTO dto = new CriarTurmaDTO();
-        dto.setNome("Informática Básica - Turma A");
         dto.setUnidadeId(unidadeId);
-        dto.setDiasSemana(dias);
+        dto.setPeriodo(periodo);
         dto.setHoraInicio(inicio);
         dto.setHoraFim(fim);
-        dto.setDataInicio(dataInicio);
-        dto.setDataFim(dataFim);
-        dto.setVagas(20);
         return dto;
     }
 
-    private Turma turmaExistente(Integer id, Integer unidadeId, List<DiaSemana> dias, LocalTime inicio, LocalTime fim,
-            LocalDate dataInicio, LocalDate dataFim) {
+    private Turma turmaExistente(Integer id, Integer unidadeId, Periodo periodo, LocalTime inicio, LocalTime fim) {
         Unidade unidade = new Unidade();
         unidade.setId(unidadeId);
         unidade.setNome("Unidade X");
 
         Turma turma = new Turma();
         turma.setId(id);
-        turma.setNome("Turma existente");
         turma.setUnidade(unidade);
-        turma.setDiasSemana(dias);
+        turma.setPeriodo(periodo);
         turma.setHoraInicio(inicio);
         turma.setHoraFim(fim);
-        turma.setDataInicio(dataInicio);
-        turma.setDataFim(dataFim);
-        turma.setVagas(15);
         return turma;
     }
 
@@ -78,8 +68,7 @@ class TurmaServiceTest {
     void deveRejeitarUnidadeInexistente() {
         when(unidadeRepository.findById(anyInt())).thenReturn(Optional.empty());
 
-        CriarTurmaDTO dto = criarDto(99, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        CriarTurmaDTO dto = criarDto(99, Periodo.TARDE, LocalTime.of(14, 0), LocalTime.of(16, 0));
 
         assertThatThrownBy(() -> turmaService.criarTurma(dto))
                 .isInstanceOf(ResponseStatusException.class)
@@ -87,23 +76,10 @@ class TurmaServiceTest {
     }
 
     @Test
-    void deveRejeitarPeriodoComDataInicioAposDataFim() {
-        when(unidadeRepository.findById(1)).thenReturn(Optional.of(new Unidade()));
-
-        CriarTurmaDTO dto = criarDto(1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 6, 30), LocalDate.of(2026, 3, 2));
-
-        assertThatThrownBy(() -> turmaService.criarTurma(dto))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("dataInicio");
-    }
-
-    @Test
     void deveRejeitarHoraInicioMaiorOuIgualHoraFim() {
         when(unidadeRepository.findById(1)).thenReturn(Optional.of(new Unidade()));
 
-        CriarTurmaDTO dto = criarDto(1, List.of(DiaSemana.SEGUNDA), LocalTime.of(16, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        CriarTurmaDTO dto = criarDto(1, Periodo.TARDE, LocalTime.of(16, 0), LocalTime.of(16, 0));
 
         assertThatThrownBy(() -> turmaService.criarTurma(dto))
                 .isInstanceOf(ResponseStatusException.class)
@@ -111,17 +87,49 @@ class TurmaServiceTest {
     }
 
     @Test
-    void deveRejeitarHorarioSobrepostoNoMesmoDiaEUnidade() {
+    void deveRejeitarSegundaTurmaNoMesmoPeriodoDaUnidade() {
         Unidade unidade = new Unidade();
         unidade.setId(1);
         when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
 
-        Turma existente = turmaExistente(1, 1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        // mesma unidade, mesmo período (TARDE), horários que nem se sobrepõem —
+        // ainda assim é conflito, porque a unidade só pode ter uma turma por período.
+        Turma existente = turmaExistente(1, 1, Periodo.TARDE, LocalTime.of(13, 0), LocalTime.of(15, 0));
         when(turmaRepository.findByUnidadeId(1)).thenReturn(List.of(existente));
 
-        CriarTurmaDTO dto = criarDto(1, List.of(DiaSemana.SEGUNDA), LocalTime.of(15, 0), LocalTime.of(17, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        CriarTurmaDTO dto = criarDto(1, Periodo.TARDE, LocalTime.of(18, 0), LocalTime.of(20, 0));
+
+        assertThatThrownBy(() -> turmaService.criarTurma(dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("já possui uma turma no período");
+    }
+
+    @Test
+    void devePermitirUmaTurmaDeManhaEUmaDeTardeNaMesmaUnidade() {
+        Unidade unidade = new Unidade();
+        unidade.setId(1);
+        when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
+
+        Turma existente = turmaExistente(1, 1, Periodo.MANHA, LocalTime.of(8, 0), LocalTime.of(10, 0));
+        when(turmaRepository.findByUnidadeId(1)).thenReturn(List.of(existente));
+        when(turmaRepository.save(any(Turma.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        CriarTurmaDTO dto = criarDto(1, Periodo.TARDE, LocalTime.of(14, 0), LocalTime.of(16, 0));
+
+        assertThat(turmaService.criarTurma(dto)).isNotNull();
+    }
+
+    @Test
+    void deveRejeitarHorarioSobrepostoEntrePeriodosDiferentes() {
+        Unidade unidade = new Unidade();
+        unidade.setId(1);
+        when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
+
+        // períodos diferentes, mas os horários de fato se cruzam.
+        Turma existente = turmaExistente(1, 1, Periodo.MANHA, LocalTime.of(8, 0), LocalTime.of(14, 0));
+        when(turmaRepository.findByUnidadeId(1)).thenReturn(List.of(existente));
+
+        CriarTurmaDTO dto = criarDto(1, Periodo.TARDE, LocalTime.of(12, 0), LocalTime.of(16, 0));
 
         assertThatThrownBy(() -> turmaService.criarTurma(dto))
                 .isInstanceOf(ResponseStatusException.class)
@@ -129,13 +137,12 @@ class TurmaServiceTest {
     }
 
     @Test
-    void devePermitirHorariosApenasEncostados() {
+    void devePermitirHorariosApenasEncostadosEntrePeriodosDiferentes() {
         Unidade unidade = new Unidade();
         unidade.setId(1);
         when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
 
-        Turma existente = turmaExistente(1, 1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        Turma existente = turmaExistente(1, 1, Periodo.MANHA, LocalTime.of(8, 0), LocalTime.of(12, 0));
         when(turmaRepository.findByUnidadeId(1)).thenReturn(List.of(existente));
         when(turmaRepository.save(any(Turma.class))).thenAnswer(invocation -> {
             Turma t = invocation.getArgument(0);
@@ -143,27 +150,9 @@ class TurmaServiceTest {
             return t;
         });
 
-        CriarTurmaDTO dto = criarDto(1, List.of(DiaSemana.SEGUNDA), LocalTime.of(16, 0), LocalTime.of(18, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        CriarTurmaDTO dto = criarDto(1, Periodo.TARDE, LocalTime.of(12, 0), LocalTime.of(16, 0));
 
         assertThat(turmaService.criarTurma(dto).getId()).isEqualTo(2);
-    }
-
-    @Test
-    void devePermitirPeriodosQueNaoSeCruzamNoCalendario() {
-        Unidade unidade = new Unidade();
-        unidade.setId(1);
-        when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
-
-        Turma existente = turmaExistente(1, 1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 1), LocalDate.of(2026, 6, 30));
-        when(turmaRepository.findByUnidadeId(1)).thenReturn(List.of(existente));
-        when(turmaRepository.save(any(Turma.class))).thenAnswer(invocation -> invocation.getArgument(0));
-
-        CriarTurmaDTO dto = criarDto(1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 8, 1), LocalDate.of(2026, 11, 30));
-
-        assertThat(turmaService.criarTurma(dto)).isNotNull();
     }
 
     @Test
@@ -172,22 +161,17 @@ class TurmaServiceTest {
         unidade.setId(1);
         when(unidadeRepository.findById(1)).thenReturn(Optional.of(unidade));
 
-        Turma turmaAtual = turmaExistente(1, 1, List.of(DiaSemana.SEGUNDA), LocalTime.of(14, 0), LocalTime.of(16, 0),
-                LocalDate.of(2026, 3, 2), LocalDate.of(2026, 6, 30));
+        Turma turmaAtual = turmaExistente(1, 1, Periodo.TARDE, LocalTime.of(14, 0), LocalTime.of(16, 0));
         when(turmaRepository.findById(1)).thenReturn(Optional.of(turmaAtual));
         when(turmaRepository.findByUnidadeIdAndIdNot(1, 1)).thenReturn(List.of());
         when(turmaRepository.save(any(Turma.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var dto = new br.org.larescolaredencao.dto.AtualizarTurmaDTO();
-        dto.setNome("Informática Básica - Turma A (renomeada)");
+        AtualizarTurmaDTO dto = new AtualizarTurmaDTO();
         dto.setUnidadeId(1);
-        dto.setDiasSemana(List.of(DiaSemana.SEGUNDA));
+        dto.setPeriodo(Periodo.TARDE);
         dto.setHoraInicio(LocalTime.of(14, 0));
-        dto.setHoraFim(LocalTime.of(16, 0));
-        dto.setDataInicio(LocalDate.of(2026, 3, 2));
-        dto.setDataFim(LocalDate.of(2026, 6, 30));
-        dto.setVagas(25);
+        dto.setHoraFim(LocalTime.of(17, 0));
 
-        assertThat(turmaService.atualizarTurma(1, dto).getNome()).contains("renomeada");
+        assertThat(turmaService.atualizarTurma(1, dto).getHoraFim()).isEqualTo(LocalTime.of(17, 0));
     }
 }

@@ -1,8 +1,6 @@
 package br.org.larescolaredencao.service;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -15,7 +13,7 @@ import br.org.larescolaredencao.dto.CriarTurmaDTO;
 import br.org.larescolaredencao.dto.TurmaResponseDTO;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
-import br.org.larescolaredencao.model.enums.DiaSemana;
+import br.org.larescolaredencao.model.enums.Periodo;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UnidadeRepository;
 
@@ -44,19 +42,14 @@ public class TurmaService {
 
     public TurmaResponseDTO criarTurma(CriarTurmaDTO dto) {
         Unidade unidade = buscarUnidadeOuFalhar(dto.getUnidadeId());
-        validarPeriodo(dto.getDataInicio(), dto.getDataFim(), dto.getHoraInicio(), dto.getHoraFim());
-        validarConflito(dto.getUnidadeId(), null, dto.getDiasSemana(), dto.getDataInicio(), dto.getDataFim(),
-                dto.getHoraInicio(), dto.getHoraFim());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFim());
+        validarConflito(dto.getUnidadeId(), null, dto.getPeriodo(), dto.getHoraInicio(), dto.getHoraFim());
 
         Turma turma = new Turma();
-        turma.setNome(dto.getNome());
         turma.setUnidade(unidade);
-        turma.setDiasSemana(dto.getDiasSemana());
+        turma.setPeriodo(dto.getPeriodo());
         turma.setHoraInicio(dto.getHoraInicio());
         turma.setHoraFim(dto.getHoraFim());
-        turma.setDataInicio(dto.getDataInicio());
-        turma.setDataFim(dto.getDataFim());
-        turma.setVagas(dto.getVagas());
 
         return new TurmaResponseDTO(turmaRepository.save(turma));
     }
@@ -64,18 +57,13 @@ public class TurmaService {
     public TurmaResponseDTO atualizarTurma(Integer id, AtualizarTurmaDTO dto) {
         Turma turma = buscarTurmaOuFalhar(id);
         Unidade unidade = buscarUnidadeOuFalhar(dto.getUnidadeId());
-        validarPeriodo(dto.getDataInicio(), dto.getDataFim(), dto.getHoraInicio(), dto.getHoraFim());
-        validarConflito(dto.getUnidadeId(), id, dto.getDiasSemana(), dto.getDataInicio(), dto.getDataFim(),
-                dto.getHoraInicio(), dto.getHoraFim());
+        validarHorario(dto.getHoraInicio(), dto.getHoraFim());
+        validarConflito(dto.getUnidadeId(), id, dto.getPeriodo(), dto.getHoraInicio(), dto.getHoraFim());
 
-        turma.setNome(dto.getNome());
         turma.setUnidade(unidade);
-        turma.setDiasSemana(dto.getDiasSemana());
+        turma.setPeriodo(dto.getPeriodo());
         turma.setHoraInicio(dto.getHoraInicio());
         turma.setHoraFim(dto.getHoraFim());
-        turma.setDataInicio(dto.getDataInicio());
-        turma.setDataFim(dto.getDataFim());
-        turma.setVagas(dto.getVagas());
 
         return new TurmaResponseDTO(turmaRepository.save(turma));
     }
@@ -95,37 +83,28 @@ public class TurmaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNPROCESSABLE_CONTENT, "Unidade não encontrada."));
     }
 
-    private void validarPeriodo(LocalDate dataInicio, LocalDate dataFim, LocalTime horaInicio, LocalTime horaFim) {
-        if (dataInicio.isAfter(dataFim)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "dataInicio não pode ser posterior a dataFim.");
-        }
+    private void validarHorario(LocalTime horaInicio, LocalTime horaFim) {
         if (!horaInicio.isBefore(horaFim)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "horaInicio deve ser anterior a horaFim.");
         }
     }
 
-    private void validarConflito(Integer unidadeId, Integer idTurmaAtual, List<DiaSemana> diasSemana,
-            LocalDate dataInicio, LocalDate dataFim, LocalTime horaInicio, LocalTime horaFim) {
-
+    private void validarConflito(Integer unidadeId, Integer idTurmaAtual, Periodo periodo, LocalTime horaInicio,
+            LocalTime horaFim) {
         List<Turma> turmasDaUnidade = idTurmaAtual == null
                 ? turmaRepository.findByUnidadeId(unidadeId)
                 : turmaRepository.findByUnidadeIdAndIdNot(unidadeId, idTurmaAtual);
 
         for (Turma outra : turmasDaUnidade) {
-            boolean mesmoDia = !Collections.disjoint(outra.getDiasSemana(), diasSemana);
-            if (!mesmoDia) {
-                continue;
-            }
-
-            boolean periodoSobrepoe = !dataInicio.isAfter(outra.getDataFim()) && !outra.getDataInicio().isAfter(dataFim);
-            if (!periodoSobrepoe) {
-                continue;
+            if (outra.getPeriodo() == periodo) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Unidade já possui uma turma no período " + periodo + " (id=" + outra.getId() + ").");
             }
 
             boolean horarioSobrepoe = horaInicio.isBefore(outra.getHoraFim()) && outra.getHoraInicio().isBefore(horaFim);
             if (horarioSobrepoe) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Conflito de horário com a turma '" + outra.getNome() + "' (id=" + outra.getId() + ").");
+                        "Conflito de horário com a turma id=" + outra.getId() + ".");
             }
         }
     }
