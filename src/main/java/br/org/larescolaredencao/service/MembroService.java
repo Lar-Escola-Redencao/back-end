@@ -16,8 +16,8 @@ import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.PapelRepository;
-//import br.org.larescolaredencao.model.Unidade;
-//import br.org.larescolaredencao.repository.UnidadeRepository;
+import br.org.larescolaredencao.model.Unidade;
+import br.org.larescolaredencao.repository.UnidadeRepository;
 
 @Service
 public class MembroService {
@@ -25,13 +25,13 @@ public class MembroService {
     private final MembroRepository membroRepository;
     private final PapelRepository papelRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    // private final UnidadeRepository unidadeRepository;
+    private final UnidadeRepository unidadeRepository;
     
-    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository) {
+    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository, UnidadeRepository unidadeRepository) {
         this.membroRepository = membroRepository;
         this.papelRepository = papelRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
-        // this.unidadeRepository = unidadeRepository
+        this.unidadeRepository = unidadeRepository;
     }
 
     public List<MembroResponseDTO> getAllMembros() {
@@ -58,7 +58,7 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
 
-        // List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
+        List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
         
         Membro membro = new Membro();
         membro.setNomeCompleto(dto.getNomeCompleto());
@@ -68,7 +68,7 @@ public class MembroService {
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
-        // membro.setUnidades(unidades);
+        membro.setUnidades(unidades);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -95,7 +95,7 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
-        // List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
+        List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
         
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
@@ -103,7 +103,7 @@ public class MembroService {
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
-        // membro.setUnidades(unidades);
+        membro.setUnidades(unidades);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -115,13 +115,13 @@ public class MembroService {
         membroRepository.delete(membro);
     }
     
-    // private List<Unidade> buscarUnidades(List<Integer> idsUnidades) {
-    //     List<Unidade> unidades = unidadeRepository.findAllById(idsUnidades);
-    //
-    //     if (unidades.size() != idsUnidades.size()) {
-    //         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Uma ou mais unidades informadas não foram encontradas.");
-    //     }
-    //
-    //     return unidades;
-    // }
+    private List<Unidade> buscarUnidades(List<Integer> idsUnidades) {
+    	List<Unidade> unidades = unidadeRepository.findAllById(idsUnidades);
+    
+    	if (unidades.size() != idsUnidades.size()) {
+             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Uma ou mais unidades informadas não foram encontradas.");
+        }
+    
+    	return unidades;
+    }
 }
