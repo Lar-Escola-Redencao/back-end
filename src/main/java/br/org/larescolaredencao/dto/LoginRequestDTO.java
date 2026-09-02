@@ -1,3 +1,5 @@
 package br.org.larescolaredencao.dto;
 
-public record LoginRequestDTO(String email, String senha, Boolean lembrarMe) {}
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginRequestDTO(@NotBlank String identificador, @NotBlank String senha, Boolean lembrarMe) {}
