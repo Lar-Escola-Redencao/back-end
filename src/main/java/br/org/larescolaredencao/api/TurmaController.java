@@ -30,28 +30,28 @@ public class TurmaController {
         this.turmaService = turmaService;
     }
 
-    @GetMapping("/Listar")
+    @GetMapping("/todas")
     public List<TurmaResponseDTO> listarTurmas(@RequestParam(required = false) Integer unidadeId) {
         return turmaService.listarTurmas(unidadeId);
     }
 
-    @GetMapping("busca/{id}")
+    @GetMapping("/{id}")
     public TurmaResponseDTO buscarTurma(@PathVariable("id") Integer id) {
         return turmaService.buscarTurma(id);
     }
 
-    @PostMapping("/Criar")
+    @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
     public TurmaResponseDTO criarTurma(@Valid @RequestBody CriarTurmaDTO dto) {
         return turmaService.criarTurma(dto);
     }
 
-    @PutMapping("/atualizar/{id}")
-    public TurmaResponseDTO atualizarTurma(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarTurmaDTO dto) {
+    @PutMapping("/{id}")
+    public TurmaResponseDTO atualizarTurma(@PathVariable("id") Integer id, @RequestBody AtualizarTurmaDTO dto) {
         return turmaService.atualizarTurma(id, dto);
     }
 
-    @DeleteMapping("/deletar/{id}")
+    @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarTurma(@PathVariable("id") Integer id) {
         turmaService.deletarTurma(id);

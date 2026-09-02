@@ -1,7 +1,10 @@
 package br.org.larescolaredencao.service;
 
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
@@ -11,21 +14,26 @@ import org.springframework.web.server.ResponseStatusException;
 import br.org.larescolaredencao.dto.AtualizarTurmaDTO;
 import br.org.larescolaredencao.dto.CriarTurmaDTO;
 import br.org.larescolaredencao.dto.TurmaResponseDTO;
+import br.org.larescolaredencao.exception.ValidacaoException;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Periodo;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UnidadeRepository;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.Validator;
 
 @Service
 public class TurmaService {
 
     private final TurmaRepository turmaRepository;
     private final UnidadeRepository unidadeRepository;
+    private final Validator validator;
 
-    public TurmaService(TurmaRepository turmaRepository, UnidadeRepository unidadeRepository) {
+    public TurmaService(TurmaRepository turmaRepository, UnidadeRepository unidadeRepository, Validator validator) {
         this.turmaRepository = turmaRepository;
         this.unidadeRepository = unidadeRepository;
+        this.validator = validator;
     }
 
     public List<TurmaResponseDTO> listarTurmas(Integer unidadeId) {
@@ -56,6 +64,7 @@ public class TurmaService {
 
     public TurmaResponseDTO atualizarTurma(Integer id, AtualizarTurmaDTO dto) {
         Turma turma = buscarTurmaOuFalhar(id);
+        validarDto(dto);
         Unidade unidade = buscarUnidadeOuFalhar(dto.getUnidadeId());
         validarHorario(dto.getHoraInicio(), dto.getHoraFim());
         validarConflito(dto.getUnidadeId(), id, dto.getPeriodo(), dto.getHoraInicio(), dto.getHoraFim());
@@ -71,6 +80,17 @@ public class TurmaService {
     public void deletarTurma(Integer id) {
         Turma turma = buscarTurmaOuFalhar(id);
         turmaRepository.delete(turma);
+    }
+
+    private void validarDto(AtualizarTurmaDTO dto) {
+        Set<ConstraintViolation<AtualizarTurmaDTO>> violacoes = validator.validate(dto);
+        if (!violacoes.isEmpty()) {
+            Map<String, String> erros = new LinkedHashMap<>();
+            for (ConstraintViolation<AtualizarTurmaDTO> violacao : violacoes) {
+                erros.put(violacao.getPropertyPath().toString(), violacao.getMessage());
+            }
+            throw new ValidacaoException(erros);
+        }
     }
 
     private Turma buscarTurmaOuFalhar(Integer id) {
