@@ -30,9 +30,11 @@ public class MembroService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
-    public Page<MembroResponseDTO> getAllMembros(Pageable pageable) {
-        return membroRepository.findAll(pageable)
-                .map(MembroResponseDTO::new);
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel) {
+        Page<Membro> membros = idPapel != null
+                ? membroRepository.findByPapelId(idPapel, pageable)
+                : membroRepository.findAll(pageable);
+        return membros.map(MembroResponseDTO::new);
     }
 
     public MembroResponseDTO getMembroById(Integer id) {

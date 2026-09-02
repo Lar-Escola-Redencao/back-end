@@ -14,6 +14,7 @@ import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.Parceiro;
+import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.repository.EventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
@@ -33,9 +34,11 @@ public class EventoService {
         this.parceiroRepository = parceiroRepository;
     }
 
-    public Page<EventoResponseDTO> getAllEventos(Pageable pageable) {
-        return eventoRepository.findAll(pageable)
-                .map(EventoResponseDTO::new);
+    public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo) {
+        Page<Evento> eventos = tipo != null
+                ? eventoRepository.findByTipoEvento(tipo, pageable)
+                : eventoRepository.findAll(pageable);
+        return eventos.map(EventoResponseDTO::new);
     }
 
     public EventoResponseDTO getEventoById(Integer id) {
