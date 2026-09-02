@@ -10,6 +10,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import br.org.larescolaredencao.exception.ValidacaoException;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -21,5 +23,10 @@ public class GlobalExceptionHandler {
         }
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(fieldErrors);
+    }
+
+    @ExceptionHandler(ValidacaoException.class)
+    public ResponseEntity<Map<String, String>> handleValidacao(ValidacaoException exception) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getErros());
     }
 }
