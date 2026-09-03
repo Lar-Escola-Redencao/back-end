@@ -31,7 +31,7 @@ public class TurmaController {
     }
 
     @GetMapping("/todas")
-    public List<TurmaResponseDTO> listarTurmas(@RequestParam(required = false) Integer unidadeId) {
+    public List<TurmaResponseDTO> listarTurmas(@RequestParam(name = "unidadeId", required = false) Integer unidadeId) {
         return turmaService.listarTurmas(unidadeId);
     }
 
