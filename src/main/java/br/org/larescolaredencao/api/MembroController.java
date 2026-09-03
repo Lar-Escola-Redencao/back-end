@@ -32,7 +32,7 @@ public class MembroController {
 
     @GetMapping("/todos")
     public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable,
-            @RequestParam(required = false) Integer idPapel) {
+            @RequestParam(name = "idPapel", required = false) Integer idPapel) {
         return new PagedModel<>(membroService.getAllMembros(pageable, idPapel));
     }
 
