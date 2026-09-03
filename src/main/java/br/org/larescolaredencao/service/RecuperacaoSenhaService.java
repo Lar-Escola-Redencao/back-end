@@ -47,7 +47,7 @@ public class RecuperacaoSenhaService {
         Optional<TokenRecuperacao> tokenExistente = tokenRecuperacaoRepository.findByMembro(membro);
         if (tokenExistente.isPresent()) {
             LocalDateTime dataCriacao = tokenExistente.get().getDataExpiracao().minusMinutes(15);
-            if (LocalDateTime.now().isBefore(dataCriacao.plusMinutes(1))) {
+            if (LocalDateTime.now().isBefore(dataCriacao.plusSeconds(30))) {
                 throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Aguarde antes de solicitar um novo código.");
             }
             tokenRecuperacaoRepository.delete(tokenExistente.get());

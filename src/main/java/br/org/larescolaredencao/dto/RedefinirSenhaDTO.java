@@ -11,7 +11,7 @@ public class RedefinirSenhaDTO {
     private String token;
 
     @NotBlank
-    @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&#]).{7,}$", message = "A senha deve conter mais de 6 caracteres, incluindo pelo menos uma letra maiúscula, um número e um caractere especial.")
+    @Pattern(regexp = "^(?=.*[A-Z])(?=.*\\d).{6,}$", message = "A senha deve conter no mínimo 6 caracteres, incluindo pelo menos uma letra maiúscula e um número.")
     private String novaSenha;
 
     public String getToken() {
