@@ -2,6 +2,8 @@ package br.org.larescolaredencao.api;
 
 import java.util.List;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -31,6 +33,11 @@ public class RedeSocialController {
 	@GetMapping("/todas")
 	public List<RedeSocial> listarRedesSociais() {
 		return redeSocialService.getAllRedesSociais();
+	}
+
+	@GetMapping("/admin")
+	public PagedModel<RedeSocial> listarRedesSociaisAdmin(Pageable pageable) {
+		return new PagedModel<>(redeSocialService.getAllRedesSociaisPaginado(pageable));
 	}
 
 	@GetMapping("/{id}")

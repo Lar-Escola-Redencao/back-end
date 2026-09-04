@@ -44,7 +44,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
-                    req.requestMatchers("/error").permitAll();
+                    //req.requestMatchers("/error").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
                     req.requestMatchers(HttpMethod.GET,
@@ -57,10 +57,17 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
                             "/parceiro/**",
-                            "/diretoria/**",
-                            "/rede-social/**",
-                            "/transparencia/**",
-                            "/unidade/**").permitAll();
+                            "/diretoria/**").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/rede-social/todas",
+                            "/rede-social/{id:\\d+}").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/transparencia",
+                            "/transparencia/secoes",
+                            "/transparencia/secao/{id:\\d+}",
+                            "/transparencia/documento/{id:\\d+}/download").permitAll();
 
                     req.anyRequest().authenticated();
                 })
