@@ -14,7 +14,6 @@ import org.springframework.web.server.ResponseStatusException;
 import br.org.larescolaredencao.dto.AtualizarTurmaDTO;
 import br.org.larescolaredencao.dto.CriarTurmaDTO;
 import br.org.larescolaredencao.dto.TurmaResponseDTO;
-import br.org.larescolaredencao.exception.ValidacaoException;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Periodo;
@@ -36,10 +35,8 @@ public class TurmaService {
         this.validator = validator;
     }
 
-    public List<TurmaResponseDTO> listarTurmas(Integer unidadeId) {
-        List<Turma> turmas = unidadeId != null
-                ? turmaRepository.findByUnidadeId(unidadeId)
-                : turmaRepository.findAll();
+    public List<TurmaResponseDTO> listarTurmas() {
+        List<Turma> turmas = turmaRepository.findAll();
 
         return turmas.stream().map(TurmaResponseDTO::new).collect(Collectors.toList());
     }
@@ -89,7 +86,7 @@ public class TurmaService {
             for (ConstraintViolation<AtualizarTurmaDTO> violacao : violacoes) {
                 erros.put(violacao.getPropertyPath().toString(), violacao.getMessage());
             }
-            throw new ValidacaoException(erros);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, erros.toString());
         }
     }
 

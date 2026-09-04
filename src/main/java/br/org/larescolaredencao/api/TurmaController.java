@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,8 +30,8 @@ public class TurmaController {
     }
 
     @GetMapping("/todas")
-    public List<TurmaResponseDTO> listarTurmas(@RequestParam(name = "unidadeId", required = false) Integer unidadeId) {
-        return turmaService.listarTurmas(unidadeId);
+    public List<TurmaResponseDTO> listarTurmas() {
+        return turmaService.listarTurmas();
     }
 
     @GetMapping("/{id}")
