@@ -2,6 +2,8 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
+import br.org.larescolaredencao.dto.DocumentoResponseDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -50,6 +53,15 @@ public class TransparenciaService {
 
     public List<Secao> listarSecoes() {
         return obterPaginaTransparencia().getSecoes();
+    }
+
+    public Page<Secao> listarSecoesPaginado(Pageable pageable) {
+        return secaoRepository.findAll(pageable);
+    }
+
+    public Page<DocumentoResponseDTO> listarDocumentosPaginado(Pageable pageable) {
+        return documentoRepository.findAll(pageable)
+                .map(DocumentoResponseDTO::new);
     }
 
     public Secao buscarSecaoPorId(Long id) {
@@ -120,6 +132,30 @@ public class TransparenciaService {
     public Documento buscarDocumentoPorId(Long id) {
         return documentoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento não encontrado."));
+    }
+    
+    public Documento atualizarDocumento(Long id, Long secaoId, String titulo, MultipartFile arquivo) {
+        Documento documento = buscarDocumentoPorId(id);
+        
+        String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
+        if (tituloSanitizado != null && !tituloSanitizado.isEmpty()) {
+            documento.setTitulo(tituloSanitizado);
+        }
+
+        if (secaoId != null && !secaoId.equals(documento.getSecao().getId())) {
+            Secao novaSecao = buscarSecaoPorId(secaoId);
+            documento.setSecao(novaSecao);
+        }
+
+        if (arquivo != null && !arquivo.isEmpty()) {
+            String caminhoAnterior = documento.getArquivo();
+            String novoCaminho = arquivoService.salvarArquivo(arquivo, SUBPASTA_DOCUMENTOS, TipoArquivo.DOCUMENTO);
+            
+            documento.setArquivo(novoCaminho);
+            arquivoService.deletarArquivo(caminhoAnterior);
+        }
+
+        return documentoRepository.save(documento);
     }
 
     public void deletarDocumento(Long id) {

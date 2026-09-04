@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
+import br.org.larescolaredencao.dto.DocumentoResponseDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -52,6 +55,16 @@ public class TransparenciaController {
         return transparenciaService.listarSecoes();
     }
 
+    @GetMapping("/secoes/admin")
+    public PagedModel<Secao> listarSecoesAdmin(Pageable pageable) {
+        return new PagedModel<>(transparenciaService.listarSecoesPaginado(pageable));
+    }
+
+    @GetMapping("/documentos/admin")
+    public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(Pageable pageable) {
+        return new PagedModel<>(transparenciaService.listarDocumentosPaginado(pageable));
+    }
+
     @GetMapping("/secao/{id}")
     public Secao buscarSecao(@PathVariable("id") Long id) {
         return transparenciaService.buscarSecaoPorId(id);
@@ -78,6 +91,14 @@ public class TransparenciaController {
                                          @RequestParam("titulo") String titulo,
                                          @RequestParam("arquivo") MultipartFile arquivo) {
         return transparenciaService.adicionarDocumento(secaoId, titulo, arquivo);
+    }
+    
+    @PutMapping("/documento/{id}")
+    public Documento atualizarDocumento(@PathVariable("id") Long id,
+                                        @RequestParam("secaoId") Long secaoId,
+                                        @RequestParam("titulo") String titulo,
+                                        @RequestParam(value = "arquivo", required = false) MultipartFile arquivo) {
+        return transparenciaService.atualizarDocumento(id, secaoId, titulo, arquivo);
     }
 
     @GetMapping("/documento/{id}/download")
