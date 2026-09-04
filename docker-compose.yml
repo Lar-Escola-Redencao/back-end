@@ -1,0 +1,56 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: lar-redencao-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./ler.sql:/docker-entrypoint-initdb.d/ler.sql:ro
+    networks:
+      - lar-redencao-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lar-redencao-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD}
+      # mapeia para api.security.token.secret (@Value em TokenService.java)
+      API_SECURITY_TOKEN_SECRET: ${JWT_SECRET}
+      # mapeia para app.cors.allowed-origins (@Value em SecurityConfig.java) - sem underscore antes de ORIGINS, e um bind "relaxado" do Spring
+      APP_CORS_ALLOWEDORIGINS: ${CORS_ALLOWED_ORIGINS}
+      # sem isso o Hibernate nao cria as tabelas (nao ha schema/migration no repo ainda)
+      SPRING_JPA_HIBERNATE_DDLAUTO: ${JPA_DDL_AUTO:-update}
+    ports:
+      - "8080:8080"
+    volumes:
+      - backend_uploads:/app/uploads
+    networks:
+      - lar-redencao-net
+
+volumes:
+  mysql_data:
+  backend_uploads:
+
+networks:
+  lar-redencao-net:
+    driver: bridge
