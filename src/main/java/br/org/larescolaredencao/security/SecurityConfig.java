@@ -43,13 +43,11 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
-                    //req.requestMatchers("/error").permitAll();
+                	//req.requestMatchers("/error").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
-                    req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();
-                    
-                    req.requestMatchers("/error").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();            
                     
                     req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
                     req.requestMatchers(HttpMethod.GET,
@@ -57,12 +55,14 @@ public class SecurityConfig {
                             "/uploads/diretoria/**",
                             "/uploads/redes-sociais/**",
                             "/uploads/eventos/**",
+                            "/uploads/unidades/**", 
                             "/uploads/transparencia/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
                             "/parceiro/**",
-                            "/diretoria/**").permitAll();
+                            "/diretoria/**",
+                            "/unidade/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/rede-social/todas",
