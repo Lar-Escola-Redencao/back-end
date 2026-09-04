@@ -133,6 +133,30 @@ public class TransparenciaService {
         return documentoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento não encontrado."));
     }
+    
+    public Documento atualizarDocumento(Long id, Long secaoId, String titulo, MultipartFile arquivo) {
+        Documento documento = buscarDocumentoPorId(id);
+        
+        String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
+        if (tituloSanitizado != null && !tituloSanitizado.isEmpty()) {
+            documento.setTitulo(tituloSanitizado);
+        }
+
+        if (secaoId != null && !secaoId.equals(documento.getSecao().getId())) {
+            Secao novaSecao = buscarSecaoPorId(secaoId);
+            documento.setSecao(novaSecao);
+        }
+
+        if (arquivo != null && !arquivo.isEmpty()) {
+            String caminhoAnterior = documento.getArquivo();
+            String novoCaminho = arquivoService.salvarArquivo(arquivo, SUBPASTA_DOCUMENTOS, TipoArquivo.DOCUMENTO);
+            
+            documento.setArquivo(novoCaminho);
+            arquivoService.deletarArquivo(caminhoAnterior);
+        }
+
+        return documentoRepository.save(documento);
+    }
 
     public void deletarDocumento(Long id) {
         Documento documento = buscarDocumentoPorId(id);
