@@ -16,6 +16,7 @@ import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.PapelRepository;
+import br.org.larescolaredencao.model.Unidade;
 
 @Service
 public class MembroService {
@@ -23,11 +24,13 @@ public class MembroService {
     private final MembroRepository membroRepository;
     private final PapelRepository papelRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final UnidadeService unidadeService;
 
-    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository) {
+    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository, UnidadeService unidadeService) {
         this.membroRepository = membroRepository;
         this.papelRepository = papelRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.unidadeService = unidadeService;
     }
 
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel) {
@@ -54,6 +57,8 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
 
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        
         Membro membro = new Membro();
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
@@ -62,6 +67,7 @@ public class MembroService {
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
+        membro.setUnidades(unidades);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -87,13 +93,16 @@ public class MembroService {
 
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
-
+        
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
         membro.setCpf(dto.getCpf());
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
+        membro.setUnidades(unidades);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);

@@ -1,7 +1,10 @@
 package br.org.larescolaredencao.dto;
 
+import java.util.List;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -24,6 +27,9 @@ public class AtualizarMembroDTO {
     
     @NotNull
     private Integer idPapel;
+    
+    @NotEmpty(message = "Selecione ao menos uma unidade de negócio.")
+    private List<Integer> idsUnidades;
     
     public String getNomeCompleto() {
         return nomeCompleto;
@@ -72,4 +78,13 @@ public class AtualizarMembroDTO {
     public void setIdPapel(Integer idPapel) {
         this.idPapel = idPapel;
     }
+    
+    public List<Integer> getIdsUnidades() {
+    	return idsUnidades;
+    }
+    
+    public void setIdsUnidades(List<Integer> idsUnidades) {
+    	this.idsUnidades = idsUnidades;
+    }
+    
 }

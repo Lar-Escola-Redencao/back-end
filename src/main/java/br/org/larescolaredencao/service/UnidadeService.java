@@ -121,4 +121,14 @@ public class UnidadeService {
                     "O horário de abertura deve ser anterior ao horário de fechamento.");
         }
     }
+    
+    public List<Unidade> buscarUnidadesPorIds(List<Integer> idsUnidades) {
+        List<Unidade> unidades = unidadeRepository.findAllById(idsUnidades);
+
+        if (unidades.size() != idsUnidades.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Uma ou mais unidades informadas não foram encontradas.");
+        }
+
+        return unidades;
+    }
 }
