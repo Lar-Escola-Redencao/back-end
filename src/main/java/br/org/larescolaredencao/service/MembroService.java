@@ -17,7 +17,6 @@ import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.PapelRepository;
 import br.org.larescolaredencao.model.Unidade;
-import br.org.larescolaredencao.repository.UnidadeRepository;
 
 @Service
 public class MembroService {
@@ -25,13 +24,13 @@ public class MembroService {
     private final MembroRepository membroRepository;
     private final PapelRepository papelRepository;
     private final BCryptPasswordEncoder passwordEncoder;
-    private final UnidadeRepository unidadeRepository;
-    
-    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository, UnidadeRepository unidadeRepository) {
+    private final UnidadeService unidadeService;
+
+    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository, UnidadeService unidadeService) {
         this.membroRepository = membroRepository;
         this.papelRepository = papelRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
-        this.unidadeRepository = unidadeRepository;
+        this.unidadeService = unidadeService;
     }
 
     public List<MembroResponseDTO> getAllMembros() {
@@ -58,7 +57,7 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
 
-        List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
         
         Membro membro = new Membro();
         membro.setNomeCompleto(dto.getNomeCompleto());
@@ -95,7 +94,7 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
-        List<Unidade> unidades = buscarUnidades(dto.getIdsUnidades());
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
         
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
@@ -113,15 +112,5 @@ public class MembroService {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         membroRepository.delete(membro);
-    }
-    
-    private List<Unidade> buscarUnidades(List<Integer> idsUnidades) {
-    	List<Unidade> unidades = unidadeRepository.findAllById(idsUnidades);
-    
-    	if (unidades.size() != idsUnidades.size()) {
-             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Uma ou mais unidades informadas não foram encontradas.");
-        }
-    
-    	return unidades;
     }
 }
