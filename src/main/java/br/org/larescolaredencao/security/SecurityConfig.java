@@ -20,7 +20,6 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
-
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -46,20 +45,34 @@ public class SecurityConfig {
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers("/error").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();            
+                    
                     req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
                     req.requestMatchers(HttpMethod.GET,
                             "/uploads/parceiros/**",
                             "/uploads/diretoria/**",
                             "/uploads/redes-sociais/**",
                             "/uploads/eventos/**",
+                            "/uploads/unidades/**", 
                             "/uploads/transparencia/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
                             "/parceiro/**",
                             "/diretoria/**",
-                            "/rede-social/**",
-                            "/transparencia/**").permitAll();
+                            "/unidade/**").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/rede-social/todas",
+                            "/rede-social/{id:\\d+}").permitAll();
+
+                    req.requestMatchers(HttpMethod.GET,
+                            "/transparencia",
+                            "/transparencia/secoes",
+                            "/transparencia/secao/{id:\\d+}",
+                            "/transparencia/documento/{id:\\d+}/download").permitAll();
 
                     req.anyRequest().authenticated();
                 })
@@ -77,7 +90,7 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder(); 
+        return new BCryptPasswordEncoder();
     }
 
     @Bean

@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.service;
 
-import java.util.List;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,8 +24,8 @@ public class ParceiroService {
 		this.arquivoService = arquivoService;
 	}
 
-	public List<Parceiro> getAllParceiros() {
-		return parceiroRepository.findAll();
+	public Page<Parceiro> getAllParceiros(Pageable pageable) {
+		return parceiroRepository.findAll(pageable);
 	}
 
 	public Parceiro getParceiroById(Long id) {

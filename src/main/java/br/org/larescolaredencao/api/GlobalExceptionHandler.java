@@ -3,6 +3,7 @@ package br.org.larescolaredencao.api;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -25,8 +26,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(fieldErrors);
     }
 
-    @ExceptionHandler(ValidacaoException.class)
-    public ResponseEntity<Map<String, String>> handleValidacao(ValidacaoException exception) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(exception.getErros());
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<Map<String, String>> handleOrdenacaoInvalida(PropertyReferenceException exception) {
+        Map<String, String> erro = new LinkedHashMap<>();
+        erro.put("sort", "Campo de ordenação inválido: " + exception.getPropertyName());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 }

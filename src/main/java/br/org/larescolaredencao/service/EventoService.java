@@ -1,9 +1,10 @@
 package br.org.larescolaredencao.service;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,6 +14,7 @@ import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.Parceiro;
+import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.repository.EventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
@@ -32,11 +34,11 @@ public class EventoService {
         this.parceiroRepository = parceiroRepository;
     }
 
-    public List<EventoResponseDTO> getAllEventos() {
-        return eventoRepository.findAll()
-                .stream()
-                .map(EventoResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo) {
+        Page<Evento> eventos = tipo != null
+                ? eventoRepository.findByTipoEvento(tipo, pageable)
+                : eventoRepository.findAll(pageable);
+        return eventos.map(EventoResponseDTO::new);
     }
 
     public EventoResponseDTO getEventoById(Integer id) {
