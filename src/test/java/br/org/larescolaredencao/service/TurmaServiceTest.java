@@ -1,6 +1,8 @@
 package br.org.larescolaredencao.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import jakarta.validation.Validator;
+import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -27,6 +29,9 @@ import br.org.larescolaredencao.repository.UnidadeRepository;
 
 @ExtendWith(MockitoExtension.class)
 class TurmaServiceTest {
+	
+	@Mock
+	private Validator validator;
 
     @Mock
     private TurmaRepository turmaRepository;
@@ -38,7 +43,7 @@ class TurmaServiceTest {
 
     @BeforeEach
     void setUp() {
-        turmaService = new TurmaService(turmaRepository, unidadeRepository);
+        turmaService = new TurmaService(turmaRepository, unidadeRepository, validator);
     }
 
     private CriarTurmaDTO criarDto(Integer unidadeId, Periodo periodo, LocalTime inicio, LocalTime fim) {
@@ -165,6 +170,7 @@ class TurmaServiceTest {
         when(turmaRepository.findById(1)).thenReturn(Optional.of(turmaAtual));
         when(turmaRepository.findByUnidadeIdAndIdNot(1, 1)).thenReturn(List.of());
         when(turmaRepository.save(any(Turma.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(validator.validate(any(AtualizarTurmaDTO.class))).thenReturn(Set.of());
 
         AtualizarTurmaDTO dto = new AtualizarTurmaDTO();
         dto.setUnidadeId(1);
