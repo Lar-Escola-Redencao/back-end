@@ -11,8 +11,6 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import br.org.larescolaredencao.exception.ValidacaoException;
-
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 

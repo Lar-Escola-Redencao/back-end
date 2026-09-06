@@ -45,3 +45,5 @@ node_modules
 /.kotlin/
 *.properties
 *.sql
+!/ler.sql
+.env
