@@ -43,7 +43,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
-                	//req.requestMatchers("/error").permitAll();
+                    req.requestMatchers("/error").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();

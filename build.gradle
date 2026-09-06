@@ -13,14 +13,6 @@ java {
 	}
 }
 
-sourceSets {
-	main {
-		resources {
-			srcDirs = ['src/resources']
-		}
-	}
-}
-
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add("-parameters")
 }
