@@ -28,7 +28,7 @@ public class AtualizarMembroDTO {
     @NotNull
     private Integer idPapel;
     
-    @NotEmpty(message = "Selecione ao menos uma unidade de negócio.")
+    @NotEmpty(message = "Selecione ao menos uma unidade.")
     private List<Integer> idsUnidades;
     
     public String getNomeCompleto() {
