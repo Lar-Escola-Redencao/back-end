@@ -4,6 +4,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
+import br.org.larescolaredencao.dto.DocumentoResponseDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -50,6 +53,16 @@ public class TransparenciaController {
     @GetMapping("/secoes")
     public List<Secao> listarSecoes() {
         return transparenciaService.listarSecoes();
+    }
+
+    @GetMapping("/secoes/admin")
+    public PagedModel<Secao> listarSecoesAdmin(Pageable pageable) {
+        return new PagedModel<>(transparenciaService.listarSecoesPaginado(pageable));
+    }
+
+    @GetMapping("/documentos/admin")
+    public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(Pageable pageable) {
+        return new PagedModel<>(transparenciaService.listarDocumentosPaginado(pageable));
     }
 
     @GetMapping("/secao/{id}")
