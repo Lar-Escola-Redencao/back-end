@@ -5,8 +5,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -35,10 +36,8 @@ public class TurmaService {
         this.validator = validator;
     }
 
-    public List<TurmaResponseDTO> listarTurmas() {
-        List<Turma> turmas = turmaRepository.findAll();
-
-        return turmas.stream().map(TurmaResponseDTO::new).collect(Collectors.toList());
+    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable) {
+        return turmaRepository.findAll(pageable).map(TurmaResponseDTO::new);
     }
 
     public TurmaResponseDTO buscarTurma(Integer id) {
