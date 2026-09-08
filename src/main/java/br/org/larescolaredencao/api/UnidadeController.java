@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.api;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,8 +30,8 @@ public class UnidadeController {
     }
 
     @GetMapping("/todas")
-    public List<Unidade> listarUnidades() {
-        return unidadeService.getAllUnidades();
+    public PagedModel<Unidade> listarUnidades(Pageable pageable) {
+        return new PagedModel<>(unidadeService.getAllUnidades(pageable));
     }
 
     @GetMapping("/{id}")
