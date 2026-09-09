@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
