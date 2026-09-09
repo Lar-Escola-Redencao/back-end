@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
+import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.model.Membro;
@@ -106,6 +107,25 @@ public class MembroService {
         membro.setPapel(papel);
         membro.setUnidades(unidades);
 
+        Membro salvo = membroRepository.save(membro);
+        return new MembroResponseDTO(salvo);
+    }
+    
+
+    public MembroResponseDTO buscarPerfil(Integer idMembroLogado) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        return new MembroResponseDTO(membro);
+    }
+ 
+    public MembroResponseDTO atualizarPerfil(Integer idMembroLogado, AtualizarPerfilDTO dto) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+ 
+        membro.setNomeCompleto(dto.getNomeCompleto());
+        membro.setEndereco(dto.getEndereco());
+        membro.setTelefone(dto.getTelefone());
+ 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
     }
