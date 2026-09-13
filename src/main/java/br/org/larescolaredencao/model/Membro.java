@@ -2,6 +2,7 @@ package br.org.larescolaredencao.model;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.ArrayList;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,6 +15,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
@@ -48,6 +51,14 @@ public class Membro implements UserDetails {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_papel", nullable = false)
     private Papel papel;
+    
+    @ManyToMany
+    @JoinTable(
+         name = "membro_unidade",
+         joinColumns = @JoinColumn(name = "id_membro"),
+         inverseJoinColumns = @JoinColumn(name = "id_unidade")
+    )
+    private List<Unidade> unidades = new ArrayList<>();
 
     public Membro() {
     }
@@ -125,6 +136,14 @@ public class Membro implements UserDetails {
 
     public void setPapel(Papel papel) {
         this.papel = papel;
+    }
+    
+    public List<Unidade> getUnidades() {
+    	return unidades;
+    }
+    
+    public void setUnidades(List<Unidade> unidades) {
+    	this.unidades = unidades;
     }
 
     @Override

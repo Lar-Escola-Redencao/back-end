@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -121,5 +122,15 @@ public class UnidadeService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "O horário de abertura deve ser anterior ao horário de fechamento.");
         }
+    }
+    
+    public List<Unidade> buscarUnidadesPorIds(List<Integer> idsUnidades) {
+        List<Unidade> unidades = unidadeRepository.findAllById(idsUnidades);
+
+        if (unidades.size() != idsUnidades.size()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Uma ou mais unidades informadas não foram encontradas.");
+        }
+
+        return unidades;
     }
 }
