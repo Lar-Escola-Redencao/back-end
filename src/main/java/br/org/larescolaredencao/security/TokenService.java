@@ -45,7 +45,7 @@ public class TokenService {
 
     private Instant gerarDataExpiracao(boolean lembrarMe) {
         return lembrarMe
-                ? Instant.now().plus(7, ChronoUnit.DAYS)
+                ? Instant.now().plus(3, ChronoUnit.DAYS)
                 : Instant.now().plus(4, ChronoUnit.HOURS);
     }
 }
