@@ -74,6 +74,14 @@ public class SecurityConfig {
                             "/transparencia/secao/{id:\\d+}",
                             "/transparencia/documento/{id:\\d+}/download").permitAll();
 
+                    req.requestMatchers(HttpMethod.GET, 
+                    		"/membro/me").authenticated();
+                    
+                    req.requestMatchers(HttpMethod.PUT, 
+                    		"/membro/me").authenticated();  
+                    
+                    req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling
