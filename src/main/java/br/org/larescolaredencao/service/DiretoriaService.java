@@ -1,8 +1,9 @@
 package br.org.larescolaredencao.service;
 
-import java.util.List;
 import java.util.Map;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -33,8 +34,8 @@ public class DiretoriaService {
 		this.arquivoService = arquivoService;
 	}
 
-	public List<Diretoria> listarTodos() {
-		return diretoriaRepository.findAll();
+	public Page<Diretoria> listarTodos(Pageable pageable) {
+		return diretoriaRepository.findAll(pageable);
 	}
 
 	public Diretoria buscarPorId(Long id) {

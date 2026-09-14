@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.api;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,8 +31,8 @@ public class DiretoriaController {
 	}
 
 	@GetMapping("/todos")
-	public List<Diretoria> listarTodos() {
-		return diretoriaService.listarTodos();
+	public PagedModel<Diretoria> listarTodos(Pageable pageable) {
+		return new PagedModel<>(diretoriaService.listarTodos(pageable));
 	}
 
 	@GetMapping("/{id}")

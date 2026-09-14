@@ -1,7 +1,7 @@
 package br.org.larescolaredencao.api;
 
-import java.util.List;
-
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -29,8 +29,8 @@ public class ParceiroController {
 	}
 
 	@GetMapping("/todos")
-	public List<Parceiro> listarParceiros() {
-		return parceiroService.getAllParceiros();
+	public PagedModel<Parceiro> listarParceiros(Pageable pageable) {
+		return new PagedModel<>(parceiroService.getAllParceiros(pageable));
 	}
 
 	@GetMapping("/{id}")

@@ -4,18 +4,22 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
+import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.PapelRepository;
+import br.org.larescolaredencao.model.Unidade;
 
 @Service
 public class MembroService {
@@ -23,18 +27,20 @@ public class MembroService {
     private final MembroRepository membroRepository;
     private final PapelRepository papelRepository;
     private final BCryptPasswordEncoder passwordEncoder;
+    private final UnidadeService unidadeService;
 
-    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository) {
+    public MembroService(MembroRepository membroRepository, PapelRepository papelRepository, UnidadeService unidadeService) {
         this.membroRepository = membroRepository;
         this.papelRepository = papelRepository;
         this.passwordEncoder = new BCryptPasswordEncoder();
+        this.unidadeService = unidadeService;
     }
 
-    public List<MembroResponseDTO> getAllMembros() {
-        return membroRepository.findAll()
-                .stream()
-                .map(MembroResponseDTO::new)
-                .collect(Collectors.toList());
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel) {
+        Page<Membro> membros = idPapel != null
+                ? membroRepository.findByPapelId(idPapel, pageable)
+                : membroRepository.findAll(pageable);
+        return membros.map(MembroResponseDTO::new);
     }
 
     public MembroResponseDTO getMembroById(Integer id) {
@@ -54,6 +60,8 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
 
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        
         Membro membro = new Membro();
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
@@ -62,6 +70,7 @@ public class MembroService {
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
+        membro.setUnidades(unidades);
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -87,14 +96,36 @@ public class MembroService {
 
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
-
+        
+        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
         membro.setCpf(dto.getCpf());
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
+        membro.setUnidades(unidades);
 
+        Membro salvo = membroRepository.save(membro);
+        return new MembroResponseDTO(salvo);
+    }
+    
+
+    public MembroResponseDTO buscarPerfil(Integer idMembroLogado) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        return new MembroResponseDTO(membro);
+    }
+ 
+    public MembroResponseDTO atualizarPerfil(Integer idMembroLogado, AtualizarPerfilDTO dto) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+ 
+        membro.setNomeCompleto(dto.getNomeCompleto());
+        membro.setEndereco(dto.getEndereco());
+        membro.setTelefone(dto.getTelefone());
+ 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
     }

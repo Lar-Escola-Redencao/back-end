@@ -2,6 +2,8 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
+import br.org.larescolaredencao.dto.DocumentoResponseDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -50,6 +53,15 @@ public class TransparenciaService {
 
     public List<Secao> listarSecoes() {
         return obterPaginaTransparencia().getSecoes();
+    }
+
+    public Page<Secao> listarSecoesPaginado(Pageable pageable) {
+        return secaoRepository.findAll(pageable);
+    }
+
+    public Page<DocumentoResponseDTO> listarDocumentosPaginado(Pageable pageable) {
+        return documentoRepository.findAll(pageable)
+                .map(DocumentoResponseDTO::new);
     }
 
     public Secao buscarSecaoPorId(Long id) {
