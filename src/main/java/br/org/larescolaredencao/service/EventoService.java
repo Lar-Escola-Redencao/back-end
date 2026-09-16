@@ -7,15 +7,19 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
+import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.Evento;
+import br.org.larescolaredencao.model.MidiaEvento;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.repository.EventoRepository;
+import br.org.larescolaredencao.repository.MidiaEventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
 @Service
@@ -24,14 +28,17 @@ public class EventoService {
     private final EventoRepository eventoRepository;
     private final ArquivoService arquivoService;
     private final ParceiroRepository parceiroRepository;
-    
+    private final MidiaEventoRepository midiaEventoRepository;
+
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
 
-    public EventoService(EventoRepository eventoRepository, ArquivoService arquivoService, ParceiroRepository parceiroRepository) {
+    public EventoService(EventoRepository eventoRepository, ArquivoService arquivoService,
+            ParceiroRepository parceiroRepository, MidiaEventoRepository midiaEventoRepository) {
         this.eventoRepository = eventoRepository;
         this.arquivoService = arquivoService;
         this.parceiroRepository = parceiroRepository;
+        this.midiaEventoRepository = midiaEventoRepository;
     }
 
     public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo) {
@@ -41,10 +48,15 @@ public class EventoService {
         return eventos.map(EventoResponseDTO::new);
     }
 
-    public EventoResponseDTO getEventoById(Integer id) {
-        Evento evento = eventoRepository.findById(id)
+    // Duas consultas fixas (evento+parceiros via JOIN FETCH, e mídias), independente da quantidade
+    // de itens. Não dá para buscar as duas listas num único JOIN FETCH (MultipleBagFetchException).
+    // Os parceiros NÃO são filtrados por ativo, de propósito: ver EventoRepository.findByIdComParceiros.
+    @Transactional(readOnly = true)
+    public EventoDetalhadoResponseDTO getEventoById(Integer id) {
+        Evento evento = eventoRepository.findByIdComParceiros(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
-        return new EventoResponseDTO(evento);
+        List<MidiaEvento> midias = midiaEventoRepository.findByEventoIdOrderByIdAsc(id);
+        return new EventoDetalhadoResponseDTO(evento, midias);
     }
 
     public EventoResponseDTO criarEvento(CriarEventoDTO dto) {
