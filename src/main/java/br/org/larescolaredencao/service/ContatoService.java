@@ -36,6 +36,16 @@ public class ContatoService {
     }
 
     @Transactional(readOnly = true)
+    public List<ContatoListagemDTO> buscarContatosAutocomplete(Integer membroId, String termo) {
+        return contatoRepository.searchVisibleByMembroIdAndTermo(membroId, termo).stream()
+                .map(contato -> {
+                    long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
+                    return new ContatoListagemDTO(contato, vinculos);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<VinculoContatoResponseDTO> listarVinculosDoContato(Integer contatoId) {
         if (!contatoRepository.existsById(contatoId)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado.");

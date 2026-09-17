@@ -110,28 +110,45 @@ public class AssistidoService {
 
         if (dto.getContatos() != null) {
             for (ContatoDTO contatoDTO : dto.getContatos()) {
-                Contato contato = contatoRepository.findByTelefoneAndNomeCompletoAndEmail(
-                        contatoDTO.getTelefone(), contatoDTO.getNomeCompleto(), contatoDTO.getEmail())
-                        .map(c -> {
-                            if (contatoDTO.getEndereco() != null) c.setEndereco(contatoDTO.getEndereco());
-                            return contatoRepository.save(c);
-                        })
-                        .orElseGet(() -> {
-                            Contato c = new Contato();
-                            c.setNomeCompleto(contatoDTO.getNomeCompleto());
-                            c.setTelefone(contatoDTO.getTelefone());
-                            c.setEmail(contatoDTO.getEmail());
-                            c.setEndereco(contatoDTO.getEndereco());
-                            return contatoRepository.save(c);
-                        });
+                Contato contato;
+                
+                if (contatoDTO.getId() != null) {
+                    contato = contatoRepository.findById(contatoDTO.getId())
+                            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
+                    
+                    contato.setNomeCompleto(contatoDTO.getNomeCompleto());
+                    contato.setTelefone(contatoDTO.getTelefone());
+                    if (contatoDTO.getEmail() != null) contato.setEmail(contatoDTO.getEmail());
+                    if (contatoDTO.getEndereco() != null) contato.setEndereco(contatoDTO.getEndereco());
+                    contato = contatoRepository.save(contato);
+                } else {
+                    contato = contatoRepository.findByTelefone(contatoDTO.getTelefone())
+                            .map(c -> {
+                                c.setNomeCompleto(contatoDTO.getNomeCompleto());
+                                if (contatoDTO.getEmail() != null) c.setEmail(contatoDTO.getEmail());
+                                if (contatoDTO.getEndereco() != null) c.setEndereco(contatoDTO.getEndereco());
+                                return contatoRepository.save(c);
+                            })
+                            .orElseGet(() -> {
+                                Contato c = new Contato();
+                                c.setNomeCompleto(contatoDTO.getNomeCompleto());
+                                c.setTelefone(contatoDTO.getTelefone());
+                                c.setEmail(contatoDTO.getEmail());
+                                c.setEndereco(contatoDTO.getEndereco());
+                                return contatoRepository.save(c);
+                            });
+                }
+
+                ContatoAssistidoId caId = new ContatoAssistidoId(salvo.getId(), contato.getId());
+                if (contatoAssistidoRepository.existsById(caId)) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Este contato já está vinculado ao assistido.");
+                }
 
                 if (contatoDTO.getPrincipal()) {
                     removerPrincipalAtual(salvo);
                 }
 
-                ContatoAssistidoId caId = new ContatoAssistidoId(salvo.getId(), contato.getId());
-                ContatoAssistido ca = contatoAssistidoRepository.findById(caId).orElse(new ContatoAssistido());
-                
+                ContatoAssistido ca = new ContatoAssistido();
                 ca.setId(caId);
                 ca.setAssistido(salvo);
                 ca.setContato(contato);
@@ -248,20 +265,34 @@ public class AssistidoService {
 
         validarLimiteVinculos(assistido);
 
-        Contato contato = contatoRepository.findByTelefoneAndNomeCompletoAndEmail(
-                dto.getTelefone(), dto.getNomeCompleto(), dto.getEmail())
-                .map(c -> {
-                    if (dto.getEndereco() != null) c.setEndereco(dto.getEndereco());
-                    return contatoRepository.save(c);
-                })
-                .orElseGet(() -> {
-                    Contato c = new Contato();
-                    c.setNomeCompleto(dto.getNomeCompleto());
-                    c.setTelefone(dto.getTelefone());
-                    c.setEmail(dto.getEmail());
-                    c.setEndereco(dto.getEndereco());
-                    return contatoRepository.save(c);
-                });
+        Contato contato;
+        
+        if (dto.getId() != null) {
+            contato = contatoRepository.findById(dto.getId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
+            
+            contato.setNomeCompleto(dto.getNomeCompleto());
+            contato.setTelefone(dto.getTelefone());
+            if (dto.getEmail() != null) contato.setEmail(dto.getEmail());
+            if (dto.getEndereco() != null) contato.setEndereco(dto.getEndereco());
+            contato = contatoRepository.save(contato);
+        } else {
+            contato = contatoRepository.findByTelefone(dto.getTelefone())
+                    .map(c -> {
+                        c.setNomeCompleto(dto.getNomeCompleto());
+                        if (dto.getEmail() != null) c.setEmail(dto.getEmail());
+                        if (dto.getEndereco() != null) c.setEndereco(dto.getEndereco());
+                        return contatoRepository.save(c);
+                    })
+                    .orElseGet(() -> {
+                        Contato c = new Contato();
+                        c.setNomeCompleto(dto.getNomeCompleto());
+                        c.setTelefone(dto.getTelefone());
+                        c.setEmail(dto.getEmail());
+                        c.setEndereco(dto.getEndereco());
+                        return contatoRepository.save(c);
+                    });
+        }
 
         ContatoAssistidoId caId = new ContatoAssistidoId(assistido.getId(), contato.getId());
         if (contatoAssistidoRepository.existsById(caId)) {
@@ -309,6 +340,18 @@ public class AssistidoService {
         }
 
         contatoAssistidoRepository.delete(vinculo);
+    }
+
+    @Transactional
+    public void deletarAssistido(Integer id) {
+        Assistido assistido = assistidoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        if (assistido.getImagemPerfil() != null) {
+            arquivoService.deletarArquivo(assistido.getImagemPerfil());
+        }
+
+        assistidoRepository.delete(assistido);
     }
 
     private void validarLimiteVinculos(Assistido assistido) {

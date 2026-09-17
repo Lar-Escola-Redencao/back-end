@@ -97,4 +97,10 @@ public class AssistidoController {
     public void desvincularContato(@PathVariable("idAssistido") Integer idAssistido, @PathVariable("idContato") Integer idContato) {
         assistidoService.desvincularContato(idAssistido, idContato);
     }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletarAssistido(@PathVariable("id") Integer id) {
+        assistidoService.deletarAssistido(id);
+    }
 }

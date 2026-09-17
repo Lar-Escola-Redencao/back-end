@@ -6,6 +6,8 @@ import jakarta.validation.constraints.NotNull;
 
 public class ContatoDTO {
 
+    private Integer id;
+
     @NotBlank
     private String nomeCompleto;
 
@@ -21,6 +23,14 @@ public class ContatoDTO {
 
     @NotNull
     private Boolean principal;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public String getNomeCompleto() {
         return nomeCompleto;

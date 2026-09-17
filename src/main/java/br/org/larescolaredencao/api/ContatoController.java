@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -35,6 +36,11 @@ public class ContatoController {
     @GetMapping
     public PagedModel<ContatoListagemDTO> listarContatos(@AuthenticationPrincipal Membro membroLogado, Pageable pageable) {
         return new PagedModel<>(contatoService.listarContatos(membroLogado.getId(), pageable));
+    }
+
+    @GetMapping("/buscar")
+    public List<ContatoListagemDTO> buscarContatosAutocomplete(@AuthenticationPrincipal Membro membroLogado, @RequestParam("termo") String termo) {
+        return contatoService.buscarContatosAutocomplete(membroLogado.getId(), termo);
     }
 
     @GetMapping("/{id}/vinculos")
