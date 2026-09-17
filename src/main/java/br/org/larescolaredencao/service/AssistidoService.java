@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -65,15 +66,16 @@ public class AssistidoService {
     public AssistidoResponseDTO buscarAssistidoPorId(Integer id) {
         Assistido assistido = assistidoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
-        
+
         List<ContatoAssistido> contatos = contatoAssistidoRepository.findByAssistido(assistido);
-        
+
         return new AssistidoResponseDTO(assistido, contatos);
     }
 
     @Transactional
     public AssistidoResponseDTO cadastrarAssistido(CriarAssistidoDTO dto) {
         Assistido assistido = null;
+        boolean reingresso = false;
 
         if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
             assistido = assistidoRepository.findByCpf(dto.getCpf()).orElse(null);
@@ -92,6 +94,8 @@ public class AssistidoService {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Assistido já possui matrícula ATIVA.");
             }
 
+            reingresso = true;
+
             assistido.setNomeCompleto(dto.getNomeCompleto());
             assistido.setDataNascimento(dto.getDataNascimento());
             if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
@@ -108,14 +112,21 @@ public class AssistidoService {
 
         Assistido salvo = assistidoRepository.save(assistido);
 
+        if (reingresso) {
+            List<ContatoAssistido> vinculosAntigos = contatoAssistidoRepository.findByAssistido(salvo);
+            if (!vinculosAntigos.isEmpty()) {
+                contatoAssistidoRepository.deleteAll(vinculosAntigos);
+            }
+        }
+
         if (dto.getContatos() != null) {
             for (ContatoDTO contatoDTO : dto.getContatos()) {
                 Contato contato;
-                
+
                 if (contatoDTO.getId() != null) {
                     contato = contatoRepository.findById(contatoDTO.getId())
                             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
-                    
+
                     contato.setNomeCompleto(contatoDTO.getNomeCompleto());
                     contato.setTelefone(contatoDTO.getTelefone());
                     if (contatoDTO.getEmail() != null) contato.setEmail(contatoDTO.getEmail());
@@ -165,7 +176,7 @@ public class AssistidoService {
         matricula.setAssistido(salvo);
         matricula.setTurma(turma);
         matricula.setStatus(StatusMatricula.ATIVO);
-        matricula.setDataIngresso(LocalDate.now());
+        matricula.setDataIngresso(LocalDateTime.now());
         matriculaRepository.save(matricula);
 
         List<ContatoAssistido> contatosSalvos = contatoAssistidoRepository.findByAssistido(salvo);
@@ -178,7 +189,7 @@ public class AssistidoService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
 
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
-        
+
         if (assistido.getImagemPerfil() != null) {
             arquivoService.deletarArquivo(assistido.getImagemPerfil());
         }
@@ -206,9 +217,9 @@ public class AssistidoService {
         Turma novaTurma = turmaRepository.findById(dto.getIdTurmaNova())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nova turma não encontrada."));
 
-        long dias = ChronoUnit.DAYS.between(matriculaAtiva.getDataIngresso(), LocalDate.now());
+        long horas = ChronoUnit.HOURS.between(matriculaAtiva.getDataIngresso(), LocalDateTime.now());
 
-        if (dias <= 1) {
+        if (horas < 24) {
             matriculaAtiva.setTurma(novaTurma);
             matriculaRepository.save(matriculaAtiva);
         } else {
@@ -220,7 +231,7 @@ public class AssistidoService {
             novaMatricula.setAssistido(assistido);
             novaMatricula.setTurma(novaTurma);
             novaMatricula.setStatus(StatusMatricula.ATIVO);
-            novaMatricula.setDataIngresso(LocalDate.now());
+            novaMatricula.setDataIngresso(LocalDateTime.now());
             matriculaRepository.save(novaMatricula);
         }
 
@@ -266,11 +277,11 @@ public class AssistidoService {
         validarLimiteVinculos(assistido);
 
         Contato contato;
-        
+
         if (dto.getId() != null) {
             contato = contatoRepository.findById(dto.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
-            
+
             contato.setNomeCompleto(dto.getNomeCompleto());
             contato.setTelefone(dto.getTelefone());
             if (dto.getEmail() != null) contato.setEmail(dto.getEmail());

@@ -7,6 +7,7 @@ import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.model.Assistido;
 import br.org.larescolaredencao.model.Contato;
 import br.org.larescolaredencao.model.ContatoAssistido;
+import br.org.larescolaredencao.model.ContatoAssistidoId;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.enums.Parentesco;
@@ -26,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -33,6 +35,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
@@ -104,7 +107,7 @@ public class AssistidoServiceTest {
         novoContato.setTelefone("(16) 99999-1111");
         when(contatoRepository.save(any(Contato.class))).thenReturn(novoContato);
 
-        when(contatoAssistidoRepository.findById(any())).thenReturn(Optional.empty());
+        when(contatoAssistidoRepository.existsById(any())).thenReturn(false);
         when(contatoAssistidoRepository.findByAssistido(any(Assistido.class))).thenReturn(Collections.emptyList());
 
         AssistidoResponseDTO response = assistidoService.cadastrarAssistido(criarAssistidoDTO);
@@ -139,7 +142,7 @@ public class AssistidoServiceTest {
         Matricula matriculaInativa = new Matricula();
         matriculaInativa.setStatus(StatusMatricula.EGRESSO);
         when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaInativa));
-        
+
         when(assistidoRepository.save(any(Assistido.class))).thenReturn(assistido);
         when(turmaRepository.findById(1)).thenReturn(Optional.of(turma));
         when(contatoRepository.findByTelefone(anyString())).thenReturn(Optional.empty());
@@ -147,8 +150,8 @@ public class AssistidoServiceTest {
         Contato novoContato = new Contato();
         novoContato.setId(1);
         when(contatoRepository.save(any(Contato.class))).thenReturn(novoContato);
-        
-        when(contatoAssistidoRepository.findById(any())).thenReturn(Optional.empty());
+
+        when(contatoAssistidoRepository.existsById(any())).thenReturn(false);
         when(contatoAssistidoRepository.findByAssistido(any(Assistido.class))).thenReturn(Collections.emptyList());
 
         AssistidoResponseDTO response = assistidoService.cadastrarAssistido(criarAssistidoDTO);
@@ -159,17 +162,52 @@ public class AssistidoServiceTest {
     }
 
     @Test
+    void cadastrarAssistido_RetornoDeEgresso_ComMesmoTelefoneNaoDeveLancarConflict() {
+        when(assistidoRepository.findByCpf(anyString())).thenReturn(Optional.of(assistido));
+
+        Matricula matriculaInativa = new Matricula();
+        matriculaInativa.setStatus(StatusMatricula.EGRESSO);
+        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaInativa));
+
+        when(assistidoRepository.save(any(Assistido.class))).thenReturn(assistido);
+        when(turmaRepository.findById(1)).thenReturn(Optional.of(turma));
+
+        Contato contatoExistente = new Contato();
+        contatoExistente.setId(9);
+        contatoExistente.setTelefone("(16) 99999-1111");
+        when(contatoRepository.findByTelefone(anyString())).thenReturn(Optional.of(contatoExistente));
+        when(contatoRepository.save(any(Contato.class))).thenReturn(contatoExistente);
+
+        ContatoAssistido vinculoAntigo = new ContatoAssistido();
+        vinculoAntigo.setId(new ContatoAssistidoId(assistido.getId(), contatoExistente.getId()));
+        vinculoAntigo.setAssistido(assistido);
+        vinculoAntigo.setContato(contatoExistente);
+        vinculoAntigo.setPrincipal(true);
+
+        when(contatoAssistidoRepository.findByAssistido(assistido))
+                .thenReturn(List.of(vinculoAntigo))
+                .thenReturn(Collections.emptyList());
+        when(contatoAssistidoRepository.existsById(any())).thenReturn(false);
+
+        AssistidoResponseDTO response = assistidoService.cadastrarAssistido(criarAssistidoDTO);
+
+        assertNotNull(response);
+        verify(contatoAssistidoRepository, times(1)).deleteAll(List.of(vinculoAntigo));
+        verify(contatoAssistidoRepository, times(1)).save(any(ContatoAssistido.class));
+    }
+
+    @Test
     void transferirTurma_MenosDe24Horas_DeveAtualizarMatriculaAtual() {
         when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
 
         Turma turmaAtual = new Turma();
         turmaAtual.setId(1);
-        
+
         Matricula matriculaAtiva = new Matricula();
         matriculaAtiva.setTurma(turmaAtual);
         matriculaAtiva.setStatus(StatusMatricula.ATIVO);
-        matriculaAtiva.setDataIngresso(LocalDate.now());
-        
+        matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(23).minusMinutes(59));
+
         when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();
@@ -192,12 +230,12 @@ public class AssistidoServiceTest {
 
         Turma turmaAtual = new Turma();
         turmaAtual.setId(1);
-        
+
         Matricula matriculaAtiva = new Matricula();
         matriculaAtiva.setTurma(turmaAtual);
         matriculaAtiva.setStatus(StatusMatricula.ATIVO);
-        matriculaAtiva.setDataIngresso(LocalDate.now().minusDays(5));
-        
+        matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(30));
+
         when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();

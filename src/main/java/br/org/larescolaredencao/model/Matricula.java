@@ -5,7 +5,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -14,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "matricula")
@@ -23,11 +23,11 @@ public class Matricula {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "id_assistido", nullable = false)
     private Assistido assistido;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "id_turma", nullable = false)
     private Turma turma;
 
@@ -36,7 +36,7 @@ public class Matricula {
     private StatusMatricula status = StatusMatricula.ATIVO;
 
     @Column(name = "data_ingresso", nullable = false)
-    private LocalDate dataIngresso = LocalDate.now();
+    private LocalDateTime dataIngresso = LocalDateTime.now();
 
     @Column(name = "data_desligamento")
     private LocalDate dataDesligamento;
@@ -73,11 +73,11 @@ public class Matricula {
         this.status = status;
     }
 
-    public LocalDate getDataIngresso() {
+    public LocalDateTime getDataIngresso() {
         return dataIngresso;
     }
 
-    public void setDataIngresso(LocalDate dataIngresso) {
+    public void setDataIngresso(LocalDateTime dataIngresso) {
         this.dataIngresso = dataIngresso;
     }
 
