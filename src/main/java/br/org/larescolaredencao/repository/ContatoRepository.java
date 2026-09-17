@@ -16,7 +16,9 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
 
     Optional<Contato> findByTelefoneAndNomeCompletoAndEmail(String telefone, String nomeCompleto, String email);
 
-    @Query("SELECT DISTINCT c FROM Contato c WHERE c IN (" +
+    @Query("SELECT DISTINCT c FROM Contato c WHERE " +
+           "NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) " +
+           "OR c IN (" +
            "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
            "   JOIN ca2.assistido a " +
            "   JOIN Matricula m ON m.assistido = a " +
@@ -30,7 +32,7 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
 
     @Query("SELECT DISTINCT c FROM Contato c WHERE " +
            "(LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR c.telefone LIKE CONCAT('%', :termo, '%')) AND " +
-           "c IN (" +
+           "(NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) OR c IN (" +
            "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
            "   JOIN ca2.assistido a " +
            "   JOIN Matricula m ON m.assistido = a " +
@@ -39,6 +41,6 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
            "   WHERE m.status = 'ATIVO' AND u IN (" +
            "       SELECT un FROM Membro mem JOIN mem.unidades un WHERE mem.id = :membroId" +
            "   )" +
-           ")")
+           "))")
     List<Contato> searchVisibleByMembroIdAndTermo(@Param("membroId") Integer membroId, @Param("termo") String termo);
 }

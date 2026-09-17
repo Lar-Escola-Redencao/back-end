@@ -4,6 +4,7 @@ import br.org.larescolaredencao.dto.AssistidoResponseDTO;
 import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.CriarAssistidoDTO;
+import br.org.larescolaredencao.dto.InativarAssistidoDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
 import br.org.larescolaredencao.model.Membro;
@@ -72,6 +73,12 @@ public class AssistidoController {
     @PutMapping("/{id}/turma")
     public AssistidoResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto) {
         return assistidoService.transferirTurma(id, dto);
+    }
+
+    @PutMapping("/{id}/inativar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void inativarAssistido(@PathVariable("id") Integer id, @Valid @RequestBody InativarAssistidoDTO dto) {
+        assistidoService.inativarAssistido(id, dto);
     }
 
     @PostMapping("/{id}/contatos")

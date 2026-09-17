@@ -4,6 +4,7 @@ import br.org.larescolaredencao.dto.AssistidoResponseDTO;
 import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.CriarAssistidoDTO;
+import br.org.larescolaredencao.dto.InativarAssistidoDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
 import br.org.larescolaredencao.model.Assistido;
@@ -190,13 +191,15 @@ public class AssistidoService {
 
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
-        if (assistido.getImagemPerfil() != null) {
-            arquivoService.deletarArquivo(assistido.getImagemPerfil());
-        }
-
+        String fotoAntiga = assistido.getImagemPerfil();
         String caminhoFoto = arquivoService.salvarArquivo(foto, "assistidos/", TipoArquivo.FOTO);
         assistido.setImagemPerfil(caminhoFoto);
+        
         assistidoRepository.save(assistido);
+
+        if (fotoAntiga != null) {
+            arquivoService.deletarArquivo(fotoAntiga);
+        }
     }
 
     @Transactional
@@ -237,6 +240,21 @@ public class AssistidoService {
 
         List<ContatoAssistido> contatos = contatoAssistidoRepository.findByAssistido(assistido);
         return new AssistidoResponseDTO(assistido, contatos);
+    }
+
+    @Transactional
+    public void inativarAssistido(Integer assistidoId, InativarAssistidoDTO dto) {
+        Assistido assistido = assistidoRepository.findById(assistidoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        Matricula matriculaAtiva = matriculaRepository.findByAssistido(assistido).stream()
+                .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa para inativar."));
+
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        matriculaAtiva.setDataDesligamento(dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now());
+        matriculaRepository.save(matriculaAtiva);
     }
 
     @Transactional
@@ -358,11 +376,66 @@ public class AssistidoService {
         Assistido assistido = assistidoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
 
-        if (assistido.getImagemPerfil() != null) {
-            arquivoService.deletarArquivo(assistido.getImagemPerfil());
+        List<Matricula> matriculas = matriculaRepository.findByAssistido(assistido);
+        String fotoAntiga = assistido.getImagemPerfil();
+        
+        if (matriculas.isEmpty()) {
+            List<ContatoAssistido> vinculos = contatoAssistidoRepository.findByAssistido(assistido);
+            contatoAssistidoRepository.deleteAll(vinculos);
+            assistidoRepository.delete(assistido);
+            if (fotoAntiga != null) arquivoService.deletarArquivo(fotoAntiga);
+            return;
         }
 
-        assistidoRepository.delete(assistido);
+        Matricula matriculaInicial = matriculas.stream()
+                .min((m1, m2) -> m1.getDataIngresso().compareTo(m2.getDataIngresso()))
+                .orElse(matriculas.get(0));
+
+        long horasDesdeCadastro = ChronoUnit.HOURS.between(matriculaInicial.getDataIngresso(), LocalDateTime.now());
+
+        if (matriculas.size() == 1 && horasDesdeCadastro <= 24) {
+            matriculaRepository.deleteAll(matriculas);
+            List<ContatoAssistido> vinculos = contatoAssistidoRepository.findByAssistido(assistido);
+            contatoAssistidoRepository.deleteAll(vinculos);
+            assistidoRepository.delete(assistido);
+            
+            if (fotoAntiga != null) {
+                arquivoService.deletarArquivo(fotoAntiga);
+            }
+        } else {
+            assistido.setImagemPerfil(null);
+            assistidoRepository.save(assistido);
+
+            boolean alterouAlgumaAtiva = false;
+            for (Matricula m : matriculas) {
+                if (m.getStatus() == StatusMatricula.ATIVO) {
+                    m.setStatus(StatusMatricula.EXCLUIDO);
+                    if (m.getDataDesligamento() == null) {
+                        m.setDataDesligamento(LocalDate.now());
+                    }
+                    matriculaRepository.save(m);
+                    alterouAlgumaAtiva = true;
+                }
+            }
+
+            // Se a exclusão lógica está ocorrendo para alguém que já era EGRESSO/INATIVO (sem ATIVAS),
+            // marcamos a matrícula mais recente como EXCLUIDO para manter o rastro histórico correto.
+            if (!alterouAlgumaAtiva && !matriculas.isEmpty()) {
+                Matricula maisRecente = matriculas.stream()
+                        .max((m1, m2) -> m1.getDataIngresso().compareTo(m2.getDataIngresso()))
+                        .orElse(matriculas.get(0));
+
+                maisRecente.setStatus(StatusMatricula.EXCLUIDO);
+                if (maisRecente.getDataDesligamento() == null) {
+                    maisRecente.setDataDesligamento(LocalDate.now());
+                }
+                matriculaRepository.save(maisRecente);
+            }
+
+            if (fotoAntiga != null) {
+                arquivoService.deletarArquivo(fotoAntiga);
+            }
+        }
     }
 
     private void validarLimiteVinculos(Assistido assistido) {
