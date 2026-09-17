@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.api;
 
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
@@ -27,6 +29,11 @@ public class TurmaController {
 
     public TurmaController(TurmaService turmaService) {
         this.turmaService = turmaService;
+    }
+
+    @GetMapping
+    public List<TurmaResponseDTO> listarTodasAsTurmas() {
+        return turmaService.listarTodasAsTurmas();
     }
 
     @GetMapping("/todas")
