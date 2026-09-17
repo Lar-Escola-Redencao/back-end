@@ -1,9 +1,11 @@
 package br.org.larescolaredencao.service;
 
 import br.org.larescolaredencao.dto.AssistidoResponseDTO;
+import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.CriarAssistidoDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
+import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
 import br.org.larescolaredencao.model.Assistido;
 import br.org.larescolaredencao.model.Contato;
 import br.org.larescolaredencao.model.ContatoAssistido;
@@ -19,6 +21,7 @@ import br.org.larescolaredencao.repository.TurmaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
@@ -34,17 +37,20 @@ public class AssistidoService {
     private final ContatoRepository contatoRepository;
     private final ContatoAssistidoRepository contatoAssistidoRepository;
     private final TurmaRepository turmaRepository;
+    private final ArquivoService arquivoService;
 
     public AssistidoService(AssistidoRepository assistidoRepository,
                             MatriculaRepository matriculaRepository,
                             ContatoRepository contatoRepository,
                             ContatoAssistidoRepository contatoAssistidoRepository,
-                            TurmaRepository turmaRepository) {
+                            TurmaRepository turmaRepository,
+                            ArquivoService arquivoService) {
         this.assistidoRepository = assistidoRepository;
         this.matriculaRepository = matriculaRepository;
         this.contatoRepository = contatoRepository;
         this.contatoAssistidoRepository = contatoAssistidoRepository;
         this.turmaRepository = turmaRepository;
+        this.arquivoService = arquivoService;
     }
 
     @Transactional(readOnly = true)
@@ -119,16 +125,19 @@ public class AssistidoService {
                             return contatoRepository.save(c);
                         });
 
-                ContatoAssistidoId caId = new ContatoAssistidoId(salvo.getId(), contato.getId());
-                if (!contatoAssistidoRepository.existsById(caId)) {
-                    ContatoAssistido ca = new ContatoAssistido();
-                    ca.setId(caId);
-                    ca.setAssistido(salvo);
-                    ca.setContato(contato);
-                    ca.setParentesco(contatoDTO.getParentesco());
-                    ca.setPrincipal(contatoDTO.getPrincipal());
-                    contatoAssistidoRepository.save(ca);
+                if (contatoDTO.getPrincipal()) {
+                    removerPrincipalAtual(salvo);
                 }
+
+                ContatoAssistidoId caId = new ContatoAssistidoId(salvo.getId(), contato.getId());
+                ContatoAssistido ca = contatoAssistidoRepository.findById(caId).orElse(new ContatoAssistido());
+                
+                ca.setId(caId);
+                ca.setAssistido(salvo);
+                ca.setContato(contato);
+                ca.setParentesco(contatoDTO.getParentesco());
+                ca.setPrincipal(contatoDTO.getPrincipal());
+                contatoAssistidoRepository.save(ca);
             }
         }
 
@@ -144,6 +153,22 @@ public class AssistidoService {
 
         List<ContatoAssistido> contatosSalvos = contatoAssistidoRepository.findByAssistido(salvo);
         return new AssistidoResponseDTO(salvo, contatosSalvos);
+    }
+
+    @Transactional
+    public void atualizarFotoPerfil(Integer id, MultipartFile foto) {
+        Assistido assistido = assistidoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
+        
+        if (assistido.getImagemPerfil() != null) {
+            arquivoService.deletarArquivo(assistido.getImagemPerfil());
+        }
+
+        String caminhoFoto = arquivoService.salvarArquivo(foto, "assistidos/", TipoArquivo.FOTO);
+        assistido.setImagemPerfil(caminhoFoto);
+        assistidoRepository.save(assistido);
     }
 
     @Transactional
@@ -184,6 +209,121 @@ public class AssistidoService {
 
         List<ContatoAssistido> contatos = contatoAssistidoRepository.findByAssistido(assistido);
         return new AssistidoResponseDTO(assistido, contatos);
+    }
+
+    @Transactional
+    public AssistidoResponseDTO vincularContatoExistente(Integer assistidoId, Integer contatoId, VincularContatoExistenteDTO dto) {
+        Assistido assistido = assistidoRepository.findById(assistidoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        Contato contato = contatoRepository.findById(contatoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
+
+        validarLimiteVinculos(assistido);
+
+        ContatoAssistidoId caId = new ContatoAssistidoId(assistido.getId(), contato.getId());
+        if (contatoAssistidoRepository.existsById(caId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este contato já está vinculado ao assistido.");
+        }
+
+        if (dto.getPrincipal()) {
+            removerPrincipalAtual(assistido);
+        }
+
+        ContatoAssistido ca = new ContatoAssistido();
+        ca.setId(caId);
+        ca.setAssistido(assistido);
+        ca.setContato(contato);
+        ca.setParentesco(dto.getParentesco());
+        ca.setPrincipal(dto.getPrincipal());
+        contatoAssistidoRepository.save(ca);
+
+        return buscarAssistidoPorId(assistidoId);
+    }
+
+    @Transactional
+    public AssistidoResponseDTO vincularNovoContato(Integer assistidoId, ContatoDTO dto) {
+        Assistido assistido = assistidoRepository.findById(assistidoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        validarLimiteVinculos(assistido);
+
+        Contato contato = contatoRepository.findByTelefoneAndNomeCompletoAndEmail(
+                dto.getTelefone(), dto.getNomeCompleto(), dto.getEmail())
+                .map(c -> {
+                    if (dto.getEndereco() != null) c.setEndereco(dto.getEndereco());
+                    return contatoRepository.save(c);
+                })
+                .orElseGet(() -> {
+                    Contato c = new Contato();
+                    c.setNomeCompleto(dto.getNomeCompleto());
+                    c.setTelefone(dto.getTelefone());
+                    c.setEmail(dto.getEmail());
+                    c.setEndereco(dto.getEndereco());
+                    return contatoRepository.save(c);
+                });
+
+        ContatoAssistidoId caId = new ContatoAssistidoId(assistido.getId(), contato.getId());
+        if (contatoAssistidoRepository.existsById(caId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este contato já está vinculado ao assistido.");
+        }
+
+        if (dto.getPrincipal()) {
+            removerPrincipalAtual(assistido);
+        }
+
+        ContatoAssistido ca = new ContatoAssistido();
+        ca.setId(caId);
+        ca.setAssistido(assistido);
+        ca.setContato(contato);
+        ca.setParentesco(dto.getParentesco());
+        ca.setPrincipal(dto.getPrincipal());
+        contatoAssistidoRepository.save(ca);
+
+        return buscarAssistidoPorId(assistidoId);
+    }
+
+    @Transactional
+    public void atualizarVinculo(Integer assistidoId, Integer contatoId, AtualizarVinculoDTO dto) {
+        ContatoAssistido vinculo = contatoAssistidoRepository.findByAssistidoIdAndContatoId(assistidoId, contatoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
+
+        if (dto.getPrincipal() && !vinculo.getPrincipal()) {
+            removerPrincipalAtual(vinculo.getAssistido());
+        } else if (!dto.getPrincipal() && vinculo.getPrincipal()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível remover o status de principal diretamente. Marque outro contato como principal para substituí-lo.");
+        }
+
+        vinculo.setParentesco(dto.getParentesco());
+        vinculo.setPrincipal(dto.getPrincipal());
+        contatoAssistidoRepository.save(vinculo);
+    }
+
+    @Transactional
+    public void desvincularContato(Integer assistidoId, Integer contatoId) {
+        ContatoAssistido vinculo = contatoAssistidoRepository.findByAssistidoIdAndContatoId(assistidoId, contatoId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
+
+        if (vinculo.getPrincipal()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível desvincular o contato principal. Marque outro contato como principal antes.");
+        }
+
+        contatoAssistidoRepository.delete(vinculo);
+    }
+
+    private void validarLimiteVinculos(Assistido assistido) {
+        long totalVinculos = contatoAssistidoRepository.countByAssistido(assistido);
+        if (totalVinculos >= 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido já atingiu o limite máximo de 4 responsáveis.");
+        }
+    }
+
+    private void removerPrincipalAtual(Assistido assistido) {
+        contatoAssistidoRepository.findByAssistidoAndPrincipalTrue(assistido)
+                .ifPresent(antigo -> {
+                    antigo.setPrincipal(false);
+                    contatoAssistidoRepository.save(antigo);
+                });
     }
 
     private Assistido novoAssistido(CriarAssistidoDTO dto) {
