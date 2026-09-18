@@ -56,7 +56,8 @@ public class SecurityConfig {
                             "/uploads/redes-sociais/**",
                             "/uploads/eventos/**",
                             "/uploads/unidades/**", 
-                            "/uploads/transparencia/**").permitAll();
+                            "/uploads/transparencia/**",
+                            "/uploads/paginas/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
@@ -68,6 +69,13 @@ public class SecurityConfig {
                             "/rede-social/todas",
                             "/rede-social/{id:\\d+}").permitAll();
 
+                    req.requestMatchers(HttpMethod.GET,
+                            "/paginas/{id:\\d+}",
+                            "/paginas/{id:\\d+}/secoes",
+                            "/paginas/secoes/{id:\\d+}",
+                            "/paginas/documentos/{id:\\d+}/download").permitAll();
+
+                    // Rotas legadas de Transparência: remover junto com o TransparenciaController.
                     req.requestMatchers(HttpMethod.GET,
                             "/transparencia",
                             "/transparencia/secoes",

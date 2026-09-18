@@ -3,7 +3,6 @@ package br.org.larescolaredencao.api;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
@@ -35,77 +34,79 @@ import br.org.larescolaredencao.service.PaginaService;
 import jakarta.validation.Valid;
 
 /**
- * Rotas legadas de Transparência, mantidas só enquanto o front não migra para
- * {@link PaginaController}. Delega tudo para o CMS genérico fixando o id da
- * página de Transparência.
- *
- * @deprecated use as rotas de <code>/paginas</code>.
+ * CMS genérico de páginas institucionais. As rotas de listagem e de criação recebem
+ * o id da página; seção e documento são endereçados pelo próprio id, que já é único.
  */
-@Deprecated
 @RestController
-@RequestMapping("/transparencia")
-public class TransparenciaController {
+@RequestMapping("/paginas")
+public class PaginaController {
 
     private final PaginaService paginaService;
     private final ArquivoService arquivoService;
 
-    @Value("${app.cms.pagina-transparencia-id:1}")
-    private Long idPaginaTransparencia;
-
-    public TransparenciaController(PaginaService paginaService, ArquivoService arquivoService) {
+    public PaginaController(PaginaService paginaService, ArquivoService arquivoService) {
         this.paginaService = paginaService;
         this.arquivoService = arquivoService;
     }
 
-    @GetMapping
-    public Pagina obterPagina() {
-        return paginaService.buscarPaginaPorId(idPaginaTransparencia);
+    /** O padrão numérico evita ambiguidade com as rotas literais /paginas/secoes e /paginas/documentos. */
+    @GetMapping("/{idPagina:\\d+}")
+    public Pagina obterPagina(@PathVariable("idPagina") Long idPagina) {
+        return paginaService.buscarPaginaPorId(idPagina);
     }
 
-    @GetMapping("/secoes")
-    public List<Secao> listarSecoes() {
-        return paginaService.listarSecoes(idPaginaTransparencia);
+    @GetMapping("/{idPagina:\\d+}/secoes")
+    public List<Secao> listarSecoes(@PathVariable("idPagina") Long idPagina) {
+        return paginaService.listarSecoes(idPagina);
     }
 
-    @GetMapping("/secoes/admin")
-    public PagedModel<Secao> listarSecoesAdmin(Pageable pageable) {
-        return new PagedModel<>(paginaService.listarSecoesPaginado(idPaginaTransparencia, pageable));
+    @GetMapping("/{idPagina:\\d+}/secoes/admin")
+    public PagedModel<Secao> listarSecoesAdmin(@PathVariable("idPagina") Long idPagina, Pageable pageable) {
+        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable));
     }
 
-    @GetMapping("/documentos/admin")
-    public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(Pageable pageable) {
-        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPaginaTransparencia, pageable));
+    @GetMapping("/{idPagina:\\d+}/documentos/admin")
+    public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(@PathVariable("idPagina") Long idPagina,
+                                                                  Pageable pageable) {
+        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable));
     }
 
-    @GetMapping("/secao/{id}")
+    @PostMapping("/{idPagina:\\d+}/secoes")
+    @ResponseStatus(HttpStatus.CREATED)
+    public Secao criarSecao(@PathVariable("idPagina") Long idPagina, @Valid @ModelAttribute CriarSecaoDTO dto) {
+        return paginaService.criarSecao(idPagina, dto);
+    }
+
+    @GetMapping("/secoes/{id}")
     public Secao buscarSecao(@PathVariable("id") Long id) {
         return paginaService.buscarSecaoPorId(id);
     }
 
-    @PostMapping("/criar-secao")
-    public Secao criarSecao(@Valid @ModelAttribute CriarSecaoDTO dto) {
-        return paginaService.criarSecao(idPaginaTransparencia, dto);
-    }
-
-    @PutMapping("/secao/{id}")
+    @PutMapping("/secoes/{id}")
     public Secao atualizarSecao(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarSecaoDTO dto) {
         return paginaService.atualizarSecao(id, dto);
     }
 
-    @DeleteMapping("/secao/{id}")
+    @PutMapping("/secoes/{id}/imagem")
+    public Secao atualizarImagemSecao(@PathVariable("id") Long id,
+                                      @RequestParam("imagem") MultipartFile imagem) {
+        return paginaService.atualizarImagemSecao(id, imagem);
+    }
+
+    @DeleteMapping("/secoes/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarSecao(@PathVariable("id") Long id) {
         paginaService.deletarSecao(id);
     }
 
-    @PostMapping("/secao/{secaoId}/upload-documento")
+    @PostMapping("/secoes/{secaoId}/documentos")
     public Documento adicionarDocumento(@PathVariable("secaoId") Long secaoId,
                                         @RequestParam("titulo") String titulo,
                                         @RequestParam("arquivo") MultipartFile arquivo) {
         return paginaService.adicionarDocumento(secaoId, titulo, arquivo);
     }
 
-    @PutMapping("/documento/{id}")
+    @PutMapping("/documentos/{id}")
     public Documento atualizarDocumento(@PathVariable("id") Long id,
                                         @RequestParam("secaoId") Long secaoId,
                                         @RequestParam("titulo") String titulo,
@@ -113,7 +114,7 @@ public class TransparenciaController {
         return paginaService.atualizarDocumento(id, secaoId, titulo, arquivo);
     }
 
-    @GetMapping("/documento/{id}/download")
+    @GetMapping("/documentos/{id}/download")
     public ResponseEntity<Resource> baixarDocumento(@PathVariable("id") Long id) {
         Documento documento = paginaService.buscarDocumentoPorId(id);
         Resource recurso = arquivoService.carregarComoRecurso(documento.getArquivo());
@@ -133,7 +134,7 @@ public class TransparenciaController {
                 .body(recurso);
     }
 
-    @DeleteMapping("/documento/{id}")
+    @DeleteMapping("/documentos/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void deletarDocumento(@PathVariable("id") Long id) {
         paginaService.deletarDocumento(id);
