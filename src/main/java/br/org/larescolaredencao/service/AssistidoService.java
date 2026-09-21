@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import br.org.larescolaredencao.dto.AssistidoResponseDTO;
+import br.org.larescolaredencao.dto.AtualizarAssistidoDTO;
 import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.CriarAssistidoDTO;
@@ -55,11 +56,18 @@ public class AssistidoService {
         this.arquivoService = arquivoService;
     }
 
+    private Matricula obterMatriculaAtiva(Assistido assistido) {
+        return matriculaRepository.findByAssistido(assistido).stream()
+                .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
+                .findFirst()
+                .orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public List<AssistidoResponseDTO> listarAssistidosDoMembro(Integer membroId) {
         return assistidoRepository.findAtivosByMembroId(membroId)
                 .stream()
-                .map(AssistidoResponseDTO::new)
+                .map(a -> new AssistidoResponseDTO(a, null, obterMatriculaAtiva(a)))
                 .collect(Collectors.toList());
     }
 
@@ -70,7 +78,7 @@ public class AssistidoService {
 
         List<ContatoAssistido> contatos = contatoAssistidoRepository.findByAssistido(assistido);
 
-        return new AssistidoResponseDTO(assistido, contatos);
+        return new AssistidoResponseDTO(assistido, contatos, obterMatriculaAtiva(assistido));
     }
 
     @Transactional
@@ -122,6 +130,7 @@ public class AssistidoService {
 
         if (dto.getContatos() != null) {
             for (ContatoDTO contatoDTO : dto.getContatos()) {
+                String telefoneLimpo = contatoDTO.getTelefone() != null ? contatoDTO.getTelefone().replaceAll("\\D", "") : null;
                 Contato contato;
 
                 if (contatoDTO.getId() != null) {
@@ -129,12 +138,12 @@ public class AssistidoService {
                             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
 
                     contato.setNomeCompleto(contatoDTO.getNomeCompleto());
-                    contato.setTelefone(contatoDTO.getTelefone());
+                    contato.setTelefone(telefoneLimpo);
                     if (contatoDTO.getEmail() != null) contato.setEmail(contatoDTO.getEmail());
                     if (contatoDTO.getEndereco() != null) contato.setEndereco(contatoDTO.getEndereco());
                     contato = contatoRepository.save(contato);
                 } else {
-                    contato = contatoRepository.findByTelefone(contatoDTO.getTelefone())
+                    contato = contatoRepository.findByTelefone(telefoneLimpo)
                             .map(c -> {
                                 c.setNomeCompleto(contatoDTO.getNomeCompleto());
                                 if (contatoDTO.getEmail() != null) c.setEmail(contatoDTO.getEmail());
@@ -144,7 +153,7 @@ public class AssistidoService {
                             .orElseGet(() -> {
                                 Contato c = new Contato();
                                 c.setNomeCompleto(contatoDTO.getNomeCompleto());
-                                c.setTelefone(contatoDTO.getTelefone());
+                                c.setTelefone(telefoneLimpo);
                                 c.setEmail(contatoDTO.getEmail());
                                 c.setEndereco(contatoDTO.getEndereco());
                                 return contatoRepository.save(c);
@@ -178,10 +187,96 @@ public class AssistidoService {
         matricula.setTurma(turma);
         matricula.setStatus(StatusMatricula.ATIVO);
         matricula.setDataIngresso(LocalDateTime.now());
-        matriculaRepository.save(matricula);
+        matricula = matriculaRepository.save(matricula);
 
         List<ContatoAssistido> contatosSalvos = contatoAssistidoRepository.findByAssistido(salvo);
-        return new AssistidoResponseDTO(salvo, contatosSalvos);
+        return new AssistidoResponseDTO(salvo, contatosSalvos, matricula);
+    }
+
+    @Transactional
+    public AssistidoResponseDTO atualizarAssistido(Integer id, AtualizarAssistidoDTO dto) {
+        Assistido assistido = assistidoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
+
+        if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
+            assistidoRepository.findByCpf(dto.getCpf()).ifPresent(a -> {
+                if (!a.getId().equals(assistido.getId())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está cadastrado em outro assistido.");
+                }
+            });
+        }
+
+        if (dto.getDocumentoAuxiliar() != null && !dto.getDocumentoAuxiliar().isBlank() && dto.getTipoDocumento() != null) {
+            assistidoRepository.findFirstByDocumentoAuxiliarAndTipoDocumento(dto.getDocumentoAuxiliar(), dto.getTipoDocumento()).ifPresent(a -> {
+                if (!a.getId().equals(assistido.getId())) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "Este documento auxiliar já está cadastrado em outro assistido.");
+                }
+            });
+        }
+
+        assistido.setNomeCompleto(dto.getNomeCompleto());
+        assistido.setDataNascimento(dto.getDataNascimento());
+        assistido.setCpf(dto.getCpf());
+        assistido.setDocumentoAuxiliar(dto.getDocumentoAuxiliar());
+        assistido.setTipoDocumento(dto.getTipoDocumento());
+        assistido.setEndereco(dto.getEndereco());
+        assistidoRepository.save(assistido);
+
+        List<ContatoAssistido> vinculosAtuais = contatoAssistidoRepository.findByAssistido(assistido);
+        List<String> telefonesDto = dto.getContatos().stream()
+                .map(c -> c.getTelefone() != null ? c.getTelefone().replaceAll("\\D", "") : null)
+                .collect(Collectors.toList());
+
+        for (ContatoAssistido ca : vinculosAtuais) {
+            if (!telefonesDto.contains(ca.getContato().getTelefone())) {
+                contatoAssistidoRepository.delete(ca);
+            }
+        }
+
+        removerPrincipalAtual(assistido);
+
+        for (ContatoDTO contatoDTO : dto.getContatos()) {
+            String telefoneLimpo = contatoDTO.getTelefone() != null ? contatoDTO.getTelefone().replaceAll("\\D", "") : null;
+            Contato contato;
+
+            contato = contatoRepository.findByTelefone(telefoneLimpo)
+                    .orElseGet(() -> {
+                        Contato c = new Contato();
+                        c.setTelefone(telefoneLimpo);
+                        return c;
+                    });
+
+            contato.setNomeCompleto(contatoDTO.getNomeCompleto());
+            if (contatoDTO.getEmail() != null) contato.setEmail(contatoDTO.getEmail());
+            if (contatoDTO.getEndereco() != null) contato.setEndereco(contatoDTO.getEndereco());
+            contato = contatoRepository.save(contato);
+
+            ContatoAssistidoId caId = new ContatoAssistidoId(assistido.getId(), contato.getId());
+            ContatoAssistido ca = contatoAssistidoRepository.findById(caId).orElse(new ContatoAssistido());
+            ca.setId(caId);
+            ca.setAssistido(assistido);
+            ca.setContato(contato);
+            ca.setParentesco(contatoDTO.getParentesco());
+            ca.setPrincipal(contatoDTO.getPrincipal());
+            contatoAssistidoRepository.save(ca);
+        }
+
+        Matricula matriculaAtiva = obterMatriculaAtiva(assistido);
+        
+        if (matriculaAtiva == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa.");
+        }
+
+        if (!matriculaAtiva.getTurma().getId().equals(dto.getIdTurma())) {
+            TransferirTurmaDTO transDto = new TransferirTurmaDTO();
+            transDto.setIdTurmaNova(dto.getIdTurma());
+            transferirTurma(assistido.getId(), transDto);
+            
+            matriculaAtiva = obterMatriculaAtiva(assistido);
+        }
+
+        List<ContatoAssistido> contatosSalvos = contatoAssistidoRepository.findByAssistido(assistido);
+        return new AssistidoResponseDTO(assistido, contatosSalvos, matriculaAtiva);
     }
 
     @Transactional
@@ -207,11 +302,10 @@ public class AssistidoService {
         Assistido assistido = assistidoRepository.findById(assistidoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
 
-        List<Matricula> matriculas = matriculaRepository.findByAssistido(assistido);
-        Matricula matriculaAtiva = matriculas.stream()
-                .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa para transferir."));
+        Matricula matriculaAtiva = obterMatriculaAtiva(assistido);
+        if (matriculaAtiva == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa para transferir.");
+        }
 
         if (matriculaAtiva.getTurma().getId().equals(dto.getIdTurmaNova())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido já está matriculado nesta turma.");
@@ -235,11 +329,11 @@ public class AssistidoService {
             novaMatricula.setTurma(novaTurma);
             novaMatricula.setStatus(StatusMatricula.ATIVO);
             novaMatricula.setDataIngresso(LocalDateTime.now());
-            matriculaRepository.save(novaMatricula);
+            matriculaAtiva = matriculaRepository.save(novaMatricula);
         }
 
         List<ContatoAssistido> contatos = contatoAssistidoRepository.findByAssistido(assistido);
-        return new AssistidoResponseDTO(assistido, contatos);
+        return new AssistidoResponseDTO(assistido, contatos, matriculaAtiva);
     }
 
     @Transactional
@@ -247,10 +341,10 @@ public class AssistidoService {
         Assistido assistido = assistidoRepository.findById(assistidoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Assistido não encontrado."));
 
-        Matricula matriculaAtiva = matriculaRepository.findByAssistido(assistido).stream()
-                .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa para inativar."));
+        Matricula matriculaAtiva = obterMatriculaAtiva(assistido);
+        if (matriculaAtiva == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O assistido não possui matrícula ativa para inativar.");
+        }
 
         matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
         matriculaAtiva.setDataDesligamento(dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now());
@@ -294,6 +388,7 @@ public class AssistidoService {
 
         validarLimiteVinculos(assistido);
 
+        String telefoneLimpo = dto.getTelefone() != null ? dto.getTelefone().replaceAll("\\D", "") : null;
         Contato contato;
 
         if (dto.getId() != null) {
@@ -301,12 +396,12 @@ public class AssistidoService {
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
 
             contato.setNomeCompleto(dto.getNomeCompleto());
-            contato.setTelefone(dto.getTelefone());
+            contato.setTelefone(telefoneLimpo);
             if (dto.getEmail() != null) contato.setEmail(dto.getEmail());
             if (dto.getEndereco() != null) contato.setEndereco(dto.getEndereco());
             contato = contatoRepository.save(contato);
         } else {
-            contato = contatoRepository.findByTelefone(dto.getTelefone())
+            contato = contatoRepository.findByTelefone(telefoneLimpo)
                     .map(c -> {
                         c.setNomeCompleto(dto.getNomeCompleto());
                         if (dto.getEmail() != null) c.setEmail(dto.getEmail());
@@ -316,7 +411,7 @@ public class AssistidoService {
                     .orElseGet(() -> {
                         Contato c = new Contato();
                         c.setNomeCompleto(dto.getNomeCompleto());
-                        c.setTelefone(dto.getTelefone());
+                        c.setTelefone(telefoneLimpo);
                         c.setEmail(dto.getEmail());
                         c.setEndereco(dto.getEndereco());
                         return contatoRepository.save(c);
@@ -418,8 +513,6 @@ public class AssistidoService {
                 }
             }
 
-            // Se a exclusão lógica está ocorrendo para alguém que já era EGRESSO/INATIVO (sem ATIVAS),
-            // marcamos a matrícula mais recente como EXCLUIDO para manter o rastro histórico correto.
             if (!alterouAlgumaAtiva && !matriculas.isEmpty()) {
                 Matricula maisRecente = matriculas.stream()
                         .max((m1, m2) -> m1.getDataIngresso().compareTo(m2.getDataIngresso()))

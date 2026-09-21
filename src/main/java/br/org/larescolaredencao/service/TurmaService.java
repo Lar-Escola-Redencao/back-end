@@ -43,7 +43,10 @@ public class TurmaService {
                 .collect(Collectors.toList());
     }
 
-    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable) {
+    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable, Integer unidadeId) {
+        if (unidadeId != null) {
+            return turmaRepository.findByUnidadeId(unidadeId, pageable).map(TurmaResponseDTO::new);
+        }
         return turmaRepository.findAll(pageable).map(TurmaResponseDTO::new);
     }
 

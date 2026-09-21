@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.api;
 
 import br.org.larescolaredencao.dto.AssistidoResponseDTO;
+import br.org.larescolaredencao.dto.AtualizarAssistidoDTO;
 import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.CriarAssistidoDTO;
@@ -62,6 +63,11 @@ public class AssistidoController {
     @ResponseStatus(HttpStatus.CREATED)
     public AssistidoResponseDTO criarAssistido(@Valid @RequestBody CriarAssistidoDTO dto) {
         return assistidoService.cadastrarAssistido(dto);
+    }
+
+    @PutMapping("/{id}")
+    public AssistidoResponseDTO atualizarAssistido(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarAssistidoDTO dto) {
+        return assistidoService.atualizarAssistido(id, dto);
     }
 
     @PostMapping("/{id}/foto")

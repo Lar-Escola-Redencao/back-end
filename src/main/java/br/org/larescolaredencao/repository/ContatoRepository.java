@@ -31,7 +31,7 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
     Page<Contato> findVisibleByMembroId(@Param("membroId") Integer membroId, Pageable pageable);
 
     @Query("SELECT DISTINCT c FROM Contato c WHERE " +
-           "(LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR c.telefone LIKE CONCAT('%', :termo, '%')) AND " +
+           "(LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR (:termoTelefone IS NOT NULL AND c.telefone LIKE CONCAT('%', :termoTelefone, '%'))) AND " +
            "(NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) OR c IN (" +
            "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
            "   JOIN ca2.assistido a " +
@@ -42,5 +42,5 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
            "       SELECT un FROM Membro mem JOIN mem.unidades un WHERE mem.id = :membroId" +
            "   )" +
            "))")
-    List<Contato> searchVisibleByMembroIdAndTermo(@Param("membroId") Integer membroId, @Param("termo") String termo);
+    List<Contato> searchVisibleByMembroIdAndTermo(@Param("membroId") Integer membroId, @Param("termo") String termo, @Param("termoTelefone") String termoTelefone);
 }

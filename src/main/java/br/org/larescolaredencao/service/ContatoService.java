@@ -37,7 +37,12 @@ public class ContatoService {
 
     @Transactional(readOnly = true)
     public List<ContatoListagemDTO> buscarContatosAutocomplete(Integer membroId, String termo) {
-        return contatoRepository.searchVisibleByMembroIdAndTermo(membroId, termo).stream()
+        String termoTelefone = termo.replaceAll("\\D", "");
+        if (termoTelefone.isEmpty()) {
+            termoTelefone = null;
+        }
+
+        return contatoRepository.searchVisibleByMembroIdAndTermo(membroId, termo, termoTelefone).stream()
                 .map(contato -> {
                     long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
                     return new ContatoListagemDTO(contato, vinculos);
@@ -59,7 +64,9 @@ public class ContatoService {
 
     @Transactional
     public ContatoListagemDTO criarContatoAvulso(AtualizarContatoDTO dto) {
-        Contato contato = contatoRepository.findByTelefone(dto.getTelefone())
+        String telefoneLimpo = dto.getTelefone() != null ? dto.getTelefone().replaceAll("\\D", "") : null;
+
+        Contato contato = contatoRepository.findByTelefone(telefoneLimpo)
                 .map(c -> {
                     c.setNomeCompleto(dto.getNomeCompleto());
                     c.setEmail(dto.getEmail());
@@ -69,7 +76,7 @@ public class ContatoService {
                 .orElseGet(() -> {
                     Contato c = new Contato();
                     c.setNomeCompleto(dto.getNomeCompleto());
-                    c.setTelefone(dto.getTelefone());
+                    c.setTelefone(telefoneLimpo);
                     c.setEmail(dto.getEmail());
                     c.setEndereco(dto.getEndereco());
                     return c;
@@ -85,12 +92,14 @@ public class ContatoService {
         Contato contato = contatoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
 
-        if (!contato.getTelefone().equals(dto.getTelefone()) && contatoRepository.findByTelefone(dto.getTelefone()).isPresent()) {
+        String telefoneLimpo = dto.getTelefone() != null ? dto.getTelefone().replaceAll("\\D", "") : null;
+
+        if (!contato.getTelefone().equals(telefoneLimpo) && contatoRepository.findByTelefone(telefoneLimpo).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe outro contato cadastrado com este telefone.");
         }
 
         contato.setNomeCompleto(dto.getNomeCompleto());
-        contato.setTelefone(dto.getTelefone());
+        contato.setTelefone(telefoneLimpo);
         contato.setEmail(dto.getEmail());
         contato.setEndereco(dto.getEndereco());
 
