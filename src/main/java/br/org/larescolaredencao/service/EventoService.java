@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -8,22 +10,27 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
+import br.org.larescolaredencao.dto.PosEventoDTO;
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.MidiaEvento;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.model.enums.TipoEvento;
+import br.org.larescolaredencao.model.enums.TipoMidia;
 import br.org.larescolaredencao.repository.EventoRepository;
 import br.org.larescolaredencao.repository.MidiaEventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
 @Service
 public class EventoService {
+
+    private static final int MAX_MIDIAS_POR_EVENTO = 10;
 
     private final EventoRepository eventoRepository;
     private final ArquivoService arquivoService;
@@ -121,6 +128,103 @@ public class EventoService {
 
         Evento salvo = eventoRepository.save(evento);
         return new EventoResponseDTO(salvo);
+    }
+
+    @Transactional
+    public EventoDetalhadoResponseDTO atualizarPosEvento(Integer id, PosEventoDTO dto) {
+        Evento evento = eventoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
+
+        if (!evento.getDataEvento().isBefore(LocalDateTime.now())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O evento ainda não foi concluído.");
+        }
+
+        long midiasExistentes = midiaEventoRepository.countByEventoId(id);
+        long novasMidias = contarNovasMidias(dto);
+        if (midiasExistentes + novasMidias > MAX_MIDIAS_POR_EVENTO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Limite máximo de " + MAX_MIDIAS_POR_EVENTO + " mídias por evento excedido.");
+        }
+
+        List<MidiaEvento> novasEntidades = construirNovasMidias(dto, evento);
+        if (!novasEntidades.isEmpty()) {
+            midiaEventoRepository.saveAll(novasEntidades);
+        }
+
+        if (dto.getComentarioPosEvento() != null) {
+            evento.setComentarioPosEvento(dto.getComentarioPosEvento());
+            eventoRepository.save(evento);
+        }
+
+        List<MidiaEvento> midias = midiaEventoRepository.findByEventoIdOrderByIdAsc(id);
+        return new EventoDetalhadoResponseDTO(evento, midias);
+    }
+
+    private long contarNovasMidias(PosEventoDTO dto) {
+        return contarArquivosValidos(dto.getImagens()) + contarArquivosValidos(dto.getVideos())
+                + contarUrlsValidas(dto.getImagensUrls()) + contarUrlsValidas(dto.getVideosUrls());
+    }
+
+    private long contarArquivosValidos(List<MultipartFile> arquivos) {
+        if (arquivos == null) {
+            return 0;
+        }
+        return arquivos.stream().filter(arquivo -> arquivo != null && !arquivo.isEmpty()).count();
+    }
+
+    private long contarUrlsValidas(List<String> urls) {
+        if (urls == null) {
+            return 0;
+        }
+        return urls.stream().filter(url -> url != null && !url.isBlank()).count();
+    }
+
+    private List<MidiaEvento> construirNovasMidias(PosEventoDTO dto, Evento evento) {
+        List<MidiaEvento> novasMidias = new ArrayList<>();
+
+        if (dto.getImagens() != null) {
+            for (MultipartFile arquivo : dto.getImagens()) {
+                if (arquivo != null && !arquivo.isEmpty()) {
+                    String url = arquivoService.salvarArquivo(arquivo, "eventos/pos-evento/", TipoArquivo.FOTO);
+                    novasMidias.add(criarMidia(url, TipoMidia.IMAGEM, evento));
+                }
+            }
+        }
+
+        if (dto.getVideos() != null) {
+            for (MultipartFile arquivo : dto.getVideos()) {
+                if (arquivo != null && !arquivo.isEmpty()) {
+                    String url = arquivoService.salvarArquivo(arquivo, "eventos/pos-evento/", TipoArquivo.VIDEO);
+                    novasMidias.add(criarMidia(url, TipoMidia.VIDEO, evento));
+                }
+            }
+        }
+
+        if (dto.getImagensUrls() != null) {
+            for (String url : dto.getImagensUrls()) {
+                if (url != null && !url.isBlank()) {
+                    novasMidias.add(criarMidia(url, TipoMidia.IMAGEM, evento));
+                }
+            }
+        }
+
+        if (dto.getVideosUrls() != null) {
+            for (String url : dto.getVideosUrls()) {
+                if (url != null && !url.isBlank()) {
+                    novasMidias.add(criarMidia(url, TipoMidia.VIDEO, evento));
+                }
+            }
+        }
+
+        return novasMidias;
+    }
+
+    private MidiaEvento criarMidia(String url, TipoMidia tipo, Evento evento) {
+        MidiaEvento midia = new MidiaEvento();
+        midia.setUrlMidia(url);
+        midia.setTipoMidia(tipo);
+        midia.setEvento(evento);
+        return midia;
     }
 
     public void deletarEvento(Integer id) {

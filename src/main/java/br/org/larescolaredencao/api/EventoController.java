@@ -18,6 +18,7 @@ import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
 import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
+import br.org.larescolaredencao.dto.PosEventoDTO;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.service.EventoService;
 import jakarta.validation.Valid;
@@ -57,6 +58,12 @@ public class EventoController {
     @PutMapping("/{id}")
     public EventoResponseDTO atualizarEvento(@PathVariable("id") Integer id, @Valid @ModelAttribute AtualizarEventoDTO atualizarEventoDTO) {
         return eventoService.atualizarEvento(id, atualizarEventoDTO);
+    }
+
+    @PutMapping(value = "/{id}/pos-evento", consumes = "multipart/form-data")
+    public EventoDetalhadoResponseDTO atualizarPosEvento(@PathVariable("id") Integer id,
+            @ModelAttribute PosEventoDTO posEventoDTO) {
+        return eventoService.atualizarPosEvento(id, posEventoDTO);
     }
 
     @DeleteMapping("/{id}")

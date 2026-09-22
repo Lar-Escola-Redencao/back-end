@@ -20,6 +20,10 @@ public enum TipoArquivo {
     FOTO(
             Set.of("jpg", "jpeg", "png", "webp"),
             Set.of("image/jpeg", "image/png", "image/webp")
+    ),
+    VIDEO(
+            Set.of("mp4", "mov", "webm"),
+            Set.of("video/mp4", "video/quicktime", "video/webm")
     );
 
     private final Set<String> extensoesPermitidas;

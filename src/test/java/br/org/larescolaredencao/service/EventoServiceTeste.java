@@ -3,16 +3,19 @@ package br.org.larescolaredencao.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -21,10 +24,12 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
+import br.org.larescolaredencao.dto.PosEventoDTO;
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.MidiaEvento;
 import br.org.larescolaredencao.model.Parceiro;
@@ -168,5 +173,93 @@ class EventoServiceTeste {
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
         verify(midiaEventoRepository, never()).findByEventoIdOrderByIdAsc(any());
+    }
+
+    @Test
+    void deveAtualizarPosEventoQuandoEventoJaOcorreu() {
+        Evento evento = new Evento();
+        evento.setId(5);
+        evento.setDataEvento(LocalDateTime.now().minusDays(1));
+
+        MultipartFile foto = mockArquivoValido();
+
+        PosEventoDTO dto = new PosEventoDTO();
+        dto.setComentarioPosEvento("Arrecadamos 300 doações.");
+        dto.setImagens(List.of(foto));
+        dto.setVideosUrls(List.of("https://youtube.com/watch?v=exemplo"));
+
+        when(eventoRepository.findById(5)).thenReturn(Optional.of(evento));
+        when(midiaEventoRepository.countByEventoId(5)).thenReturn(0L);
+        when(arquivoService.salvarArquivo(any(), anyString(), any())).thenReturn("/uploads/eventos/pos-evento/foto.jpg");
+        when(midiaEventoRepository.findByEventoIdOrderByIdAsc(5)).thenReturn(List.of());
+
+        EventoDetalhadoResponseDTO resultado = eventoService.atualizarPosEvento(5, dto);
+
+        assertThat(resultado.getComentarioPosEvento()).isEqualTo("Arrecadamos 300 doações.");
+        verify(eventoRepository).save(evento);
+
+        ArgumentCaptor<List<MidiaEvento>> captor = ArgumentCaptor.forClass(List.class);
+        verify(midiaEventoRepository).saveAll(captor.capture());
+        List<MidiaEvento> midiasSalvas = captor.getValue();
+        assertThat(midiasSalvas).hasSize(2);
+        assertThat(midiasSalvas).extracting(MidiaEvento::getTipoMidia)
+                .containsExactlyInAnyOrder(TipoMidia.IMAGEM, TipoMidia.VIDEO);
+    }
+
+    @Test
+    void deveRejeitarPosEventoQuandoEventoAindaNaoOcorreu() {
+        Evento evento = new Evento();
+        evento.setId(6);
+        evento.setDataEvento(LocalDateTime.now().plusDays(1));
+
+        when(eventoRepository.findById(6)).thenReturn(Optional.of(evento));
+
+        PosEventoDTO dto = new PosEventoDTO();
+        dto.setComentarioPosEvento("Não deveria ser aceito.");
+
+        assertThatThrownBy(() -> eventoService.atualizarPosEvento(6, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("ainda não foi concluído")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(midiaEventoRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void deveRejeitarPosEventoQuandoExcederLimiteDeMidias() {
+        Evento evento = new Evento();
+        evento.setId(7);
+        evento.setDataEvento(LocalDateTime.now().minusDays(1));
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(evento));
+        when(midiaEventoRepository.countByEventoId(7)).thenReturn(9L);
+
+        PosEventoDTO dto = new PosEventoDTO();
+        dto.setImagensUrls(List.of("https://exemplo.com/1.jpg", "https://exemplo.com/2.jpg"));
+
+        assertThatThrownBy(() -> eventoService.atualizarPosEvento(7, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Limite máximo de 10 mídias")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(midiaEventoRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void deveRetornar404AoAtualizarPosEventoDeEventoInexistente() {
+        when(eventoRepository.findById(999)).thenReturn(Optional.empty());
+
+        PosEventoDTO dto = new PosEventoDTO();
+
+        assertThatThrownBy(() -> eventoService.atualizarPosEvento(999, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    private MultipartFile mockArquivoValido() {
+        MultipartFile arquivo = org.mockito.Mockito.mock(MultipartFile.class);
+        when(arquivo.isEmpty()).thenReturn(false);
+        return arquivo;
     }
 }
