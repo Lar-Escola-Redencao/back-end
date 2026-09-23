@@ -75,13 +75,6 @@ public class SecurityConfig {
                             "/paginas/secoes/{id:\\d+}",
                             "/paginas/documentos/{id:\\d+}/download").permitAll();
 
-                    // Rotas legadas de Transparência: remover junto com o TransparenciaController.
-                    req.requestMatchers(HttpMethod.GET,
-                            "/transparencia",
-                            "/transparencia/secoes",
-                            "/transparencia/secao/{id:\\d+}",
-                            "/transparencia/documento/{id:\\d+}/download").permitAll();
-
                     req.requestMatchers(HttpMethod.GET, 
                     		"/membro/me").authenticated();
                     
