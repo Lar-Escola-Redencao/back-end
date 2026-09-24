@@ -5,6 +5,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,7 +37,16 @@ public class TurmaService {
         this.validator = validator;
     }
 
-    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable) {
+    public List<TurmaResponseDTO> listarTodasAsTurmas() {
+        return turmaRepository.findAll().stream()
+                .map(TurmaResponseDTO::new)
+                .collect(Collectors.toList());
+    }
+
+    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable, Integer unidadeId) {
+        if (unidadeId != null) {
+            return turmaRepository.findByUnidadeId(unidadeId, pageable).map(TurmaResponseDTO::new);
+        }
         return turmaRepository.findAll(pageable).map(TurmaResponseDTO::new);
     }
 
