@@ -75,6 +75,9 @@ public class SecurityConfig {
                             "/paginas/secoes/{id:\\d+}",
                             "/paginas/documentos/{id:\\d+}/download").permitAll();
 
+                    // Listagens de gestão (/admin) e toda escrita do CMS: só quem mantém o conteúdo público.
+                    req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
+
                     req.requestMatchers(HttpMethod.GET, 
                     		"/membro/me").authenticated();
                     
