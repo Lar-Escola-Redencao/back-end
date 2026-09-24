@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import br.org.larescolaredencao.dto.AtualizarEventoDTO;
 import br.org.larescolaredencao.dto.CriarEventoDTO;
+import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 import br.org.larescolaredencao.service.EventoService;
@@ -38,7 +39,7 @@ public class EventoController {
     }
 
     @GetMapping("/{id}")
-    public EventoResponseDTO buscarEvento(@PathVariable("id") Integer id) {
+    public EventoDetalhadoResponseDTO buscarEvento(@PathVariable("id") Integer id) {
         return eventoService.getEventoById(id);
     }
     
