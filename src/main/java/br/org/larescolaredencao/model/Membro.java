@@ -111,7 +111,12 @@ public class Membro implements UserDetails {
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf;
+        this.cpf = somenteDigitos(cpf);
+    }
+
+    /** Remove a máscara do CPF (ex.: "123.456.789-00" -> "12345678900"). */
+    public static String somenteDigitos(String cpf) {
+        return cpf == null ? null : cpf.replaceAll("\\D", "");
     }
 
     public String getEndereco() {
