@@ -2,6 +2,8 @@ package br.org.larescolaredencao.dto;
 
 import br.org.larescolaredencao.model.Contato;
 
+import java.util.List;
+
 public class ContatoListagemDTO {
 
     private Integer id;
@@ -10,6 +12,7 @@ public class ContatoListagemDTO {
     private String email;
     private String endereco;
     private long quantidadeVinculos;
+    private List<VinculoContatoResponseDTO> vinculos;
 
     public ContatoListagemDTO(Contato contato, long quantidadeVinculos) {
         this.id = contato.getId();
@@ -66,5 +69,13 @@ public class ContatoListagemDTO {
 
     public void setQuantidadeVinculos(long quantidadeVinculos) {
         this.quantidadeVinculos = quantidadeVinculos;
+    }
+
+    public List<VinculoContatoResponseDTO> getVinculos() {
+        return vinculos;
+    }
+
+    public void setVinculos(List<VinculoContatoResponseDTO> vinculos) {
+        this.vinculos = vinculos;
     }
 }

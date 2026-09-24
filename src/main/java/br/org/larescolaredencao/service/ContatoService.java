@@ -3,9 +3,14 @@ package br.org.larescolaredencao.service;
 import br.org.larescolaredencao.dto.AtualizarContatoDTO;
 import br.org.larescolaredencao.dto.ContatoListagemDTO;
 import br.org.larescolaredencao.dto.VinculoContatoResponseDTO;
+import br.org.larescolaredencao.model.Assistido;
 import br.org.larescolaredencao.model.Contato;
+import br.org.larescolaredencao.model.ContatoAssistido;
+import br.org.larescolaredencao.model.Matricula;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.ContatoAssistidoRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
+import br.org.larescolaredencao.repository.MatriculaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -21,10 +26,12 @@ public class ContatoService {
 
     private final ContatoRepository contatoRepository;
     private final ContatoAssistidoRepository contatoAssistidoRepository;
+    private final MatriculaRepository matriculaRepository;
 
-    public ContatoService(ContatoRepository contatoRepository, ContatoAssistidoRepository contatoAssistidoRepository) {
+    public ContatoService(ContatoRepository contatoRepository, ContatoAssistidoRepository contatoAssistidoRepository, MatriculaRepository matriculaRepository) {
         this.contatoRepository = contatoRepository;
         this.contatoAssistidoRepository = contatoAssistidoRepository;
+        this.matriculaRepository = matriculaRepository;
     }
 
     @Transactional(readOnly = true)
@@ -33,6 +40,29 @@ public class ContatoService {
             long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
             return new ContatoListagemDTO(contato, vinculos);
         });
+    }
+
+    @Transactional(readOnly = true)
+    public ContatoListagemDTO buscarContato(Integer id) {
+        Contato contato = contatoRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
+
+        List<ContatoAssistido> contatosAssistidos = contatoAssistidoRepository.findByContatoId(contato.getId());
+
+        List<VinculoContatoResponseDTO> vinculos = contatosAssistidos.stream().map(ca -> {
+            Assistido assistido = ca.getAssistido();
+            Matricula matriculaAtiva = matriculaRepository.findByAssistido(assistido).stream()
+                    .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
+                    .findFirst()
+                    .orElse(null);
+            
+            return new VinculoContatoResponseDTO(ca, matriculaAtiva);
+        }).collect(Collectors.toList());
+
+        ContatoListagemDTO dto = new ContatoListagemDTO(contato, vinculos.size());
+        dto.setVinculos(vinculos);
+        
+        return dto;
     }
 
     @Transactional(readOnly = true)
@@ -58,7 +88,13 @@ public class ContatoService {
         
         return contatoAssistidoRepository.findByContatoId(contatoId)
                 .stream()
-                .map(VinculoContatoResponseDTO::new)
+                .map(ca -> {
+                    Matricula matriculaAtiva = matriculaRepository.findByAssistido(ca.getAssistido()).stream()
+                            .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
+                            .findFirst()
+                            .orElse(null);
+                    return new VinculoContatoResponseDTO(ca, matriculaAtiva);
+                })
                 .collect(Collectors.toList());
     }
 

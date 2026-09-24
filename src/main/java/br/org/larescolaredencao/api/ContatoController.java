@@ -38,6 +38,11 @@ public class ContatoController {
         return new PagedModel<>(contatoService.listarContatos(membroLogado.getId(), pageable));
     }
 
+    @GetMapping("/{id}")
+    public ContatoListagemDTO buscarContato(@PathVariable("id") Integer id) {
+        return contatoService.buscarContato(id);
+    }
+
     @GetMapping("/buscar")
     public List<ContatoListagemDTO> buscarContatosAutocomplete(@AuthenticationPrincipal Membro membroLogado, @RequestParam("termo") String termo) {
         return contatoService.buscarContatosAutocomplete(membroLogado.getId(), termo);
