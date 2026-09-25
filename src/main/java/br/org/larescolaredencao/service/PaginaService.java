@@ -12,12 +12,14 @@ import org.springframework.web.server.ResponseStatusException;
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
 import br.org.larescolaredencao.dto.DocumentoResponseDTO;
+import br.org.larescolaredencao.dto.ReordenarSecaoDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
 import br.org.larescolaredencao.repository.DocumentoRepository;
 import br.org.larescolaredencao.repository.PaginaRepository;
 import br.org.larescolaredencao.repository.SecaoRepository;
+import jakarta.transaction.Transactional;
 
 /**
  * Regras do CMS de páginas institucionais. É agnóstico de qual página está sendo
@@ -25,6 +27,9 @@ import br.org.larescolaredencao.repository.SecaoRepository;
  */
 @Service
 public class PaginaService {
+
+    private static final String GRUPO_TEXTO_SOBRE = "texto-sobre";
+    private static final String TITULO_TEXTO_SOBRE = "Sobre o Lar Escola Redenção";
 
     private final PaginaRepository paginaRepository;
     private final SecaoRepository secaoRepository;
@@ -48,11 +53,18 @@ public class PaginaService {
 
     public List<Secao> listarSecoes(Long idPagina) {
         buscarPaginaPorId(idPagina);
-        return secaoRepository.findByPaginaIdOrderByIdAsc(idPagina);
+        return secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(idPagina);
+    }
+
+    public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable, String grupo) {
+        if (grupo == null || grupo.isBlank()) {
+            return secaoRepository.findByPaginaId(idPagina, pageable);
+        }
+        return secaoRepository.findByPaginaIdAndGrupo(idPagina, grupo, pageable);
     }
 
     public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable) {
-        return secaoRepository.findByPaginaId(idPagina, pageable);
+        return listarSecoesPaginado(idPagina, pageable, null);
     }
 
     public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable) {
@@ -69,8 +81,11 @@ public class PaginaService {
         Pagina pagina = buscarPaginaPorId(idPagina);
 
         Secao secao = new Secao();
-        secao.setTitulo(arquivoService.sanitizarTexto(dto.getTitulo()));
+        String grupo = normalizarGrupo(dto.getGrupo());
+        secao.setTitulo(resolverTituloSecao(dto.getTitulo(), grupo));
         secao.setConteudo(normalizarConteudo(dto.getConteudo()));
+        secao.setGrupo(grupo);
+        secao.setOrdem(dto.getOrdem() == null ? proximaOrdem(idPagina, grupo) : dto.getOrdem());
         secao.setAtivo(true);
         secao.setPagina(pagina);
 
@@ -92,6 +107,12 @@ public class PaginaService {
         if (dto.getAtivo() != null) {
             secao.setAtivo(dto.getAtivo());
         }
+        if (dto.getGrupo() != null) {
+            secao.setGrupo(normalizarGrupo(dto.getGrupo()));
+        }
+        if (dto.getOrdem() != null) {
+            secao.setOrdem(dto.getOrdem());
+        }
         if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
             String imagemAnterior = secao.getImagem();
             secao.setImagem(arquivoService.salvarArquivo(dto.getImagem(),
@@ -99,6 +120,15 @@ public class PaginaService {
             arquivoService.deletarArquivo(imagemAnterior);
         }
         return secaoRepository.save(secao);
+    }
+
+    @Transactional
+    public void reordenarSecoes(List<ReordenarSecaoDTO> secoes) {
+        for (ReordenarSecaoDTO item : secoes) {
+            Secao secao = buscarSecaoPorId(item.getId());
+            secao.setOrdem(item.getOrdem());
+            secaoRepository.save(secao);
+        }
     }
 
     /** Upload genérico de imagem: grava a nova e remove fisicamente a anterior, quando havia uma. */
@@ -191,6 +221,29 @@ public class PaginaService {
             return null;
         }
         return conteudo;
+    }
+
+    private String normalizarGrupo(String grupo) {
+        if (grupo == null || grupo.isBlank()) {
+            return "nenhum";
+        }
+        return grupo;
+    }
+
+    private String resolverTituloSecao(String titulo, String grupo) {
+        String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
+        if (tituloSanitizado != null && !tituloSanitizado.isBlank()) {
+            return tituloSanitizado;
+        }
+        if (GRUPO_TEXTO_SOBRE.equals(grupo)) {
+            return TITULO_TEXTO_SOBRE;
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O título da seção é obrigatório.");
+    }
+
+    private Integer proximaOrdem(Long idPagina, String grupo) {
+        Integer maiorOrdem = secaoRepository.findMaxOrdemByPaginaIdAndGrupo(idPagina, grupo);
+        return maiorOrdem == null ? 1 : maiorOrdem + 1;
     }
 
     private String subPastaImagens(Long idPagina) {

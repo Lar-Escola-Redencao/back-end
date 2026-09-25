@@ -13,6 +13,7 @@
 .classpath
 .factorypath
 .gradle
+.gradle-home
 .metadata
 .project
 .recommenders

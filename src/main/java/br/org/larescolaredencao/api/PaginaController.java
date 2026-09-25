@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,6 +27,7 @@ import org.springframework.web.multipart.MultipartFile;
 import br.org.larescolaredencao.dto.AtualizarSecaoDTO;
 import br.org.larescolaredencao.dto.CriarSecaoDTO;
 import br.org.larescolaredencao.dto.DocumentoResponseDTO;
+import br.org.larescolaredencao.dto.ReordenarSecaoDTO;
 import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Pagina;
 import br.org.larescolaredencao.model.Secao;
@@ -61,8 +63,10 @@ public class PaginaController {
     }
 
     @GetMapping("/{idPagina:\\d+}/secoes/admin")
-    public PagedModel<Secao> listarSecoesAdmin(@PathVariable("idPagina") Long idPagina, Pageable pageable) {
-        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable));
+    public PagedModel<Secao> listarSecoesAdmin(@PathVariable("idPagina") Long idPagina,
+                                               Pageable pageable,
+                                               @RequestParam(name = "grupo", required = false) String grupo) {
+        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable, grupo));
     }
 
     @GetMapping("/{idPagina:\\d+}/documentos/admin")
@@ -85,6 +89,12 @@ public class PaginaController {
     @PutMapping("/secoes/{id}")
     public Secao atualizarSecao(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarSecaoDTO dto) {
         return paginaService.atualizarSecao(id, dto);
+    }
+
+    @PutMapping("/secoes/reordenar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void reordenarSecoes(@Valid @RequestBody List<ReordenarSecaoDTO> secoes) {
+        paginaService.reordenarSecoes(secoes);
     }
 
     @PutMapping("/secoes/{id}/imagem")
