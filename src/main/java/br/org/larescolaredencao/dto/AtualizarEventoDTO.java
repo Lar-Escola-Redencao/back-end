@@ -30,7 +30,6 @@ public class AtualizarEventoDTO {
     
     @NotNull
     private TipoEvento tipoEvento;
-    private String comentarioPosEvento;
     private List<Long> parceirosIds;
 
     public String getTitulo() {
@@ -89,14 +88,6 @@ public class AtualizarEventoDTO {
         this.tipoEvento = tipoEvento;
     }
 
-    public String getComentarioPosEvento() {
-        return comentarioPosEvento;
-    }
-
-    public void setComentarioPosEvento(String comentarioPosEvento) {
-        this.comentarioPosEvento = comentarioPosEvento;
-    }
-    
     public List<Long> getParceirosIds() {
         return parceirosIds;
     }

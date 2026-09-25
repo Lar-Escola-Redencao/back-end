@@ -5,7 +5,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import br.org.larescolaredencao.model.Evento;
-import br.org.larescolaredencao.model.MidiaEvento;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 
 public class EventoDetalhadoResponseDTO {
@@ -18,11 +17,10 @@ public class EventoDetalhadoResponseDTO {
     private String imagem;
     private BigDecimal valor;
     private TipoEvento tipoEvento;
-    private String comentarioPosEvento;
-    private List<MidiaEventoResponseDTO> midiaEvento;
+    private boolean encerrado;
     private List<ParceiroResponseDTO> parceiros;
 
-    public EventoDetalhadoResponseDTO(Evento evento, List<MidiaEvento> midias) {
+    public EventoDetalhadoResponseDTO(Evento evento) {
         this.id = evento.getId();
         this.titulo = evento.getTitulo();
         this.descricao = evento.getDescricao();
@@ -31,9 +29,7 @@ public class EventoDetalhadoResponseDTO {
         this.imagem = evento.getImagem();
         this.valor = evento.getValor();
         this.tipoEvento = evento.getTipoEvento();
-        this.comentarioPosEvento = evento.getComentarioPosEvento();
-        this.midiaEvento = midias == null ? List.of()
-                : midias.stream().map(MidiaEventoResponseDTO::new).toList();
+        this.encerrado = evento.ehEventoEncerrado();
         this.parceiros = evento.getParceiros() == null ? List.of()
                 : evento.getParceiros().stream().map(ParceiroResponseDTO::new).toList();
     }
@@ -70,12 +66,8 @@ public class EventoDetalhadoResponseDTO {
         return tipoEvento;
     }
 
-    public String getComentarioPosEvento() {
-        return comentarioPosEvento;
-    }
-
-    public List<MidiaEventoResponseDTO> getMidiaEvento() {
-        return midiaEvento;
+    public boolean isEncerrado() {
+        return encerrado;
     }
 
     public List<ParceiroResponseDTO> getParceiros() {
