@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,12 +27,9 @@ import org.springframework.web.server.ResponseStatusException;
 import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
 import br.org.larescolaredencao.model.Evento;
-import br.org.larescolaredencao.model.MidiaEvento;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.model.enums.TipoEvento;
-import br.org.larescolaredencao.model.enums.TipoMidia;
 import br.org.larescolaredencao.repository.EventoRepository;
-import br.org.larescolaredencao.repository.MidiaEventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 
 @ExtendWith(MockitoExtension.class)
@@ -45,9 +43,6 @@ class EventoServiceTeste {
 
     @Mock
     private ParceiroRepository parceiroRepository;
-
-    @Mock
-    private MidiaEventoRepository midiaEventoRepository;
 
     @InjectMocks
     private EventoService eventoService;
@@ -107,23 +102,20 @@ class EventoServiceTeste {
     }
 
     @Test
-    void deveDetalharEventoSemCoberturaComComentarioNuloEListasVazias() {
+    void deveDetalharEventoSemParceiros() {
         Evento evento = new Evento();
         evento.setId(3);
         evento.setTitulo("Bazar de Primavera");
         when(eventoRepository.findByIdComParceiros(3)).thenReturn(Optional.of(evento));
-        when(midiaEventoRepository.findByEventoIdOrderByIdAsc(3)).thenReturn(List.of());
 
         EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(3);
 
         assertThat(resultado.getTitulo()).isEqualTo("Bazar de Primavera");
-        assertThat(resultado.getComentarioPosEvento()).isNull();
-        assertThat(resultado.getMidiaEvento()).isEmpty();
         assertThat(resultado.getParceiros()).isEmpty();
     }
 
     @Test
-    void deveDetalharEventoComCoberturaEIncluirParceiroInativo() {
+    void deveDetalharEventoIncluindoParceiroInativo() {
         Parceiro ativo = new Parceiro();
         ativo.setId(1L);
         ativo.setNome("Padaria Central");
@@ -137,24 +129,12 @@ class EventoServiceTeste {
 
         Evento evento = new Evento();
         evento.setId(4);
-        evento.setComentarioPosEvento("Arrecadamos 200 kg de alimentos.");
         evento.setParceiros(List.of(ativo, inativo));
 
-        MidiaEvento foto = new MidiaEvento();
-        foto.setId(10);
-        foto.setTipoMidia(TipoMidia.IMAGEM);
-        foto.setUrlMidia("/uploads/eventos/midias/foto.jpg");
-
         when(eventoRepository.findByIdComParceiros(4)).thenReturn(Optional.of(evento));
-        when(midiaEventoRepository.findByEventoIdOrderByIdAsc(4)).thenReturn(List.of(foto));
 
         EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(4);
 
-        assertThat(resultado.getComentarioPosEvento()).isEqualTo("Arrecadamos 200 kg de alimentos.");
-        assertThat(resultado.getMidiaEvento()).hasSize(1);
-        assertThat(resultado.getMidiaEvento().get(0).getId()).isEqualTo(10);
-        assertThat(resultado.getMidiaEvento().get(0).getTipoMidia()).isEqualTo(TipoMidia.IMAGEM);
-        assertThat(resultado.getMidiaEvento().get(0).getUrlMidia()).isEqualTo("/uploads/eventos/midias/foto.jpg");
         assertThat(resultado.getParceiros()).extracting("nome").containsExactly("Padaria Central", "Mercado Antigo");
     }
 
@@ -167,6 +147,40 @@ class EventoServiceTeste {
                 .hasMessageContaining("Evento não encontrado")
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
-        verify(midiaEventoRepository, never()).findByEventoIdOrderByIdAsc(any());
+    }
+
+    @Test
+    void deveDetalharEventoComoEncerradoQuandoDataJaPassou() {
+        Evento evento = new Evento();
+        evento.setId(5);
+        evento.setDataEvento(LocalDateTime.now().minusDays(1));
+        when(eventoRepository.findByIdComParceiros(5)).thenReturn(Optional.of(evento));
+
+        EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(5);
+
+        assertThat(resultado.isEncerrado()).isTrue();
+    }
+
+    @Test
+    void deveDetalharEventoComoNaoEncerradoQuandoDataAindaNaoChegou() {
+        Evento evento = new Evento();
+        evento.setId(6);
+        evento.setDataEvento(LocalDateTime.now().plusDays(1));
+        when(eventoRepository.findByIdComParceiros(6)).thenReturn(Optional.of(evento));
+
+        EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(6);
+
+        assertThat(resultado.isEncerrado()).isFalse();
+    }
+
+    @Test
+    void ehEventoEncerradoDeveCompararComADataDeReferencia() {
+        LocalDateTime dataEvento = LocalDateTime.of(2026, 9, 24, 19, 0);
+        Evento evento = new Evento();
+        evento.setDataEvento(dataEvento);
+
+        assertThat(evento.ehEventoEncerrado(dataEvento.minusMinutes(1))).isFalse();
+        assertThat(evento.ehEventoEncerrado(dataEvento)).isFalse();
+        assertThat(evento.ehEventoEncerrado(dataEvento.plusMinutes(1))).isTrue();
     }
 }
