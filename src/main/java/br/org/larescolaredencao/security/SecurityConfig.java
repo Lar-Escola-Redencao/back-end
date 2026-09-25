@@ -85,6 +85,8 @@ public class SecurityConfig {
                     		"/membro/me").authenticated();  
                     
                     req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/assistidos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/contatos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     
                     req.anyRequest().authenticated();
                 })
