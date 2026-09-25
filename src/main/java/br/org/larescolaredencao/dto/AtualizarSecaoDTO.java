@@ -11,7 +11,10 @@ public class AtualizarSecaoDTO {
 
     private String conteudo;
 
-    /** Opcional — só substitui a imagem atual quando enviada. */
+    private String grupo;
+
+    private Integer ordem;
+
     private MultipartFile imagem;
 
     private Boolean ativo;
@@ -19,24 +22,47 @@ public class AtualizarSecaoDTO {
     public String getTitulo() {
         return titulo;
     }
+
     public void setTitulo(String titulo) {
         this.titulo = titulo;
     }
+
     public String getConteudo() {
         return conteudo;
     }
+
     public void setConteudo(String conteudo) {
         this.conteudo = conteudo;
     }
+
+    public String getGrupo() {
+        return grupo;
+    }
+
+    public void setGrupo(String grupo) {
+        this.grupo = grupo;
+    }
+
+    public Integer getOrdem() {
+        return ordem;
+    }
+
+    public void setOrdem(Integer ordem) {
+        this.ordem = ordem;
+    }
+
     public MultipartFile getImagem() {
         return imagem;
     }
+
     public void setImagem(MultipartFile imagem) {
         this.imagem = imagem;
     }
+
     public Boolean getAtivo() {
         return ativo;
     }
+
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
     }

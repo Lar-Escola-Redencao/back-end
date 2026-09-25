@@ -56,7 +56,8 @@ public class SecurityConfig {
                             "/uploads/redes-sociais/**",
                             "/uploads/eventos/**",
                             "/uploads/unidades/**", 
-                            "/uploads/transparencia/**").permitAll();
+                            "/uploads/transparencia/**",
+                            "/uploads/paginas/**").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
@@ -69,10 +70,13 @@ public class SecurityConfig {
                             "/rede-social/{id:\\d+}").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
-                            "/transparencia",
-                            "/transparencia/secoes",
-                            "/transparencia/secao/{id:\\d+}",
-                            "/transparencia/documento/{id:\\d+}/download").permitAll();
+                            "/paginas/{id:\\d+}",
+                            "/paginas/{id:\\d+}/secoes",
+                            "/paginas/secoes/{id:\\d+}",
+                            "/paginas/documentos/{id:\\d+}/download").permitAll();
+
+                    // Listagens de gestão (/admin) e toda escrita do CMS: só quem mantém o conteúdo público.
+                    req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
 
                     req.requestMatchers(HttpMethod.GET, 
                     		"/membro/me").authenticated();
