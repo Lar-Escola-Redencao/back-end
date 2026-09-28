@@ -36,6 +36,10 @@ public class Secao {
     @Size(min = 3, max = 150)
     private String titulo;
 
+    private String grupo = "nenhum";
+
+    private Integer ordem = 1;
+
     @Column(columnDefinition = "TEXT")
     private String conteudo;
 
@@ -64,6 +68,18 @@ public class Secao {
     }
     public void setTitulo(String titulo) {
         this.titulo = titulo;
+    }
+    public String getGrupo() {
+        return grupo;
+    }
+    public void setGrupo(String grupo) {
+        this.grupo = grupo;
+    }
+    public Integer getOrdem() {
+        return ordem;
+    }
+    public void setOrdem(Integer ordem) {
+        this.ordem = ordem;
     }
     public String getConteudo() {
         return conteudo;
