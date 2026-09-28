@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.api;
 
+import java.util.List;
+
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
@@ -10,6 +12,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -29,9 +32,14 @@ public class TurmaController {
         this.turmaService = turmaService;
     }
 
+    @GetMapping
+    public List<TurmaResponseDTO> listarTodasAsTurmas() {
+        return turmaService.listarTodasAsTurmas();
+    }
+
     @GetMapping("/todas")
-    public PagedModel<TurmaResponseDTO> listarTurmas(Pageable pageable) {
-        return new PagedModel<>(turmaService.listarTurmas(pageable));
+    public PagedModel<TurmaResponseDTO> listarTurmas(Pageable pageable, @RequestParam(name = "unidadeId", required = false) Integer unidadeId) {
+        return new PagedModel<>(turmaService.listarTurmas(pageable, unidadeId));
     }
 
     @GetMapping("/{id}")
