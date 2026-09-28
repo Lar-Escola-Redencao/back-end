@@ -12,4 +12,10 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
     Optional<Membro> findByEmail(String email);
     Optional<Membro> findByCpf(String cpf);
     Page<Membro> findByPapelId(Integer idPapel, Pageable pageable);
+
+    default Optional<Membro> buscarPorCpf(String cpf) {
+        String digitos = Membro.somenteDigitos(cpf);
+        String comMascara = digitos.replaceFirst("^(\\d{3})(\\d{3})(\\d{3})(\\d{2})$", "$1.$2.$3-$4");
+        return findByCpf(digitos).or(() -> findByCpf(comMascara));
+    }
 }

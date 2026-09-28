@@ -53,7 +53,7 @@ public class MembroService {
     	if (membroRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado no sistema.");
         }
-        if (membroRepository.findByCpf(dto.getCpf()).isPresent()) {
+        if (membroRepository.buscarPorCpf(dto.getCpf()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está cadastrado no sistema.");
         }
         
@@ -87,8 +87,9 @@ public class MembroService {
             }
         }
 
-        if (!membro.getCpf().equals(dto.getCpf())) {
-            Optional<Membro> membroComCpf = membroRepository.findByCpf(dto.getCpf());
+        String cpf = Membro.somenteDigitos(dto.getCpf());
+        if (!Membro.somenteDigitos(membro.getCpf()).equals(cpf)) {
+            Optional<Membro> membroComCpf = membroRepository.buscarPorCpf(cpf);
             if (membroComCpf.isPresent()) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está em uso por outro usuário.");
             }
