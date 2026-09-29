@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -24,15 +25,19 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.EventoDetalhadoResponseDTO;
+import br.org.larescolaredencao.dto.EventoRedeSocialResponseDTO;
 import br.org.larescolaredencao.dto.EventoResponseDTO;
+import br.org.larescolaredencao.dto.VincularRedeSocialEventoDTO;
 import br.org.larescolaredencao.model.Evento;
-import br.org.larescolaredencao.model.MidiaEvento;
+import br.org.larescolaredencao.model.EventoRedeSocial;
+import br.org.larescolaredencao.model.EventoRedeSocialId;
 import br.org.larescolaredencao.model.Parceiro;
+import br.org.larescolaredencao.model.RedeSocial;
 import br.org.larescolaredencao.model.enums.TipoEvento;
-import br.org.larescolaredencao.model.enums.TipoMidia;
+import br.org.larescolaredencao.repository.EventoRedeSocialRepository;
 import br.org.larescolaredencao.repository.EventoRepository;
-import br.org.larescolaredencao.repository.MidiaEventoRepository;
 import br.org.larescolaredencao.repository.ParceiroRepository;
+import br.org.larescolaredencao.repository.RedeSocialRepository;
 
 @ExtendWith(MockitoExtension.class)
 class EventoServiceTeste {
@@ -47,7 +52,10 @@ class EventoServiceTeste {
     private ParceiroRepository parceiroRepository;
 
     @Mock
-    private MidiaEventoRepository midiaEventoRepository;
+    private RedeSocialRepository redeSocialRepository;
+
+    @Mock
+    private EventoRedeSocialRepository eventoRedeSocialRepository;
 
     @InjectMocks
     private EventoService eventoService;
@@ -107,23 +115,20 @@ class EventoServiceTeste {
     }
 
     @Test
-    void deveDetalharEventoSemCoberturaComComentarioNuloEListasVazias() {
+    void deveDetalharEventoSemParceiros() {
         Evento evento = new Evento();
         evento.setId(3);
         evento.setTitulo("Bazar de Primavera");
         when(eventoRepository.findByIdComParceiros(3)).thenReturn(Optional.of(evento));
-        when(midiaEventoRepository.findByEventoIdOrderByIdAsc(3)).thenReturn(List.of());
 
         EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(3);
 
         assertThat(resultado.getTitulo()).isEqualTo("Bazar de Primavera");
-        assertThat(resultado.getComentarioPosEvento()).isNull();
-        assertThat(resultado.getMidiaEvento()).isEmpty();
         assertThat(resultado.getParceiros()).isEmpty();
     }
 
     @Test
-    void deveDetalharEventoComCoberturaEIncluirParceiroInativo() {
+    void deveDetalharEventoIncluindoParceiroInativo() {
         Parceiro ativo = new Parceiro();
         ativo.setId(1L);
         ativo.setNome("Padaria Central");
@@ -137,24 +142,12 @@ class EventoServiceTeste {
 
         Evento evento = new Evento();
         evento.setId(4);
-        evento.setComentarioPosEvento("Arrecadamos 200 kg de alimentos.");
         evento.setParceiros(List.of(ativo, inativo));
 
-        MidiaEvento foto = new MidiaEvento();
-        foto.setId(10);
-        foto.setTipoMidia(TipoMidia.IMAGEM);
-        foto.setUrlMidia("/uploads/eventos/midias/foto.jpg");
-
         when(eventoRepository.findByIdComParceiros(4)).thenReturn(Optional.of(evento));
-        when(midiaEventoRepository.findByEventoIdOrderByIdAsc(4)).thenReturn(List.of(foto));
 
         EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(4);
 
-        assertThat(resultado.getComentarioPosEvento()).isEqualTo("Arrecadamos 200 kg de alimentos.");
-        assertThat(resultado.getMidiaEvento()).hasSize(1);
-        assertThat(resultado.getMidiaEvento().get(0).getId()).isEqualTo(10);
-        assertThat(resultado.getMidiaEvento().get(0).getTipoMidia()).isEqualTo(TipoMidia.IMAGEM);
-        assertThat(resultado.getMidiaEvento().get(0).getUrlMidia()).isEqualTo("/uploads/eventos/midias/foto.jpg");
         assertThat(resultado.getParceiros()).extracting("nome").containsExactly("Padaria Central", "Mercado Antigo");
     }
 
@@ -167,6 +160,160 @@ class EventoServiceTeste {
                 .hasMessageContaining("Evento não encontrado")
                 .extracting(e -> ((ResponseStatusException) e).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
-        verify(midiaEventoRepository, never()).findByEventoIdOrderByIdAsc(any());
+    }
+
+    @Test
+    void deveDetalharEventoComoEncerradoQuandoDataJaPassou() {
+        Evento evento = new Evento();
+        evento.setId(5);
+        evento.setDataEvento(LocalDateTime.now().minusDays(1));
+        when(eventoRepository.findByIdComParceiros(5)).thenReturn(Optional.of(evento));
+
+        EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(5);
+
+        assertThat(resultado.isEncerrado()).isTrue();
+    }
+
+    @Test
+    void deveDetalharEventoComoNaoEncerradoQuandoDataAindaNaoChegou() {
+        Evento evento = new Evento();
+        evento.setId(6);
+        evento.setDataEvento(LocalDateTime.now().plusDays(1));
+        when(eventoRepository.findByIdComParceiros(6)).thenReturn(Optional.of(evento));
+
+        EventoDetalhadoResponseDTO resultado = eventoService.getEventoById(6);
+
+        assertThat(resultado.isEncerrado()).isFalse();
+    }
+
+    @Test
+    void ehEventoEncerradoDeveCompararComADataDeReferencia() {
+        LocalDateTime dataEvento = LocalDateTime.of(2026, 9, 24, 19, 0);
+        Evento evento = new Evento();
+        evento.setDataEvento(dataEvento);
+
+        assertThat(evento.ehEventoEncerrado(dataEvento.minusMinutes(1))).isFalse();
+        assertThat(evento.ehEventoEncerrado(dataEvento)).isFalse();
+        assertThat(evento.ehEventoEncerrado(dataEvento.plusMinutes(1))).isTrue();
+    }
+
+    @Test
+    void deveVincularRedeSocialAoEvento() {
+        Evento evento = new Evento();
+        evento.setId(7);
+        RedeSocial instagram = new RedeSocial();
+        instagram.setId(1L);
+        instagram.setNome("Instagram");
+        instagram.setAtivo(true);
+
+        VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
+        dto.setIdRedeSocial(1L);
+        dto.setUrlLink("https://instagram.com/p/abc");
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(evento));
+        when(redeSocialRepository.findById(1L)).thenReturn(Optional.of(instagram));
+        when(eventoRedeSocialRepository.findById(new EventoRedeSocialId(7, 1L))).thenReturn(Optional.empty());
+        when(eventoRedeSocialRepository.save(any(EventoRedeSocial.class))).thenAnswer(i -> i.getArgument(0));
+
+        EventoRedeSocialResponseDTO resultado = eventoService.vincularRedeSocial(7, dto);
+
+        assertThat(resultado.getIdRedeSocial()).isEqualTo(1L);
+        assertThat(resultado.getNome()).isEqualTo("Instagram");
+        assertThat(resultado.getUrlLink()).isEqualTo("https://instagram.com/p/abc");
+    }
+
+    @Test
+    void deveAtualizarLinkQuandoRedeSocialJaEstaVinculada() {
+        Evento evento = new Evento();
+        evento.setId(7);
+        RedeSocial instagram = new RedeSocial();
+        instagram.setId(1L);
+        instagram.setAtivo(true);
+
+        EventoRedeSocial existente = new EventoRedeSocial();
+        existente.setId(new EventoRedeSocialId(7, 1L));
+        existente.setEvento(evento);
+        existente.setRedeSocial(instagram);
+        existente.setUrlLink("https://instagram.com/p/antigo");
+
+        VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
+        dto.setIdRedeSocial(1L);
+        dto.setUrlLink("https://instagram.com/p/novo");
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(evento));
+        when(redeSocialRepository.findById(1L)).thenReturn(Optional.of(instagram));
+        when(eventoRedeSocialRepository.findById(new EventoRedeSocialId(7, 1L))).thenReturn(Optional.of(existente));
+        when(eventoRedeSocialRepository.save(existente)).thenReturn(existente);
+
+        EventoRedeSocialResponseDTO resultado = eventoService.vincularRedeSocial(7, dto);
+
+        assertThat(resultado.getUrlLink()).isEqualTo("https://instagram.com/p/novo");
+    }
+
+    @Test
+    void deveRetornar404AoVincularRedeSocialInexistente() {
+        VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
+        dto.setIdRedeSocial(99L);
+        dto.setUrlLink("https://exemplo.com");
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(new Evento()));
+        when(redeSocialRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> eventoService.vincularRedeSocial(7, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("Rede social não encontrada");
+        verify(eventoRedeSocialRepository, never()).save(any());
+    }
+
+    @Test
+    void deveRetornar404AoDesvincularRedeSocialNaoVinculada() {
+        when(eventoRedeSocialRepository.existsById(new EventoRedeSocialId(7, 1L))).thenReturn(false);
+
+        assertThatThrownBy(() -> eventoService.desvincularRedeSocial(7, 1L))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("não vinculada");
+        verify(eventoRedeSocialRepository, never()).deleteById(any());
+    }
+
+    @Test
+    void deveUsarUrlDaRedeSocialQuandoLinkNaoInformado() {
+        Evento evento = new Evento();
+        evento.setId(7);
+        RedeSocial instagram = new RedeSocial();
+        instagram.setId(1L);
+        instagram.setUrl("https://instagram.com/larescolaredencao");
+        instagram.setAtivo(true);
+
+        VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
+        dto.setIdRedeSocial(1L);
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(evento));
+        when(redeSocialRepository.findById(1L)).thenReturn(Optional.of(instagram));
+        when(eventoRedeSocialRepository.findById(new EventoRedeSocialId(7, 1L))).thenReturn(Optional.empty());
+        when(eventoRedeSocialRepository.save(any(EventoRedeSocial.class))).thenAnswer(i -> i.getArgument(0));
+
+        EventoRedeSocialResponseDTO resultado = eventoService.vincularRedeSocial(7, dto);
+
+        assertThat(resultado.getUrlLink()).isEqualTo("https://instagram.com/larescolaredencao");
+    }
+
+    @Test
+    void deveRecusarVinculoComRedeSocialInativa() {
+        RedeSocial inativa = new RedeSocial();
+        inativa.setId(2L);
+        inativa.setAtivo(false);
+
+        VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
+        dto.setIdRedeSocial(2L);
+
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(new Evento()));
+        when(redeSocialRepository.findById(2L)).thenReturn(Optional.of(inativa));
+
+        assertThatThrownBy(() -> eventoService.vincularRedeSocial(7, dto))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("inativa")
+                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(eventoRedeSocialRepository, never()).save(any());
     }
 }
