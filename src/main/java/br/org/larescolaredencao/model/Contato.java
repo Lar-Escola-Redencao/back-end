@@ -26,6 +26,12 @@ public class Contato {
 
     @Column(length = 255)
     private String endereco;
+    
+    @Column(length = 20)
+    private String cpf;
+    
+    @Column(name = "local_trabalho", length = 150)
+    private String localTrabalho;
 
     public Integer getId() {
         return id;
@@ -65,5 +71,21 @@ public class Contato {
 
     public void setEndereco(String endereco) {
         this.endereco = endereco;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getLocalTrabalho() {
+        return localTrabalho;
+    }
+
+    public void setLocalTrabalho(String localTrabalho) {
+        this.localTrabalho = localTrabalho;
     }
 }

@@ -17,11 +17,11 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
     Optional<Contato> findByTelefoneAndNomeCompletoAndEmail(String telefone, String nomeCompleto, String email);
 
     @Query("SELECT DISTINCT c FROM Contato c WHERE " +
-           "NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) " +
+           "NOT EXISTS (SELECT 1 FROM ContatoUsuario ca WHERE ca.contato = c) " +
            "OR c IN (" +
-           "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
-           "   JOIN ca2.assistido a " +
-           "   JOIN Matricula m ON m.assistido = a " +
+           "   SELECT ca2.contato FROM ContatoUsuario ca2 " +
+           "   JOIN ca2.usuario a " +
+           "   JOIN Matricula m ON m.usuario = a " +
            "   JOIN m.turma t " +
            "   JOIN t.unidade u " +
            "   WHERE m.status = 'ATIVO' AND u IN (" +
@@ -31,16 +31,8 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
     Page<Contato> findVisibleByMembroId(@Param("membroId") Integer membroId, Pageable pageable);
 
     @Query("SELECT DISTINCT c FROM Contato c WHERE " +
-           "(LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR (:termoTelefone IS NOT NULL AND c.telefone LIKE CONCAT('%', :termoTelefone, '%'))) AND " +
-           "(NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) OR c IN (" +
-           "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
-           "   JOIN ca2.assistido a " +
-           "   JOIN Matricula m ON m.assistido = a " +
-           "   JOIN m.turma t " +
-           "   JOIN t.unidade u " +
-           "   WHERE m.status = 'ATIVO' AND u IN (" +
-           "       SELECT un FROM Membro mem JOIN mem.unidades un WHERE mem.id = :membroId" +
-           "   )" +
-           "))")
-    List<Contato> searchVisibleByMembroIdAndTermo(@Param("membroId") Integer membroId, @Param("termo") String termo, @Param("termoTelefone") String termoTelefone);
+           "LOWER(c.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
+           "LOWER(c.email) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
+           "(:termoTelefone IS NOT NULL AND (c.telefone LIKE CONCAT('%', :termoTelefone, '%') OR c.cpf LIKE CONCAT('%', :termoTelefone, '%')))")
+    List<Contato> searchGlobalByTermo(@Param("termo") String termo, @Param("termoTelefone") String termoTelefone);
 }

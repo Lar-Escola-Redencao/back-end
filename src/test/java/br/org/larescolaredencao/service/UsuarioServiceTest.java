@@ -1,25 +1,41 @@
 package br.org.larescolaredencao.service;
 
-import br.org.larescolaredencao.dto.AssistidoResponseDTO;
+import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
+import br.org.larescolaredencao.dto.ComposicaoFamiliarDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
-import br.org.larescolaredencao.dto.CriarAssistidoDTO;
-import br.org.larescolaredencao.dto.InativarAssistidoDTO;
+import br.org.larescolaredencao.dto.FichaSocioeconomicaDTO;
+import br.org.larescolaredencao.dto.InativarUsuarioDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
-import br.org.larescolaredencao.model.Assistido;
+import br.org.larescolaredencao.dto.UsuarioResponseDTO;
+import br.org.larescolaredencao.model.ArquivoSaude;
+import br.org.larescolaredencao.model.ComposicaoFamiliar;
 import br.org.larescolaredencao.model.Contato;
-import br.org.larescolaredencao.model.ContatoAssistido;
-import br.org.larescolaredencao.model.ContatoAssistidoId;
+import br.org.larescolaredencao.model.ContatoUsuario;
+import br.org.larescolaredencao.model.FichaSocioeconomica;
 import br.org.larescolaredencao.model.Matricula;
+import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
+import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.enums.EscolaridadeFamiliar;
 import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.Periodo;
+import br.org.larescolaredencao.model.enums.PeriodoEscolar;
+import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
-import br.org.larescolaredencao.repository.AssistidoRepository;
-import br.org.larescolaredencao.repository.ContatoAssistidoRepository;
+import br.org.larescolaredencao.model.enums.TipoDocumento;
+import br.org.larescolaredencao.model.enums.TipoMoradia;
+import br.org.larescolaredencao.repository.ArquivoSaudeRepository;
+import br.org.larescolaredencao.repository.ComposicaoFamiliarRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
+import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
+import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
+import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
+import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
+import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +45,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -38,6 +55,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -46,10 +64,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-public class AssistidoServiceTest {
+public class UsuarioServiceTest {
 
     @Mock
-    private AssistidoRepository assistidoRepository;
+    private UsuarioRepository usuarioRepository;
 
     @Mock
     private MatriculaRepository matriculaRepository;
@@ -58,7 +76,7 @@ public class AssistidoServiceTest {
     private ContatoRepository contatoRepository;
 
     @Mock
-    private ContatoAssistidoRepository contatoAssistidoRepository;
+    private ContatoUsuarioRepository contatoUsuarioRepository;
 
     @Mock
     private TurmaRepository turmaRepository;
@@ -66,12 +84,27 @@ public class AssistidoServiceTest {
     @Mock
     private ArquivoService arquivoService;
 
-    @InjectMocks
-    private AssistidoService assistidoService;
+    @Mock
+    private FichaSocioeconomicaRepository fichaSocioeconomicaRepository;
 
-    private Assistido assistido;
+    @Mock
+    private ComposicaoFamiliarRepository composicaoFamiliarRepository;
+
+    @Mock
+    private ArquivoSaudeRepository arquivoSaudeRepository;
+
+    @Mock
+    private EntrevistaSocialRepository entrevistaSocialRepository;
+
+    @Mock
+    private MembroRepository membroRepository;
+
+    @InjectMocks
+    private UsuarioService usuarioService;
+
+    private Usuario usuario;
     private Turma turma;
-    private CriarAssistidoDTO criarAssistidoDTO;
+    private CadastroUsuarioCompletoDTO cadastroDTO;
     private Matricula matriculaAtiva;
 
     @BeforeEach
@@ -87,15 +120,16 @@ public class AssistidoServiceTest {
         turma.setHoraInicio(LocalTime.of(8, 0));
         turma.setHoraFim(LocalTime.of(12, 0));
 
-        assistido = new Assistido();
-        assistido.setId(1);
-        assistido.setNomeCompleto("Enzo Gabriel");
-        assistido.setCpf("11122233344");
-        assistido.setDataNascimento(LocalDate.of(2015, 5, 10));
+        usuario = new Usuario();
+        usuario.setId(1);
+        usuario.setNomeCompleto("Enzo Gabriel");
+        usuario.setCpf("11122233344");
+        usuario.setDataNascimento(LocalDate.of(2015, 5, 10));
+        usuario.setImagemPerfil("/uploads/usuarios/foto.jpg");
 
         matriculaAtiva = new Matricula();
         matriculaAtiva.setId(1);
-        matriculaAtiva.setAssistido(assistido);
+        matriculaAtiva.setUsuario(usuario);
         matriculaAtiva.setTurma(turma);
         matriculaAtiva.setStatus(StatusMatricula.ATIVO);
         matriculaAtiva.setDataIngresso(LocalDateTime.now());
@@ -106,46 +140,60 @@ public class AssistidoServiceTest {
         contatoDTO.setParentesco(Parentesco.MAE);
         contatoDTO.setPrincipal(true);
 
-        criarAssistidoDTO = new CriarAssistidoDTO();
-        criarAssistidoDTO.setNomeCompleto("Enzo Gabriel");
-        criarAssistidoDTO.setCpf("11122233344");
-        criarAssistidoDTO.setDataNascimento(LocalDate.of(2015, 5, 10));
-        criarAssistidoDTO.setIdTurma(1);
-        criarAssistidoDTO.setContatos(List.of(contatoDTO));
+        FichaSocioeconomicaDTO fichaDTO = new FichaSocioeconomicaDTO();
+        fichaDTO.setTipoMoradia(TipoMoradia.ALUGADA);
+        fichaDTO.setValorAluguel(new BigDecimal("800.00"));
+
+        ComposicaoFamiliarDTO compFamiliarDTO = new ComposicaoFamiliarDTO();
+        compFamiliarDTO.setNomeCompleto("José da Silva");
+        compFamiliarDTO.setParentescoVinculo(Parentesco.PAI);
+        compFamiliarDTO.setEscolaridade(EscolaridadeFamiliar.MEDIO_COMPLETO);
+
+        cadastroDTO = new CadastroUsuarioCompletoDTO();
+        cadastroDTO.setNomeCompleto("Enzo Gabriel");
+        cadastroDTO.setCpf("11122233344");
+        cadastroDTO.setDataNascimento(LocalDate.of(2015, 5, 10));
+        cadastroDTO.setEndereco("Rua 1");
+        cadastroDTO.setBairro("Centro");
+        cadastroDTO.setEscola("Escola Estadual");
+        cadastroDTO.setPeriodoEscolar(PeriodoEscolar.MANHA);
+        cadastroDTO.setSerieEscolar(SerieEscolar.SERIE_4);
+        cadastroDTO.setIdTurma(1);
+        cadastroDTO.setContatos(List.of(contatoDTO));
+        cadastroDTO.setFichaSocioeconomica(fichaDTO);
+        cadastroDTO.setComposicaoFamiliar(List.of(compFamiliarDTO));
     }
 
     @Test
-    void cadastrarAssistidoDeveCriarNovoAssistidoComMatriculaEContato() {
-        when(assistidoRepository.findByCpf(anyString())).thenReturn(Optional.empty());
-        when(assistidoRepository.save(any(Assistido.class))).thenReturn(assistido);
+    void cadastrarUsuarioDeveCriarNovoUsuarioComMatriculaContatosETabelasAuxiliares() {
+        when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.empty());
+        when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
         when(turmaRepository.findById(1)).thenReturn(Optional.of(turma));
         when(contatoRepository.findByTelefone(anyString())).thenReturn(Optional.empty());
 
         Contato novoContato = new Contato();
         novoContato.setId(1);
-        novoContato.setTelefone("16999991111");
         when(contatoRepository.save(any(Contato.class))).thenReturn(novoContato);
-
-        when(contatoAssistidoRepository.existsById(any())).thenReturn(false);
-        when(contatoAssistidoRepository.findByAssistido(any(Assistido.class))).thenReturn(Collections.emptyList());
         when(matriculaRepository.save(any(Matricula.class))).thenReturn(matriculaAtiva);
 
-        AssistidoResponseDTO response = assistidoService.cadastrarAssistido(criarAssistidoDTO);
+        UsuarioResponseDTO response = usuarioService.cadastrarUsuario(cadastroDTO);
 
         assertNotNull(response);
         assertEquals("Enzo Gabriel", response.getNomeCompleto());
-        verify(assistidoRepository, times(1)).save(any(Assistido.class));
+        verify(usuarioRepository, times(1)).save(any(Usuario.class));
         verify(matriculaRepository, times(1)).save(any(Matricula.class));
-        verify(contatoAssistidoRepository, times(1)).save(any(ContatoAssistido.class));
+        verify(contatoUsuarioRepository, times(1)).save(any(ContatoUsuario.class));
+        verify(fichaSocioeconomicaRepository, times(1)).save(any(FichaSocioeconomica.class));
+        verify(composicaoFamiliarRepository, times(1)).save(any(ComposicaoFamiliar.class));
     }
 
     @Test
-    void cadastrarAssistidoComMatriculaAtivaDeveLancarConflictException() {
-        when(assistidoRepository.findByCpf(anyString())).thenReturn(Optional.of(assistido));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+    void cadastrarUsuarioComMatriculaAtivaDeveLancarConflictException() {
+        when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
-            assistidoService.cadastrarAssistido(criarAssistidoDTO);
+            usuarioService.cadastrarUsuario(cadastroDTO);
         });
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -153,10 +201,10 @@ public class AssistidoServiceTest {
 
     @Test
     void transferirTurmaMenosDe24HorasDeveAtualizarMatriculaAtual() {
-        when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         
         matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(10));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();
         novaTurma.setId(2);
@@ -167,7 +215,7 @@ public class AssistidoServiceTest {
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
 
-        assistidoService.transferirTurma(1, dto);
+        usuarioService.transferirTurma(1, dto);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(2, matriculaAtiva.getTurma().getId());
@@ -176,21 +224,20 @@ public class AssistidoServiceTest {
 
     @Test
     void transferirTurmaMaisDe24HorasDeveInativarAtualECriarNova() {
-        when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
 
         matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(30));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();
         novaTurma.setId(2);
-        novaTurma.setPeriodo(Periodo.TARDE);
         novaTurma.setUnidade(turma.getUnidade());
         when(turmaRepository.findById(2)).thenReturn(Optional.of(novaTurma));
 
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
 
-        assistidoService.transferirTurma(1, dto);
+        usuarioService.transferirTurma(1, dto);
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
         assertEquals(StatusMatricula.INATIVO, matriculaAtiva.getStatus());
@@ -198,49 +245,88 @@ public class AssistidoServiceTest {
     }
 
     @Test
-    void inativarAssistidoDeveMudarStatusParaEgresso() {
-        when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+    void inativarUsuarioDeveMudarStatusParaEgressoESalvarJustificativa() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
-        InativarAssistidoDTO dto = new InativarAssistidoDTO();
+        InativarUsuarioDTO dto = new InativarUsuarioDTO();
         dto.setDataDesligamento(LocalDate.now());
+        dto.setJustificativa("Mudança de cidade");
 
-        assistidoService.inativarAssistido(1, dto);
+        usuarioService.inativarUsuario(1, dto);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(StatusMatricula.EGRESSO, matriculaAtiva.getStatus());
         assertEquals(dto.getDataDesligamento(), matriculaAtiva.getDataDesligamento());
+        assertEquals("Mudança de cidade", matriculaAtiva.getJustificativaEgresso());
     }
 
     @Test
-    void deletarAssistidoMenosDe24HorasHardDelete() {
-        when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
+    void deletarUsuarioMenosDe24HorasHardDeleteETabelasFilhas() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         
         matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(5));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
         
-        ContatoAssistido ca = new ContatoAssistido();
-        when(contatoAssistidoRepository.findByAssistido(assistido)).thenReturn(List.of(ca));
+        ArquivoSaude arq = new ArquivoSaude();
+        arq.setCaminhoArquivo("caminho");
+        when(arquivoSaudeRepository.findByIdUsuario(1)).thenReturn(List.of(arq));
 
-        assistidoService.deletarAssistido(1);
+        usuarioService.deletarUsuario(1);
 
         verify(matriculaRepository, times(1)).deleteAll(any());
-        verify(contatoAssistidoRepository, times(1)).deleteAll(any());
-        verify(assistidoRepository, times(1)).delete(assistido);
+        verify(arquivoService, times(1)).deletarArquivo("caminho");
+        verify(arquivoSaudeRepository, times(1)).deleteByIdUsuario(1);
+        verify(composicaoFamiliarRepository, times(1)).deleteByIdUsuario(1);
+        verify(fichaSocioeconomicaRepository, times(1)).deleteById(1);
+        verify(entrevistaSocialRepository, times(1)).deleteByIdUsuario(1);
+        verify(contatoUsuarioRepository, times(1)).deleteByUsuarioId(1);
+        verify(usuarioRepository, times(1)).delete(usuario);
     }
 
     @Test
-    void deletarAssistidoMaisDe24HorasSoftDelete() {
-        when(assistidoRepository.findById(1)).thenReturn(Optional.of(assistido));
+    void deletarUsuarioMaisDe24HorasSoftDeleteENulaCamposSensiveis() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
         
         matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(48));
-        when(matriculaRepository.findByAssistido(assistido)).thenReturn(List.of(matriculaAtiva));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+        when(arquivoSaudeRepository.findByIdUsuario(1)).thenReturn(Collections.emptyList());
 
-        assistidoService.deletarAssistido(1);
+        usuarioService.deletarUsuario(1);
 
-        verify(assistidoRepository, times(1)).save(assistido);
+        verify(arquivoSaudeRepository, times(1)).deleteByIdUsuario(1);
+        verify(composicaoFamiliarRepository, times(1)).deleteByIdUsuario(1);
+        verify(fichaSocioeconomicaRepository, times(1)).deleteById(1);
+        verify(usuarioRepository, times(1)).save(usuario);
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
-        verify(assistidoRepository, times(0)).delete(assistido);
+        verify(usuarioRepository, times(0)).delete(usuario);
+        
         assertEquals(StatusMatricula.EXCLUIDO, matriculaAtiva.getStatus());
+        assertNull(usuario.getCpf());
+        assertNull(usuario.getEndereco());
+        assertNull(usuario.getEscola());
+        assertNull(usuario.getImagemPerfil());
+    }
+
+    @Test
+    void desvincularContatoValidaPermissaoDeCoordenadorDiferenteUnidade() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+        
+        Papel papelCoord = new Papel();
+        papelCoord.setNomePapel("COORDENADOR");
+        
+        Membro coordenador = new Membro();
+        coordenador.setPapel(papelCoord);
+        Unidade outraUnidade = new Unidade();
+        outraUnidade.setId(99); 
+        coordenador.setUnidades(List.of(outraUnidade)); 
+        
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
+            usuarioService.desvincularContato(1, 2, coordenador);
+        });
+
+        assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
+        verify(contatoUsuarioRepository, times(0)).delete(any());
     }
 }

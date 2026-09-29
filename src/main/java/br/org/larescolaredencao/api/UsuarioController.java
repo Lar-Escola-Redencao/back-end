@@ -1,17 +1,18 @@
 package br.org.larescolaredencao.api;
 
-import br.org.larescolaredencao.dto.AssistidoResponseDTO;
-import br.org.larescolaredencao.dto.AtualizarAssistidoDTO;
+import br.org.larescolaredencao.dto.AtualizarUsuarioDTO;
 import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
+import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
-import br.org.larescolaredencao.dto.CriarAssistidoDTO;
-import br.org.larescolaredencao.dto.InativarAssistidoDTO;
+import br.org.larescolaredencao.dto.InativarUsuarioDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
+import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
+import br.org.larescolaredencao.model.ArquivoSaude;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
-import br.org.larescolaredencao.service.AssistidoService;
+import br.org.larescolaredencao.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -30,23 +31,23 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.List;
 
 @RestController
-@RequestMapping("/assistidos")
-public class AssistidoController {
+@RequestMapping("/usuarios")
+public class UsuarioController {
 
-    private final AssistidoService assistidoService;
+    private final UsuarioService usuarioService;
 
-    public AssistidoController(AssistidoService assistidoService) {
-        this.assistidoService = assistidoService;
+    public UsuarioController(UsuarioService usuarioService) {
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping
-    public List<AssistidoResponseDTO> listarAssistidos(@AuthenticationPrincipal Membro membroLogado) {
-        return assistidoService.listarAssistidosDoMembro(membroLogado.getId());
+    public List<UsuarioResponseDTO> listarUsuarios(@AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.listarUsuariosDoMembro(membroLogado.getId());
     }
 
     @GetMapping("/{id}")
-    public AssistidoResponseDTO buscarAssistido(@PathVariable("id") Integer id) {
-        return assistidoService.buscarAssistidoPorId(id);
+    public UsuarioResponseDTO buscarUsuario(@PathVariable("id") Integer id) {
+        return usuarioService.buscarUsuarioPorId(id);
     }
 
     @GetMapping("/parentescos")
@@ -61,59 +62,81 @@ public class AssistidoController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public AssistidoResponseDTO criarAssistido(@Valid @RequestBody CriarAssistidoDTO dto) {
-        return assistidoService.cadastrarAssistido(dto);
+    public UsuarioResponseDTO criarUsuario(@Valid @RequestBody CadastroUsuarioCompletoDTO dto) {
+        return usuarioService.cadastrarUsuario(dto);
     }
 
     @PutMapping("/{id}")
-    public AssistidoResponseDTO atualizarAssistido(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarAssistidoDTO dto) {
-        return assistidoService.atualizarAssistido(id, dto);
+    public UsuarioResponseDTO atualizarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarUsuarioDTO dto) {
+        return usuarioService.atualizarUsuario(id, dto);
     }
 
     @PostMapping("/{id}/foto")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void atualizarFotoPerfil(@PathVariable("id") Integer id, @RequestParam("foto") MultipartFile foto) {
-        assistidoService.atualizarFotoPerfil(id, foto);
+        usuarioService.atualizarFotoPerfil(id, foto);
     }
 
     @PutMapping("/{id}/turma")
-    public AssistidoResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto) {
-        return assistidoService.transferirTurma(id, dto);
+    public UsuarioResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto) {
+        return usuarioService.transferirTurma(id, dto);
     }
 
     @PutMapping("/{id}/inativar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void inativarAssistido(@PathVariable("id") Integer id, @Valid @RequestBody InativarAssistidoDTO dto) {
-        assistidoService.inativarAssistido(id, dto);
+    public void inativarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody InativarUsuarioDTO dto) {
+        usuarioService.inativarUsuario(id, dto);
     }
 
     @PostMapping("/{id}/contatos")
     @ResponseStatus(HttpStatus.CREATED)
-    public AssistidoResponseDTO vincularNovoContato(@PathVariable("id") Integer id, @Valid @RequestBody ContatoDTO dto) {
-        return assistidoService.vincularNovoContato(id, dto);
+    public UsuarioResponseDTO vincularNovoContato(@PathVariable("id") Integer id, @Valid @RequestBody ContatoDTO dto) {
+        return usuarioService.vincularNovoContato(id, dto);
     }
 
-    @PostMapping("/{idAssistido}/contatos/{idContato}/vincular")
+    @PostMapping("/{idUsuario}/contatos/{idContato}/vincular")
     @ResponseStatus(HttpStatus.CREATED)
-    public AssistidoResponseDTO vincularContatoExistente(@PathVariable("idAssistido") Integer idAssistido, @PathVariable("idContato") Integer idContato, @Valid @RequestBody VincularContatoExistenteDTO dto) {
-        return assistidoService.vincularContatoExistente(idAssistido, idContato, dto);
+    public UsuarioResponseDTO vincularContatoExistente(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody VincularContatoExistenteDTO dto) {
+        return usuarioService.vincularContatoExistente(idUsuario, idContato, dto);
     }
 
-    @PutMapping("/{idAssistido}/contatos/{idContato}")
+    @PutMapping("/{idUsuario}/contatos/{idContato}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void atualizarVinculo(@PathVariable("idAssistido") Integer idAssistido, @PathVariable("idContato") Integer idContato, @Valid @RequestBody AtualizarVinculoDTO dto) {
-        assistidoService.atualizarVinculo(idAssistido, idContato, dto);
+    public void atualizarVinculo(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody AtualizarVinculoDTO dto) {
+        usuarioService.atualizarVinculo(idUsuario, idContato, dto);
     }
 
-    @DeleteMapping("/{idAssistido}/contatos/{idContato}")
+    @DeleteMapping("/{idUsuario}/contatos/{idContato}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void desvincularContato(@PathVariable("idAssistido") Integer idAssistido, @PathVariable("idContato") Integer idContato) {
-        assistidoService.desvincularContato(idAssistido, idContato);
+    public void desvincularContato(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.desvincularContato(idUsuario, idContato, membroLogado);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarAssistido(@PathVariable("id") Integer id) {
-        assistidoService.deletarAssistido(id);
+    public void deletarUsuario(@PathVariable("id") Integer id) {
+        usuarioService.deletarUsuario(id);
+    }
+    
+    @GetMapping("/buscar")
+    public List<UsuarioResponseDTO> buscarUsuariosAutocomplete(@RequestParam("termo") String termo, @RequestParam("unidadeId") Integer unidadeId, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.buscarUsuariosAutocomplete(termo, unidadeId, membroLogado);
+    }
+
+    @GetMapping("/{id}/arquivos-saude")
+    public List<ArquivoSaude> listarArquivosSaude(@PathVariable("id") Integer id) {
+        return usuarioService.listarArquivosSaude(id);
+    }
+
+    @PostMapping("/{id}/arquivos-saude")
+    @ResponseStatus(HttpStatus.CREATED)
+    public ArquivoSaude uploadArquivoSaude(@PathVariable("id") Integer id, @RequestParam("titulo") String titulo, @RequestParam("arquivo") MultipartFile arquivo) {
+        return usuarioService.uploadArquivoSaude(id, titulo, arquivo);
+    }
+
+    @DeleteMapping("/arquivos-saude/{idArquivo}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deletarArquivoSaude(@PathVariable("idArquivo") Integer idArquivo) {
+        usuarioService.deletarArquivoSaude(idArquivo);
     }
 }

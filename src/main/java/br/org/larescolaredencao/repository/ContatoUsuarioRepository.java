@@ -1,23 +1,25 @@
 package br.org.larescolaredencao.repository;
 
-import br.org.larescolaredencao.model.Assistido;
-import br.org.larescolaredencao.model.ContatoAssistido;
-import br.org.larescolaredencao.model.ContatoAssistidoId;
+import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.ContatoUsuario;
+import br.org.larescolaredencao.model.ContatoUsuarioId;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 import java.util.Optional;
 
-public interface ContatoAssistidoRepository extends JpaRepository<ContatoAssistido, ContatoAssistidoId> {
-    List<ContatoAssistido> findByAssistido(Assistido assistido);
+public interface ContatoUsuarioRepository extends JpaRepository<ContatoUsuario, ContatoUsuarioId> {
+    List<ContatoUsuario> findByUsuario(Usuario usuario);
 
-    List<ContatoAssistido> findByContatoId(Integer contatoId);
+    List<ContatoUsuario> findByContatoId(Integer contatoId);
 
     long countByContatoId(Integer contatoId);
 
-    long countByAssistido(Assistido assistido);
+    long countByUsuario(Usuario usuario);
 
-    Optional<ContatoAssistido> findByAssistidoAndPrincipalTrue(Assistido assistido);
+    Optional<ContatoUsuario> findByUsuarioAndPrincipalTrue(Usuario usuario);
 
-    Optional<ContatoAssistido> findByAssistidoIdAndContatoId(Integer assistidoId, Integer contatoId);
+    Optional<ContatoUsuario> findByUsuarioIdAndContatoId(Integer usuarioId, Integer contatoId);
+
+    void deleteByUsuarioId(Integer usuarioId);
 }

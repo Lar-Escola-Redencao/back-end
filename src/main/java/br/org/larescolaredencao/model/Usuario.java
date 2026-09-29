@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import br.org.larescolaredencao.model.enums.PeriodoEscolar;
+import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,8 +15,8 @@ import jakarta.persistence.Table;
 import java.time.LocalDate;
 
 @Entity
-@Table(name = "assistido")
-public class Assistido {
+@Table(name = "usuario")
+public class Usuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,12 +37,35 @@ public class Assistido {
     @Enumerated(EnumType.STRING)
     @Column(name = "tipo_documento")
     private TipoDocumento tipoDocumento;
-
-    @Column(name = "imagem_perfil", length = 255)
-    private String imagemPerfil;
+    
+    @Column(name = "cad_unico", length = 50)
+    private String cadUnico;
 
     @Column(length = 255)
     private String endereco;
+    
+    @Column(length = 100)
+    private String bairro;
+    
+    @Column(length = 10)
+    private String cep;
+    
+    @Column(length = 150)
+    private String escola;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "periodo_escolar")
+    private PeriodoEscolar periodoEscolar;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "serie_escolar")
+    private SerieEscolar serieEscolar;
+    
+    @Column(name = "ra_escolar", length = 20)
+    private String raEscolar;
+
+    @Column(name = "imagem_perfil", length = 255)
+    private String imagemPerfil;
 
     public Integer getId() {
         return id;
@@ -90,12 +115,12 @@ public class Assistido {
         this.tipoDocumento = tipoDocumento;
     }
 
-    public String getImagemPerfil() {
-        return imagemPerfil;
+    public String getCadUnico() {
+        return cadUnico;
     }
 
-    public void setImagemPerfil(String imagemPerfil) {
-        this.imagemPerfil = imagemPerfil;
+    public void setCadUnico(String cadUnico) {
+        this.cadUnico = cadUnico;
     }
 
     public String getEndereco() {
@@ -104,5 +129,61 @@ public class Assistido {
 
     public void setEndereco(String endereco) {
         this.endereco = endereco;
+    }
+
+    public String getBairro() {
+        return bairro;
+    }
+
+    public void setBairro(String bairro) {
+        this.bairro = bairro;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public void setCep(String cep) {
+        this.cep = cep;
+    }
+
+    public String getEscola() {
+        return escola;
+    }
+
+    public void setEscola(String escola) {
+        this.escola = escola;
+    }
+
+    public PeriodoEscolar getPeriodoEscolar() {
+        return periodoEscolar;
+    }
+
+    public void setPeriodoEscolar(PeriodoEscolar periodoEscolar) {
+        this.periodoEscolar = periodoEscolar;
+    }
+
+    public SerieEscolar getSerieEscolar() {
+        return serieEscolar;
+    }
+
+    public void setSerieEscolar(SerieEscolar serieEscolar) {
+        this.serieEscolar = serieEscolar;
+    }
+
+    public String getRaEscolar() {
+        return raEscolar;
+    }
+
+    public void setRaEscolar(String raEscolar) {
+        this.raEscolar = raEscolar;
+    }
+
+    public String getImagemPerfil() {
+        return imagemPerfil;
+    }
+
+    public void setImagemPerfil(String imagemPerfil) {
+        this.imagemPerfil = imagemPerfil;
     }
 }
