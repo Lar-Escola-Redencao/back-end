@@ -49,10 +49,9 @@ public class LgpdCronJob {
 
             if (usuario.getImagemPerfil() != null) {
                 arquivoService.deletarArquivo(usuario.getImagemPerfil());
-                usuario.setImagemPerfil(null);
-                usuarioRepository.save(usuario);
+                usuarioRepository.removerImagemPerfil(usuario.getId());
             }
-
+            
             List<ArquivoSaude> arquivosSaude = arquivoSaudeRepository.findByIdUsuario(usuario.getId());
             for (ArquivoSaude arquivoSaude : arquivosSaude) {
                 arquivoService.deletarArquivo(arquivoSaude.getCaminhoArquivo());

@@ -722,9 +722,9 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limite máximo de 4 arquivos de saúde atingido.");
         }
 
-        arquivoService.validarTipoArquivo(arquivo, TipoArquivo.FOTO); // A task permite PDF/JPG/PNG. Use TipoArquivo genérico se necessário.
+        arquivoService.validarTipoArquivo(arquivo, TipoArquivo.SAUDE);
 
-        String caminho = arquivoService.salvarArquivo(arquivo, "usuarios/saude/", TipoArquivo.FOTO);
+        String caminho = arquivoService.salvarArquivo(arquivo, "usuarios/saude/", TipoArquivo.SAUDE);
 
         ArquivoSaude arquivoSaude = new ArquivoSaude();
         arquivoSaude.setIdUsuario(usuario.getId());

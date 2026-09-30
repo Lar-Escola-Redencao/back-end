@@ -2,11 +2,6 @@ package br.org.larescolaredencao.service;
 
 import java.util.Set;
 
-/**
- * Categorias de arquivo suportadas pelo armazenamento genérico, cada uma com sua
- * própria lista branca de extensões e tipos MIME. Cada chamador de
- * {@link ArquivoService} escolhe a categoria adequada ao seu caso de uso.
- */
 public enum TipoArquivo {
 
     DOCUMENTO(
@@ -20,6 +15,10 @@ public enum TipoArquivo {
     FOTO(
             Set.of("jpg", "jpeg", "png", "webp"),
             Set.of("image/jpeg", "image/png", "image/webp")
+    ),
+    SAUDE(
+            Set.of("pdf", "jpg", "jpeg", "png"),
+            Set.of("application/pdf", "image/jpeg", "image/png")
     );
 
     private final Set<String> extensoesPermitidas;

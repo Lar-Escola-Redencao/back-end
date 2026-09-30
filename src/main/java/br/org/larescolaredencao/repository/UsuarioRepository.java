@@ -1,13 +1,15 @@
 package br.org.larescolaredencao.repository;
 
-import br.org.larescolaredencao.model.Usuario;
-import br.org.larescolaredencao.model.enums.TipoDocumento;
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import java.util.List;
-import java.util.Optional;
+import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.enums.TipoDocumento;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     Optional<Usuario> findByCpf(String cpf);
@@ -32,4 +34,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
             "JOIN m.turma t " +
             "WHERE m.status = 'ATIVO' AND t.unidade.id = :unidadeId AND LOWER(u.nomeCompleto) LIKE LOWER(CONCAT('%', :termo, '%'))")
      List<Usuario> searchAtivosByTermoAndUnidade(@Param("termo") String termo, @Param("unidadeId") Integer unidadeId);
+    
+    @Modifying
+    @Query("UPDATE Usuario u SET u.imagemPerfil = null WHERE u.id = :id")
+    void removerImagemPerfil(@Param("id") Integer id);
 }
