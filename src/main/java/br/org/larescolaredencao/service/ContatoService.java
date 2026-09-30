@@ -36,7 +36,16 @@ public class ContatoService {
 
     @Transactional(readOnly = true)
     public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable) {
-        return contatoRepository.findVisibleByMembroId(membroId, pageable).map(contato -> {
+        return listarContatos(membroId, pageable, null);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable, String search) {
+        String termo = TermoBusca.like(search);
+        Page<Contato> contatos = termo != null
+                ? contatoRepository.buscarVisiveisByMembroId(membroId, termo, TermoBusca.digitosLike(search), pageable)
+                : contatoRepository.findVisibleByMembroId(membroId, pageable);
+        return contatos.map(contato -> {
             long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
             return new ContatoListagemDTO(contato, vinculos);
         });

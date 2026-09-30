@@ -65,14 +65,16 @@ public class PaginaController {
     @GetMapping("/{idPagina:\\d+}/secoes/admin")
     public PagedModel<Secao> listarSecoesAdmin(@PathVariable("idPagina") Long idPagina,
                                                Pageable pageable,
-                                               @RequestParam(name = "grupo", required = false) String grupo) {
-        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable, grupo));
+                                               @RequestParam(name = "grupo", required = false) String grupo,
+                                               @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable, grupo, search));
     }
 
     @GetMapping("/{idPagina:\\d+}/documentos/admin")
     public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(@PathVariable("idPagina") Long idPagina,
-                                                                  Pageable pageable) {
-        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable));
+                                                                  Pageable pageable,
+                                                                  @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable, search));
     }
 
     @PostMapping("/{idPagina:\\d+}/secoes")

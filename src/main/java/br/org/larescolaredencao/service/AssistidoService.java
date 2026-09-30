@@ -65,7 +65,16 @@ public class AssistidoService {
 
     @Transactional(readOnly = true)
     public List<AssistidoResponseDTO> listarAssistidosDoMembro(Integer membroId) {
-        return assistidoRepository.findAtivosByMembroId(membroId)
+        return listarAssistidosDoMembro(membroId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<AssistidoResponseDTO> listarAssistidosDoMembro(Integer membroId, String search) {
+        String termo = TermoBusca.like(search);
+        List<Assistido> assistidos = termo != null
+                ? assistidoRepository.buscarAtivosByMembroId(membroId, termo, TermoBusca.digitosLike(search))
+                : assistidoRepository.findAtivosByMembroId(membroId);
+        return assistidos
                 .stream()
                 .map(a -> new AssistidoResponseDTO(a, null, obterMatriculaAtiva(a)))
                 .collect(Collectors.toList());

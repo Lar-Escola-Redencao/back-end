@@ -20,4 +20,17 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
 	// então quem apoiou aquela edição aparece mesmo que a parceria já tenha sido encerrada.
 	@Query("SELECT e FROM Evento e LEFT JOIN FETCH e.parceiros WHERE e.id = :id")
 	Optional<Evento> findByIdComParceiros(@Param("id") Integer id);
+
+    @Query("SELECT e FROM Evento e WHERE " +
+           "(:tipo IS NULL OR e.tipoEvento = :tipo) AND (" +
+           "   LOWER(e.titulo) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(e.descricao) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(format(e.dataEvento as 'dd/MM/yyyy HH:mm')) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(e.endereco) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(e.imagem) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(cast(e.valor as String)) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(e.comentarioPosEvento) LIKE :search ESCAPE '!'" +
+           ")")
+    Page<Evento> buscar(@Param("search") String search, @Param("tipo") TipoEvento tipo, Pageable pageable);
 }

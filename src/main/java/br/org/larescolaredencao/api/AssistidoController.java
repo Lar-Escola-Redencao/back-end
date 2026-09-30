@@ -40,8 +40,9 @@ public class AssistidoController {
     }
 
     @GetMapping
-    public List<AssistidoResponseDTO> listarAssistidos(@AuthenticationPrincipal Membro membroLogado) {
-        return assistidoService.listarAssistidosDoMembro(membroLogado.getId());
+    public List<AssistidoResponseDTO> listarAssistidos(@AuthenticationPrincipal Membro membroLogado,
+                                                       @RequestParam(name = "search", required = false) String search) {
+        return assistidoService.listarAssistidosDoMembro(membroLogado.getId(), search);
     }
 
     @GetMapping("/{id}")

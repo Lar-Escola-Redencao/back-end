@@ -42,6 +42,14 @@ public class EventoService {
     }
 
     public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo) {
+        return getAllEventos(pageable, tipo, null);
+    }
+
+    public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return eventoRepository.buscar(termo, tipo, pageable).map(EventoResponseDTO::new);
+        }
         Page<Evento> eventos = tipo != null
                 ? eventoRepository.findByTipoEvento(tipo, pageable)
                 : eventoRepository.findAll(pageable);

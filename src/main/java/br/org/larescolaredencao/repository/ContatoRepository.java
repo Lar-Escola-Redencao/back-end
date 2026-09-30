@@ -43,4 +43,24 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
            "   )" +
            "))")
     List<Contato> searchVisibleByMembroIdAndTermo(@Param("membroId") Integer membroId, @Param("termo") String termo, @Param("termoTelefone") String termoTelefone);
+
+    @Query("SELECT DISTINCT c FROM Contato c WHERE (" +
+           "   LOWER(c.nomeCompleto) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.telefone) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.email) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.endereco) LIKE :search ESCAPE '!' OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(c.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
+           ") AND " +
+           "(NOT EXISTS (SELECT 1 FROM ContatoAssistido ca WHERE ca.contato = c) OR c IN (" +
+           "   SELECT ca2.contato FROM ContatoAssistido ca2 " +
+           "   JOIN ca2.assistido a " +
+           "   JOIN Matricula m ON m.assistido = a " +
+           "   JOIN m.turma t " +
+           "   JOIN t.unidade u " +
+           "   WHERE m.status = 'ATIVO' AND m.status <> 'EXCLUIDO' AND u IN (" +
+           "       SELECT un FROM Membro mem JOIN mem.unidades un WHERE mem.id = :membroId" +
+           "   )" +
+           "))")
+    Page<Contato> buscarVisiveisByMembroId(@Param("membroId") Integer membroId, @Param("search") String search,
+                                           @Param("searchDigitos") String searchDigitos, Pageable pageable);
 }
