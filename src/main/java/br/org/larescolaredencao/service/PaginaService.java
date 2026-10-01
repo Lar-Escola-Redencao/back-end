@@ -1,11 +1,16 @@
 package br.org.larescolaredencao.service;
 
 import java.util.List;
+import java.util.Locale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -28,7 +33,15 @@ import jakarta.transaction.Transactional;
 @Service
 public class PaginaService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PaginaService.class);
+
     private static final String GRUPO_TEXTO_SOBRE = "texto-sobre";
+
+    private static final Long ID_PAGINA_GRAFICA = 3L;
+    private static final Long ID_PAGINA_PIX = 4L;
+    private static final String GRUPO_TELEFONE = "telefone";
+    private static final String GRUPO_PRODUTOS = "produtos";
+    private static final String GRUPO_PIX = "pix";
     private static final String TITULO_TEXTO_SOBRE = "Sobre o Lar Escola Redenção";
 
     private final PaginaRepository paginaRepository;
@@ -77,8 +90,18 @@ public class PaginaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada."));
     }
 
+    /**
+     * Gráfica (telefone, produtos) e Pix (pix) gravam cada informação numa coluna
+     * definida pelo grupo. As demais páginas mantêm o comportamento livre de antes.
+     */
+    @Transactional
     public Secao criarSecao(Long idPagina, CriarSecaoDTO dto) {
         Pagina pagina = buscarPaginaPorId(idPagina);
+
+        String grupoDaPagina = validarGrupoDaPagina(idPagina, dto.getGrupo());
+        if (grupoDaPagina != null) {
+            return criarSecaoDeGrupo(pagina, grupoDaPagina, dto);
+        }
 
         Secao secao = new Secao();
         String grupo = normalizarGrupo(dto.getGrupo());
@@ -89,15 +112,32 @@ public class PaginaService {
         secao.setAtivo(true);
         secao.setPagina(pagina);
 
+        String novaImagem = null;
         if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
-            secao.setImagem(arquivoService.salvarArquivo(dto.getImagem(), subPastaImagens(idPagina), TipoArquivo.FOTO));
+            novaImagem = arquivoService.salvarArquivo(dto.getImagem(), subPastaImagens(idPagina), TipoArquivo.FOTO);
+            secao.setImagem(novaImagem);
         }
 
-        return secaoRepository.save(secao);
+        return persistirSecao(secao, novaImagem, null);
     }
 
+    /** Rota antiga (/paginas/secoes/{id}): resolve a página pela própria seção e aplica as mesmas regras. */
+    @Transactional
     public Secao atualizarSecao(Long id, AtualizarSecaoDTO dto) {
         Secao secao = buscarSecaoPorId(id);
+        return atualizarSecao(secao.getPagina().getId(), id, dto);
+    }
+
+    @Transactional
+    public Secao atualizarSecao(Long idPagina, Long id, AtualizarSecaoDTO dto) {
+        buscarPaginaPorId(idPagina);
+        Secao secao = secaoRepository.findByIdAndPaginaId(id, idPagina)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada nesta página."));
+
+        if (ehGrupoGraficaOuPix(normalizarChaveGrupo(secao.getGrupo())) || !gruposDaPagina(idPagina).isEmpty()) {
+            return atualizarSecaoDeGrupo(secao, dto);
+        }
+
         if (dto.getTitulo() != null) {
             secao.setTitulo(arquivoService.sanitizarTexto(dto.getTitulo()));
         }
@@ -108,18 +148,22 @@ public class PaginaService {
             secao.setAtivo(dto.getAtivo());
         }
         if (dto.getGrupo() != null) {
+            // Impede que uma seção livre vire um grupo da Gráfica/Pix (ex.: telefone na Transparência).
+            validarGrupoDaPagina(idPagina, dto.getGrupo());
             secao.setGrupo(normalizarGrupo(dto.getGrupo()));
         }
         if (dto.getOrdem() != null) {
             secao.setOrdem(dto.getOrdem());
         }
+
+        String novaImagem = null;
+        String imagemAnterior = null;
         if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
-            String imagemAnterior = secao.getImagem();
-            secao.setImagem(arquivoService.salvarArquivo(dto.getImagem(),
-                    subPastaImagens(secao.getPagina().getId()), TipoArquivo.FOTO));
-            arquivoService.deletarArquivo(imagemAnterior);
+            imagemAnterior = secao.getImagem();
+            novaImagem = arquivoService.salvarArquivo(dto.getImagem(), subPastaImagens(idPagina), TipoArquivo.FOTO);
+            secao.setImagem(novaImagem);
         }
-        return secaoRepository.save(secao);
+        return persistirSecao(secao, novaImagem, imagemAnterior);
     }
 
     @Transactional
@@ -132,21 +176,21 @@ public class PaginaService {
     }
 
     /** Upload genérico de imagem: grava a nova e remove fisicamente a anterior, quando havia uma. */
+    @Transactional
     public Secao atualizarImagemSecao(Long id, MultipartFile imagem) {
         if (imagem == null || imagem.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A imagem é obrigatória.");
         }
 
         Secao secao = buscarSecaoPorId(id);
+        validarArquivoPermitido(normalizarChaveGrupo(secao.getGrupo()), imagem);
         String imagemAnterior = secao.getImagem();
 
-        secao.setImagem(arquivoService.salvarArquivo(imagem,
-                subPastaImagens(secao.getPagina().getId()), TipoArquivo.FOTO));
-        Secao secaoSalva = secaoRepository.save(secao);
+        String novaImagem = arquivoService.salvarArquivo(imagem,
+                subPastaImagens(secao.getPagina().getId()), TipoArquivo.FOTO);
+        secao.setImagem(novaImagem);
 
-        arquivoService.deletarArquivo(imagemAnterior);
-
-        return secaoSalva;
+        return persistirSecao(secao, novaImagem, imagemAnterior);
     }
 
     public void deletarSecao(Long id) {
@@ -214,6 +258,213 @@ public class PaginaService {
     }
 
     /**
+     * Gráfica e Pix só aceitam os próprios grupos, e esses grupos não podem ser usados em
+     * outras páginas. Devolve o grupo normalizado, ou null quando a página segue o fluxo
+     * livre (Transparência/Sobre).
+     */
+    private String validarGrupoDaPagina(Long idPagina, String grupoInformado) {
+        String grupo = normalizarChaveGrupo(grupoInformado);
+        List<String> gruposAceitos = gruposDaPagina(idPagina);
+
+        if (gruposAceitos.contains(grupo)) {
+            return grupo;
+        }
+        if (ehGrupoGraficaOuPix(grupo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O grupo '" + grupo + "' não é permitido na página " + idPagina + ".");
+        }
+        if (gruposAceitos.isEmpty()) {
+            return null;
+        }
+        if (grupo.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O campo 'grupo' é obrigatório. Grupos aceitos nesta página: " + String.join(", ", gruposAceitos) + ".");
+        }
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Grupo '" + grupo + "' inválido para esta página. Grupos aceitos: " + String.join(", ", gruposAceitos) + ".");
+    }
+
+    private List<String> gruposDaPagina(Long idPagina) {
+        if (ID_PAGINA_GRAFICA.equals(idPagina)) {
+            return List.of(GRUPO_TELEFONE, GRUPO_PRODUTOS);
+        }
+        if (ID_PAGINA_PIX.equals(idPagina)) {
+            return List.of(GRUPO_PIX);
+        }
+        return List.of();
+    }
+
+    private boolean ehGrupoGraficaOuPix(String grupo) {
+        return GRUPO_TELEFONE.equals(grupo) || GRUPO_PRODUTOS.equals(grupo) || GRUPO_PIX.equals(grupo);
+    }
+
+    /** Telefone e pix têm um único registro por página; produtos aceita vários. */
+    private boolean ehRegistroUnico(String grupo) {
+        return GRUPO_TELEFONE.equals(grupo) || GRUPO_PIX.equals(grupo);
+    }
+
+    /** Telefone e pix viram upsert por (página, grupo); produtos sempre cria um registro novo. */
+    private Secao criarSecaoDeGrupo(Pagina pagina, String grupo, CriarSecaoDTO dto) {
+        Secao secao = null;
+        if (ehRegistroUnico(grupo)) {
+            // O lock da página serializa os upserts concorrentes; a busca seguinte também é com lock.
+            paginaRepository.findByIdComBloqueio(pagina.getId());
+            secao = secaoRepository.findFirstByPaginaIdAndGrupo(pagina.getId(), grupo).orElse(null);
+        }
+
+        if (secao == null) {
+            secao = new Secao();
+            secao.setPagina(pagina);
+            secao.setGrupo(grupo);
+            secao.setAtivo(true);
+            secao.setOrdem(dto.getOrdem() == null ? proximaOrdem(pagina.getId(), grupo) : dto.getOrdem());
+        } else if (dto.getOrdem() != null) {
+            secao.setOrdem(dto.getOrdem());
+        }
+
+        return gravarCamposDoGrupo(secao, grupo, dto.getTitulo(), dto.getConteudo(), dto.getImagem());
+    }
+
+    /** O grupo do registro é fixo: o PUT precisa repetir o mesmo grupo, sem permitir a troca. */
+    private Secao atualizarSecaoDeGrupo(Secao secao, AtualizarSecaoDTO dto) {
+        if (dto.getGrupo() == null || dto.getGrupo().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O campo 'grupo' é obrigatório.");
+        }
+
+        String grupo = validarGrupoDaPagina(secao.getPagina().getId(), dto.getGrupo());
+        if (grupo == null || !grupo.equals(normalizarChaveGrupo(secao.getGrupo()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é permitido alterar o grupo da seção (grupo atual: '" + secao.getGrupo() + "').");
+        }
+
+        if (dto.getAtivo() != null) {
+            secao.setAtivo(dto.getAtivo());
+        }
+        if (dto.getOrdem() != null) {
+            secao.setOrdem(dto.getOrdem());
+        }
+
+        return gravarCamposDoGrupo(secao, grupo, dto.getTitulo(), dto.getConteudo(), dto.getImagem());
+    }
+
+    /**
+     * Grava cada informação na coluna definida pelo grupo; colunas que o grupo não usa
+     * ficam NULL. Toda validação acontece antes do upload, para não gravar arquivo de
+     * requisição inválida.
+     */
+    private Secao gravarCamposDoGrupo(Secao secao, String grupo, String titulo, String conteudo,
+                                      MultipartFile arquivo) {
+        boolean possuiArquivo = arquivo != null && !arquivo.isEmpty();
+        validarArquivoPermitido(grupo, arquivo);
+        String imagemAnterior = secao.getImagem();
+
+        switch (grupo) {
+            case GRUPO_TELEFONE -> {
+                // WhatsApp em titulo, telefone alternativo (opcional) em conteudo, sem imagem.
+                secao.setTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                secao.setConteudo(textoOuNulo(conteudo));
+                secao.setImagem(null);
+            }
+            case GRUPO_PRODUTOS -> {
+                // Nome do produto em titulo e foto em imagem; conteudo não é usado.
+                secao.setTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                secao.setConteudo(null);
+                exigirImagem(grupo, possuiArquivo, imagemAnterior);
+            }
+            case GRUPO_PIX -> {
+                // Chave em conteudo e QR Code em imagem; titulo não é usado.
+                secao.setTitulo(null);
+                secao.setConteudo(textoObrigatorio(grupo, "conteudo", conteudo));
+                exigirImagem(grupo, possuiArquivo, imagemAnterior);
+            }
+            default -> throw new IllegalStateException("Grupo sem regra de gravação: " + grupo);
+        }
+
+        String novaImagem = null;
+        if (possuiArquivo) {
+            novaImagem = arquivoService.salvarArquivo(arquivo, subPastaImagens(secao.getPagina().getId()), TipoArquivo.FOTO);
+            secao.setImagem(novaImagem);
+        }
+
+        String imagemDescartada = imagemAnterior != null && !imagemAnterior.equals(secao.getImagem()) ? imagemAnterior : null;
+        return persistirSecao(secao, novaImagem, imagemDescartada);
+    }
+
+    private void validarArquivoPermitido(String grupo, MultipartFile arquivo) {
+        if (arquivo != null && !arquivo.isEmpty() && GRUPO_TELEFONE.equals(grupo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O grupo '" + grupo + "' não aceita arquivo de imagem.");
+        }
+    }
+
+    /** A imagem só é obrigatória na criação: com uma já gravada, o arquivo novo é opcional. */
+    private void exigirImagem(String grupo, boolean possuiArquivo, String imagemAtual) {
+        if (!possuiArquivo && imagemAtual == null) {
+            throw campoObrigatorio(grupo, "imagem");
+        }
+    }
+
+    private String textoObrigatorio(String grupo, String campo, String valor) {
+        String texto = textoOuNulo(valor);
+        if (texto == null) {
+            throw campoObrigatorio(grupo, campo);
+        }
+        return texto;
+    }
+
+    private String textoOuNulo(String valor) {
+        return valor == null || valor.isBlank() ? null : valor.trim();
+    }
+
+    private ResponseStatusException campoObrigatorio(String grupo, String campo) {
+        return new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "O campo '" + campo + "' é obrigatório para o grupo '" + grupo + "'.");
+    }
+
+    /**
+     * Persiste a seção sem deixar arquivo órfão: se a gravação falhar, o arquivo recém-enviado
+     * é removido; o arquivo descartado só sai do storage depois do commit.
+     */
+    private Secao persistirSecao(Secao secao, String arquivoNovo, String arquivoDescartado) {
+        Secao secaoSalva;
+        try {
+            secaoSalva = secaoRepository.save(secao);
+            secaoRepository.flush();
+        } catch (RuntimeException excecao) {
+            removerArquivoDoStorage(arquivoNovo);
+            throw excecao;
+        }
+        agendarRemocaoDeArquivos(arquivoNovo, arquivoDescartado);
+        return secaoSalva;
+    }
+
+    /** Commit confirmado: remove o arquivo descartado. Rollback: remove o arquivo novo. */
+    private void agendarRemocaoDeArquivos(String arquivoNovo, String arquivoDescartado) {
+        if (arquivoNovo == null && arquivoDescartado == null) {
+            return;
+        }
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            removerArquivoDoStorage(arquivoDescartado);
+            return;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                removerArquivoDoStorage(status == STATUS_COMMITTED ? arquivoDescartado : arquivoNovo);
+            }
+        });
+    }
+
+    /** Falha ao apagar arquivo não pode derrubar a requisição: só registra no log. */
+    private void removerArquivoDoStorage(String caminho) {
+        try {
+            arquivoService.deletarArquivo(caminho);
+        } catch (RuntimeException excecao) {
+            logger.warn("Falha ao remover o arquivo {} do storage.", caminho, excecao);
+        }
+    }
+
+    /**
      * O front envia string vazia quando a aba não tem texto; não faz sentido gravar "" no banco.
      */
     private String normalizarConteudo(String conteudo) {
@@ -227,7 +478,12 @@ public class PaginaService {
         if (grupo == null || grupo.isBlank()) {
             return "nenhum";
         }
-        return grupo;
+        return grupo.trim();
+    }
+
+    /** Trim + minúsculas, para que " Telefone " e "telefone" sejam o mesmo grupo. */
+    private String normalizarChaveGrupo(String grupo) {
+        return grupo == null ? "" : grupo.trim().toLowerCase(Locale.ROOT);
     }
 
     private String resolverTituloSecao(String titulo, String grupo) {
