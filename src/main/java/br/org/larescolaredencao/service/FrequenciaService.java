@@ -11,6 +11,7 @@ import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
@@ -87,6 +88,10 @@ public class FrequenciaService {
             Matricula matricula = matriculaRepository.findById(fDto.getIdMatricula())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada: " + fDto.getIdMatricula()));
             
+            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || matricula.getStatus() == StatusMatricula.EGRESSO) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar frequência para aluno inativo ou excluído.");
+            }
+            
             Frequencia frequencia = frequenciaRepository.findByMatriculaIdAndDataRegistro(matricula.getId(), dto.getData())
                     .orElseGet(() -> {
                         Frequencia novaFreq = new Frequencia();
@@ -105,6 +110,10 @@ public class FrequenciaService {
     public FrequenciaUsuarioResponseDTO atualizarFrequencia(Integer id, AtualizarFrequenciaDTO dto, Membro membroLogado) {
         Frequencia frequencia = frequenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado."));
+        
+        if (frequencia.getMatricula().getStatus() == StatusMatricula.EXCLUIDO || frequencia.getMatricula().getStatus() == StatusMatricula.EGRESSO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível alterar frequência de usuário inativo ou excluído.");
+        }
 
         Turma turma = frequencia.getMatricula().getTurma();
         validarAcessoUnidade(membroLogado, turma.getUnidade());

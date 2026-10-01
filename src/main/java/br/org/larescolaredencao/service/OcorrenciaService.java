@@ -8,6 +8,7 @@ import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import org.springframework.http.HttpStatus;
@@ -34,6 +35,10 @@ public class OcorrenciaService {
     public OcorrenciaResponseDTO criarOcorrencia(CriarOcorrenciaDTO dto, Membro membroLogado) {
         Matricula matricula = matriculaRepository.findById(dto.getIdMatricula())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada."));
+        
+        if (matricula.getStatus() == StatusMatricula.EXCLUIDO || matricula.getStatus() == StatusMatricula.EGRESSO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência para usuário inativo ou excluído.");
+        }
 
         validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
 
@@ -58,6 +63,10 @@ public class OcorrenciaService {
     public OcorrenciaResponseDTO atualizarOcorrencia(Integer id, AtualizarOcorrenciaDTO dto, Membro membroLogado) {
         Ocorrencia ocorrencia = ocorrenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ocorrência não encontrada."));
+        
+        if (ocorrencia.getMatricula().getStatus() == StatusMatricula.EXCLUIDO || ocorrencia.getMatricula().getStatus() == StatusMatricula.EGRESSO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível alterar ocorrência de usuário inativo ou excluído.");
+        }
 
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
 

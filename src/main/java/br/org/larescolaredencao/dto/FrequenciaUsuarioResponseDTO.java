@@ -1,12 +1,12 @@
 package br.org.larescolaredencao.dto;
 
-import br.org.larescolaredencao.model.Frequencia;
-import br.org.larescolaredencao.model.Matricula;
-import br.org.larescolaredencao.model.Ocorrencia;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
+import br.org.larescolaredencao.model.Frequencia;
+import br.org.larescolaredencao.model.Matricula;
+import br.org.larescolaredencao.model.Ocorrencia;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 public class FrequenciaUsuarioResponseDTO {
 
     private Integer idMatricula;
@@ -15,6 +15,7 @@ public class FrequenciaUsuarioResponseDTO {
     private String imagemPerfil;
     private Integer idFrequencia;
     private Boolean presente;
+    private StatusMatricula statusMatricula;
     private List<OcorrenciaResponseDTO> ocorrencias;
 
     public FrequenciaUsuarioResponseDTO(Matricula matricula, Frequencia frequencia, List<Ocorrencia> ocorrencias) {
@@ -24,6 +25,7 @@ public class FrequenciaUsuarioResponseDTO {
         this.imagemPerfil = matricula.getUsuario().getImagemPerfil();
         this.idFrequencia = frequencia != null ? frequencia.getId() : null;
         this.presente = frequencia != null ? frequencia.getPresente() : null;
+        this.statusMatricula = matricula.getStatus();
         this.ocorrencias = ocorrencias != null ? ocorrencias.stream().map(OcorrenciaResponseDTO::new).collect(Collectors.toList()) : List.of();
     }
 
@@ -49,6 +51,10 @@ public class FrequenciaUsuarioResponseDTO {
 
     public Boolean getPresente() {
         return presente;
+    }
+    
+    public StatusMatricula getStatusMatricula() {
+    	return statusMatricula;
     }
 
     public List<OcorrenciaResponseDTO> getOcorrencias() {
