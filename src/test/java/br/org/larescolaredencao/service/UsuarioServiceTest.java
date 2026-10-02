@@ -24,7 +24,6 @@ import br.org.larescolaredencao.model.enums.Periodo;
 import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
-import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.model.enums.TipoMoradia;
 import br.org.larescolaredencao.repository.ArquivoSaudeRepository;
 import br.org.larescolaredencao.repository.ComposicaoFamiliarRepository;
@@ -106,6 +105,7 @@ public class UsuarioServiceTest {
     private Turma turma;
     private CadastroUsuarioCompletoDTO cadastroDTO;
     private Matricula matriculaAtiva;
+    private Membro adminLogado;
 
     @BeforeEach
     void setUp() {
@@ -162,6 +162,13 @@ public class UsuarioServiceTest {
         cadastroDTO.setContatos(List.of(contatoDTO));
         cadastroDTO.setFichaSocioeconomica(fichaDTO);
         cadastroDTO.setComposicaoFamiliar(List.of(compFamiliarDTO));
+        
+        Papel adminPapel = new Papel();
+        adminPapel.setNomePapel("ADMINISTRADOR");
+        
+        adminLogado = new Membro();
+        adminLogado.setId(999);
+        adminLogado.setPapel(adminPapel);
     }
 
     @Test
@@ -176,7 +183,7 @@ public class UsuarioServiceTest {
         when(contatoRepository.save(any(Contato.class))).thenReturn(novoContato);
         when(matriculaRepository.save(any(Matricula.class))).thenReturn(matriculaAtiva);
 
-        UsuarioResponseDTO response = usuarioService.cadastrarUsuario(cadastroDTO);
+        UsuarioResponseDTO response = usuarioService.cadastrarUsuario(cadastroDTO, adminLogado);
 
         assertNotNull(response);
         assertEquals("Enzo Gabriel", response.getNomeCompleto());
@@ -193,7 +200,7 @@ public class UsuarioServiceTest {
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> {
-            usuarioService.cadastrarUsuario(cadastroDTO);
+            usuarioService.cadastrarUsuario(cadastroDTO, adminLogado);
         });
 
         assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
@@ -215,7 +222,7 @@ public class UsuarioServiceTest {
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
 
-        usuarioService.transferirTurma(1, dto);
+        usuarioService.transferirTurma(1, dto, adminLogado);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(2, matriculaAtiva.getTurma().getId());
@@ -237,7 +244,7 @@ public class UsuarioServiceTest {
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
 
-        usuarioService.transferirTurma(1, dto);
+        usuarioService.transferirTurma(1, dto, adminLogado);
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
         assertEquals(StatusMatricula.INATIVO, matriculaAtiva.getStatus());
@@ -253,7 +260,7 @@ public class UsuarioServiceTest {
         dto.setDataDesligamento(LocalDate.now());
         dto.setJustificativa("Mudança de cidade");
 
-        usuarioService.inativarUsuario(1, dto);
+        usuarioService.inativarUsuario(1, dto, adminLogado);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(StatusMatricula.EGRESSO, matriculaAtiva.getStatus());
@@ -272,7 +279,7 @@ public class UsuarioServiceTest {
         arq.setCaminhoArquivo("caminho");
         when(arquivoSaudeRepository.findByIdUsuario(1)).thenReturn(List.of(arq));
 
-        usuarioService.deletarUsuario(1);
+        usuarioService.deletarUsuario(1, adminLogado);
 
         verify(matriculaRepository, times(1)).deleteAll(any());
         verify(arquivoService, times(1)).deletarArquivo("caminho");
@@ -292,7 +299,7 @@ public class UsuarioServiceTest {
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
         when(arquivoSaudeRepository.findByIdUsuario(1)).thenReturn(Collections.emptyList());
 
-        usuarioService.deletarUsuario(1);
+        usuarioService.deletarUsuario(1, adminLogado);
 
         verify(arquivoSaudeRepository, times(1)).deleteByIdUsuario(1);
         verify(composicaoFamiliarRepository, times(1)).deleteByIdUsuario(1);

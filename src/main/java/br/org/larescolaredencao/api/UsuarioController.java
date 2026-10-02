@@ -62,48 +62,48 @@ public class UsuarioController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioResponseDTO criarUsuario(@Valid @RequestBody CadastroUsuarioCompletoDTO dto) {
-        return usuarioService.cadastrarUsuario(dto);
+    public UsuarioResponseDTO criarUsuario(@Valid @RequestBody CadastroUsuarioCompletoDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.cadastrarUsuario(dto, membroLogado);
     }
 
     @PutMapping("/{id}")
-    public UsuarioResponseDTO atualizarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarUsuarioDTO dto) {
-        return usuarioService.atualizarUsuario(id, dto);
+    public UsuarioResponseDTO atualizarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarUsuarioDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.atualizarUsuario(id, dto, membroLogado);
     }
 
     @PostMapping("/{id}/foto")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void atualizarFotoPerfil(@PathVariable("id") Integer id, @RequestParam("foto") MultipartFile foto) {
-        usuarioService.atualizarFotoPerfil(id, foto);
+    public void atualizarFotoPerfil(@PathVariable("id") Integer id, @RequestParam("foto") MultipartFile foto, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.atualizarFotoPerfil(id, foto, membroLogado);
     }
 
     @PutMapping("/{id}/turma")
-    public UsuarioResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto) {
-        return usuarioService.transferirTurma(id, dto);
+    public UsuarioResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.transferirTurma(id, dto, membroLogado);
     }
 
     @PutMapping("/{id}/inativar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void inativarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody InativarUsuarioDTO dto) {
-        usuarioService.inativarUsuario(id, dto);
+    public void inativarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody InativarUsuarioDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.inativarUsuario(id, dto, membroLogado);
     }
 
     @PostMapping("/{id}/contatos")
     @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioResponseDTO vincularNovoContato(@PathVariable("id") Integer id, @Valid @RequestBody ContatoDTO dto) {
-        return usuarioService.vincularNovoContato(id, dto);
+    public UsuarioResponseDTO vincularNovoContato(@PathVariable("id") Integer id, @Valid @RequestBody ContatoDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.vincularNovoContato(id, dto, membroLogado);
     }
 
     @PostMapping("/{idUsuario}/contatos/{idContato}/vincular")
     @ResponseStatus(HttpStatus.CREATED)
-    public UsuarioResponseDTO vincularContatoExistente(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody VincularContatoExistenteDTO dto) {
-        return usuarioService.vincularContatoExistente(idUsuario, idContato, dto);
+    public UsuarioResponseDTO vincularContatoExistente(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody VincularContatoExistenteDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.vincularContatoExistente(idUsuario, idContato, dto, membroLogado);
     }
 
     @PutMapping("/{idUsuario}/contatos/{idContato}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void atualizarVinculo(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody AtualizarVinculoDTO dto) {
-        usuarioService.atualizarVinculo(idUsuario, idContato, dto);
+    public void atualizarVinculo(@PathVariable("idUsuario") Integer idUsuario, @PathVariable("idContato") Integer idContato, @Valid @RequestBody AtualizarVinculoDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.atualizarVinculo(idUsuario, idContato, dto, membroLogado);
     }
 
     @DeleteMapping("/{idUsuario}/contatos/{idContato}")
@@ -114,8 +114,8 @@ public class UsuarioController {
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarUsuario(@PathVariable("id") Integer id) {
-        usuarioService.deletarUsuario(id);
+    public void deletarUsuario(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.deletarUsuario(id, membroLogado);
     }
     
     @GetMapping("/buscar")
@@ -130,13 +130,13 @@ public class UsuarioController {
 
     @PostMapping("/{id}/arquivos-saude")
     @ResponseStatus(HttpStatus.CREATED)
-    public ArquivoSaude uploadArquivoSaude(@PathVariable("id") Integer id, @RequestParam("titulo") String titulo, @RequestParam("arquivo") MultipartFile arquivo) {
-        return usuarioService.uploadArquivoSaude(id, titulo, arquivo);
+    public ArquivoSaude uploadArquivoSaude(@PathVariable("id") Integer id, @RequestParam("titulo") String titulo, @RequestParam("arquivo") MultipartFile arquivo, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.uploadArquivoSaude(id, titulo, arquivo, membroLogado);
     }
 
     @DeleteMapping("/arquivos-saude/{idArquivo}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarArquivoSaude(@PathVariable("idArquivo") Integer idArquivo) {
-        usuarioService.deletarArquivoSaude(idArquivo);
+    public void deletarArquivoSaude(@PathVariable("idArquivo") Integer idArquivo, @AuthenticationPrincipal Membro membroLogado) {
+        usuarioService.deletarArquivoSaude(idArquivo, membroLogado);
     }
 }
