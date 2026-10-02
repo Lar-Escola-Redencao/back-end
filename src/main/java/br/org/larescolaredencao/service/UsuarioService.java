@@ -114,7 +114,7 @@ public class UsuarioService {
         boolean hasAccess = membroLogado.getUnidades().stream()
                 .anyMatch(u -> u.getId().equals(turma.getUnidade().getId()));
         if (!hasAccess) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado: Você não tem permissão para cadastrar alunos nesta unidade.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado: Você não tem permissão para cadastrar usuários nesta unidade.");
         }
     }
 
