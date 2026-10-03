@@ -1,8 +1,10 @@
 package br.org.larescolaredencao.dto;
 
-import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.ComposicaoFamiliar;
 import br.org.larescolaredencao.model.ContatoUsuario;
+import br.org.larescolaredencao.model.FichaSocioeconomica;
 import br.org.larescolaredencao.model.Matricula;
+import br.org.larescolaredencao.model.Usuario;
 import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
@@ -33,8 +35,18 @@ public class UsuarioResponseDTO {
     private Integer idUnidade;
     private String nomeUnidade;
     private List<ContatoResponseDTO> contatos;
+    private List<ComposicaoFamiliarDTO> composicaoFamiliar;
+    private FichaSocioeconomicaDTO fichaSocioeconomica;
 
     public UsuarioResponseDTO(Usuario usuario, List<ContatoUsuario> contatos, Matricula matriculaAtiva) {
+        this(usuario, contatos, matriculaAtiva, null, null);
+    }
+
+    public UsuarioResponseDTO(Usuario usuario,
+                              List<ContatoUsuario> contatos,
+                              Matricula matriculaAtiva,
+                              List<ComposicaoFamiliar> composicaoFamiliar,
+                              FichaSocioeconomica fichaSocioeconomica) {
         this.id = usuario.getId();
         this.nomeCompleto = usuario.getNomeCompleto();
         this.dataNascimento = usuario.getDataNascimento();
@@ -53,9 +65,9 @@ public class UsuarioResponseDTO {
 
         if (matriculaAtiva != null) {
             this.idTurma = matriculaAtiva.getTurma().getId();
-            this.nomeTurma = matriculaAtiva.getTurma().getPeriodo() + " · " + 
-                             matriculaAtiva.getTurma().getHoraInicio() + "–" + 
-                             matriculaAtiva.getTurma().getHoraFim();
+            this.nomeTurma = matriculaAtiva.getTurma().getPeriodo() + " · " +
+                    matriculaAtiva.getTurma().getHoraInicio() + "–" +
+                    matriculaAtiva.getTurma().getHoraFim();
             this.idUnidade = matriculaAtiva.getTurma().getUnidade().getId();
             this.nomeUnidade = matriculaAtiva.getTurma().getUnidade().getNome();
         }
@@ -65,6 +77,59 @@ public class UsuarioResponseDTO {
                     .map(ContatoResponseDTO::new)
                     .collect(Collectors.toList());
         }
+
+        if (composicaoFamiliar != null) {
+            this.composicaoFamiliar = composicaoFamiliar.stream()
+                    .map(this::mapearComposicaoFamiliar)
+                    .collect(Collectors.toList());
+        }
+
+        if (fichaSocioeconomica != null) {
+            this.fichaSocioeconomica = mapearFichaSocioeconomica(fichaSocioeconomica);
+        }
+    }
+
+    private ComposicaoFamiliarDTO mapearComposicaoFamiliar(ComposicaoFamiliar composicao) {
+        ComposicaoFamiliarDTO dto = new ComposicaoFamiliarDTO();
+        dto.setNomeCompleto(composicao.getNomeCompleto());
+        dto.setParentescoVinculo(composicao.getParentescoVinculo());
+        dto.setIdade(composicao.getIdade());
+        dto.setEscolaridade(composicao.getEscolaridade());
+        dto.setRenda(composicao.getRenda());
+        dto.setBeneficios(composicao.getBeneficios());
+        return dto;
+    }
+
+    private FichaSocioeconomicaDTO mapearFichaSocioeconomica(FichaSocioeconomica ficha) {
+        FichaSocioeconomicaDTO dto = new FichaSocioeconomicaDTO();
+        dto.setPossuiProblemaSaude(ficha.getPossuiProblemaSaude());
+        dto.setDescProblemaSaude(ficha.getDescProblemaSaude());
+        dto.setUsaMedicacao(ficha.getUsaMedicacao());
+        dto.setDescMedicacao(ficha.getDescMedicacao());
+        dto.setTemAlergia(ficha.getTemAlergia());
+        dto.setDescAlergia(ficha.getDescAlergia());
+        dto.setTipoMoradia(ficha.getTipoMoradia());
+        dto.setValorAluguel(ficha.getValorAluguel());
+        dto.setValorFinanciamento(ficha.getValorFinanciamento());
+        dto.setDespesaEnergia(ficha.getDespesaEnergia());
+        dto.setDespesaAgua(ficha.getDespesaAgua());
+        dto.setDespesaInternet(ficha.getDespesaInternet());
+        dto.setDespesaTelefone(ficha.getDespesaTelefone());
+        dto.setDespesaMercado(ficha.getDespesaMercado());
+        dto.setDespesaFarmacia(ficha.getDespesaFarmacia());
+        dto.setDespesaFinanciamentos(ficha.getDespesaFinanciamentos());
+        dto.setDespesaOutras(ficha.getDespesaOutras());
+        dto.setUtilizaCarro(ficha.getUtilizaCarro());
+        dto.setGastoCarro(ficha.getGastoCarro());
+        dto.setUtilizaMoto(ficha.getUtilizaMoto());
+        dto.setGastoMoto(ficha.getGastoMoto());
+        dto.setUtilizaTransportePublico(ficha.getUtilizaTransportePublico());
+        dto.setGastoTransportePublico(ficha.getGastoTransportePublico());
+        dto.setUtilizaVan(ficha.getUtilizaVan());
+        dto.setGastoVan(ficha.getGastoVan());
+        dto.setAndandoOuBicicleta(ficha.getAndandoOuBicicleta());
+        dto.setReligiao(ficha.getReligiao());
+        return dto;
     }
 
     public Integer getId() {
@@ -126,7 +191,7 @@ public class UsuarioResponseDTO {
     public String getImagemPerfil() {
         return imagemPerfil;
     }
-    
+
     public Integer getIdTurma() {
         return idTurma;
     }
@@ -145,5 +210,13 @@ public class UsuarioResponseDTO {
 
     public List<ContatoResponseDTO> getContatos() {
         return contatos;
+    }
+
+    public List<ComposicaoFamiliarDTO> getComposicaoFamiliar() {
+        return composicaoFamiliar;
+    }
+
+    public FichaSocioeconomicaDTO getFichaSocioeconomica() {
+        return fichaSocioeconomica;
     }
 }

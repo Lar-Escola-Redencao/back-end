@@ -15,6 +15,7 @@ import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,8 +48,8 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}")
-    public UsuarioResponseDTO buscarUsuario(@PathVariable("id") Integer id) {
-        return usuarioService.buscarUsuarioPorId(id);
+    public UsuarioResponseDTO buscarUsuario(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.buscarUsuarioPorId(id, membroLogado);
     }
 
     @GetMapping("/parentescos")
@@ -60,10 +62,18 @@ public class UsuarioController {
         return TipoDocumento.values();
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     public UsuarioResponseDTO criarUsuario(@Valid @RequestBody CadastroUsuarioCompletoDTO dto, @AuthenticationPrincipal Membro membroLogado) {
         return usuarioService.cadastrarUsuario(dto, membroLogado);
+    }
+
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public UsuarioResponseDTO criarUsuarioComArquivos(@Valid @RequestPart("dados") CadastroUsuarioCompletoDTO dto,
+                                                       @RequestPart(value = "arquivosSaude", required = false) List<MultipartFile> arquivosSaude,
+                                                       @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.cadastrarUsuarioComArquivos(dto, arquivosSaude, membroLogado);
     }
 
     @PutMapping("/{id}")
@@ -124,8 +134,8 @@ public class UsuarioController {
     }
 
     @GetMapping("/{id}/arquivos-saude")
-    public List<ArquivoSaude> listarArquivosSaude(@PathVariable("id") Integer id) {
-        return usuarioService.listarArquivosSaude(id);
+    public List<ArquivoSaude> listarArquivosSaude(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.listarArquivosSaude(id, membroLogado);
     }
 
     @PostMapping("/{id}/arquivos-saude")
