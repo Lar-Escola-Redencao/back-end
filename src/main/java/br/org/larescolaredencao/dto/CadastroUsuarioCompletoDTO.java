@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.model.enums.PeriodoEscolar;
+import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
@@ -10,7 +12,7 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.util.List;
 
-public class AtualizarAssistidoDTO {
+public class CadastroUsuarioCompletoDTO {
 
     @NotBlank
     private String nomeCompleto;
@@ -23,16 +25,41 @@ public class AtualizarAssistidoDTO {
     private String documentoAuxiliar;
 
     private TipoDocumento tipoDocumento;
+    
+    private String cadUnico;
 
+    @NotBlank
     private String endereco;
+    
+    @NotBlank
+    private String bairro;
+    
+    private String cep;
+    
+    @NotBlank
+    private String escola;
+    
+    @NotNull
+    private PeriodoEscolar periodoEscolar;
+    
+    @NotNull
+    private SerieEscolar serieEscolar;
+    
+    private String raEscolar;
 
     @NotNull
     private Integer idTurma;
 
     @Valid
     @NotNull
-    @Size(min = 1, max = 4, message = "O assistido deve ter entre 1 e 4 contatos/responsáveis.")
+    @Size(min = 1, max = 4, message = "O usuário deve ter entre 1 e 4 contatos/responsáveis.")
     private List<ContatoDTO> contatos;
+
+    @Valid
+    private List<ComposicaoFamiliarDTO> composicaoFamiliar;
+
+    @Valid
+    private FichaSocioeconomicaDTO fichaSocioeconomica;
 
     @AssertTrue(message = "É obrigatório informar o CPF/CIN ou um documento auxiliar (Certidão de Nascimento/Outro).")
     public boolean isDocumentoInformado() {
@@ -95,12 +122,68 @@ public class AtualizarAssistidoDTO {
         this.tipoDocumento = tipoDocumento;
     }
 
+    public String getCadUnico() {
+        return cadUnico;
+    }
+
+    public void setCadUnico(String cadUnico) {
+        this.cadUnico = cadUnico;
+    }
+
     public String getEndereco() {
         return endereco;
     }
 
     public void setEndereco(String endereco) {
         this.endereco = endereco;
+    }
+
+    public String getBairro() {
+        return bairro;
+    }
+
+    public void setBairro(String bairro) {
+        this.bairro = bairro;
+    }
+
+    public String getCep() {
+        return cep;
+    }
+
+    public void setCep(String cep) {
+        this.cep = cep;
+    }
+
+    public String getEscola() {
+        return escola;
+    }
+
+    public void setEscola(String escola) {
+        this.escola = escola;
+    }
+
+    public PeriodoEscolar getPeriodoEscolar() {
+        return periodoEscolar;
+    }
+
+    public void setPeriodoEscolar(PeriodoEscolar periodoEscolar) {
+        this.periodoEscolar = periodoEscolar;
+    }
+
+    public SerieEscolar getSerieEscolar() {
+        return serieEscolar;
+    }
+
+    public void setSerieEscolar(SerieEscolar serieEscolar) {
+        this.serieEscolar = serieEscolar;
+    }
+
+    public String getRaEscolar() {
+        return raEscolar;
+    }
+
+    public void setRaEscolar(String raEscolar) {
+        this.raEscolar = raEscolar;
     }
 
     public Integer getIdTurma() {
@@ -117,5 +200,21 @@ public class AtualizarAssistidoDTO {
 
     public void setContatos(List<ContatoDTO> contatos) {
         this.contatos = contatos;
+    }
+
+    public List<ComposicaoFamiliarDTO> getComposicaoFamiliar() {
+        return composicaoFamiliar;
+    }
+
+    public void setComposicaoFamiliar(List<ComposicaoFamiliarDTO> composicaoFamiliar) {
+        this.composicaoFamiliar = composicaoFamiliar;
+    }
+
+    public FichaSocioeconomicaDTO getFichaSocioeconomica() {
+        return fichaSocioeconomica;
+    }
+
+    public void setFichaSocioeconomica(FichaSocioeconomicaDTO fichaSocioeconomica) {
+        this.fichaSocioeconomica = fichaSocioeconomica;
     }
 }

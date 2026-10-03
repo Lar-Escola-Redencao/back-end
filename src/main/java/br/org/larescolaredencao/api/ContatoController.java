@@ -44,8 +44,8 @@ public class ContatoController {
     }
 
     @GetMapping("/buscar")
-    public List<ContatoListagemDTO> buscarContatosAutocomplete(@AuthenticationPrincipal Membro membroLogado, @RequestParam("termo") String termo) {
-        return contatoService.buscarContatosAutocomplete(membroLogado.getId(), termo);
+    public List<ContatoListagemDTO> buscarContatosGlobais(@RequestParam("termo") String termo) {
+        return contatoService.buscarContatosGlobal(termo);
     }
 
     @GetMapping("/{id}/vinculos")
