@@ -147,7 +147,7 @@ public class EventoService {
                 .toList();
     }
 
-    // Só aceita rede social ativa. Sem link informado, usa a url cadastrada na própria rede social.
+    // Ignora a flag ativo para preservar o historico de publicacoes em eventos encerrados.
     // Se o evento já estiver vinculado a essa rede social, apenas atualiza o link.
     @Transactional
     public EventoRedeSocialResponseDTO vincularRedeSocial(Integer idEvento, VincularRedeSocialEventoDTO dto) {
@@ -155,9 +155,6 @@ public class EventoService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
         RedeSocial redeSocial = redeSocialRepository.findById(dto.getIdRedeSocial())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Rede social não encontrada."));
-        if (!Boolean.TRUE.equals(redeSocial.getAtivo())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rede social inativa não pode ser vinculada.");
-        }
 
         EventoRedeSocialId id = new EventoRedeSocialId(idEvento, dto.getIdRedeSocial());
         EventoRedeSocial vinculo = eventoRedeSocialRepository.findById(id).orElseGet(() -> {

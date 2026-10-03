@@ -298,22 +298,27 @@ class EventoServiceTeste {
     }
 
     @Test
-    void deveRecusarVinculoComRedeSocialInativa() {
+    void deveVincularRedeSocialInativaAoEventoEncerrado() {
+        Evento evento = new Evento();
+        evento.setId(7);
         RedeSocial inativa = new RedeSocial();
         inativa.setId(2L);
+        inativa.setNome("Facebook");
         inativa.setAtivo(false);
+        inativa.setUrl("https://facebook.com/larescolaredencao");
 
         VincularRedeSocialEventoDTO dto = new VincularRedeSocialEventoDTO();
         dto.setIdRedeSocial(2L);
 
-        when(eventoRepository.findById(7)).thenReturn(Optional.of(new Evento()));
+        when(eventoRepository.findById(7)).thenReturn(Optional.of(evento));
         when(redeSocialRepository.findById(2L)).thenReturn(Optional.of(inativa));
+        when(eventoRedeSocialRepository.findById(new EventoRedeSocialId(7, 2L))).thenReturn(Optional.empty());
+        when(eventoRedeSocialRepository.save(any(EventoRedeSocial.class))).thenAnswer(i -> i.getArgument(0));
 
-        assertThatThrownBy(() -> eventoService.vincularRedeSocial(7, dto))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("inativa")
-                .extracting(e -> ((ResponseStatusException) e).getStatusCode())
-                .isEqualTo(HttpStatus.BAD_REQUEST);
-        verify(eventoRedeSocialRepository, never()).save(any());
+        EventoRedeSocialResponseDTO resultado = eventoService.vincularRedeSocial(7, dto);
+
+        assertThat(resultado.getIdRedeSocial()).isEqualTo(2L);
+        assertThat(resultado.getNome()).isEqualTo("Facebook");
+        assertThat(resultado.getUrlLink()).isEqualTo("https://facebook.com/larescolaredencao");
     }
 }
