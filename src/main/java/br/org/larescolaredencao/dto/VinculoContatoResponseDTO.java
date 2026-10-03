@@ -1,23 +1,23 @@
 package br.org.larescolaredencao.dto;
 
-import br.org.larescolaredencao.model.ContatoAssistido;
+import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
 
 public class VinculoContatoResponseDTO {
 
-    private Integer idAssistido;
-    private String nomeAssistido;
+    private Integer idUsuario;
+    private String nomeUsuario;
     private String imagemPerfil;
     private Parentesco parentesco;
     private Boolean principal;
     private Integer idUnidade;
     private String nomeUnidade;
 
-    public VinculoContatoResponseDTO(ContatoAssistido ca, Matricula matriculaAtiva) {
-        this.idAssistido = ca.getAssistido().getId();
-        this.nomeAssistido = ca.getAssistido().getNomeCompleto();
-        this.imagemPerfil = ca.getAssistido().getImagemPerfil();
+    public VinculoContatoResponseDTO(ContatoUsuario ca, Matricula matriculaAtiva) {
+        this.idUsuario = ca.getUsuario().getId();
+        this.nomeUsuario = ca.getUsuario().getNomeCompleto();
+        this.imagemPerfil = ca.getUsuario().getImagemPerfil();
         this.parentesco = ca.getParentesco();
         this.principal = ca.getPrincipal();
 
@@ -27,12 +27,12 @@ public class VinculoContatoResponseDTO {
         }
     }
 
-    public Integer getIdAssistido() {
-        return idAssistido;
+    public Integer getIdUsuario() {
+        return idUsuario;
     }
 
-    public String getNomeAssistido() {
-        return nomeAssistido;
+    public String getNomeUsuario() {
+        return nomeUsuario;
     }
 
     public String getImagemPerfil() {

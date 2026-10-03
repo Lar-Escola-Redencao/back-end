@@ -25,8 +25,8 @@ public class Matricula {
     private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_assistido", nullable = false)
-    private Assistido assistido;
+    @JoinColumn(name = "id_usuario", nullable = false)
+    private Usuario usuario;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_turma", nullable = false)
@@ -41,6 +41,9 @@ public class Matricula {
 
     @Column(name = "data_desligamento")
     private LocalDate dataDesligamento;
+    
+    @Column(name = "justificativa_egresso", columnDefinition = "TEXT")
+    private String justificativaEgresso;
 
     public Integer getId() {
         return id;
@@ -50,12 +53,12 @@ public class Matricula {
         this.id = id;
     }
 
-    public Assistido getAssistido() {
-        return assistido;
+    public Usuario getUsuario() {
+        return usuario;
     }
 
-    public void setAssistido(Assistido assistido) {
-        this.assistido = assistido;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
 
     public Turma getTurma() {
@@ -88,5 +91,13 @@ public class Matricula {
 
     public void setDataDesligamento(LocalDate dataDesligamento) {
         this.dataDesligamento = dataDesligamento;
+    }
+
+    public String getJustificativaEgresso() {
+        return justificativaEgresso;
+    }
+
+    public void setJustificativaEgresso(String justificativaEgresso) {
+        this.justificativaEgresso = justificativaEgresso;
     }
 }

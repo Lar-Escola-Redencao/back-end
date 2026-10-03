@@ -11,6 +11,8 @@ public class ContatoListagemDTO {
     private String telefone;
     private String email;
     private String endereco;
+    private String cpf;
+    private String localTrabalho;
     private long quantidadeVinculos;
     private List<VinculoContatoResponseDTO> vinculos;
 
@@ -20,6 +22,8 @@ public class ContatoListagemDTO {
         this.telefone = contato.getTelefone();
         this.email = contato.getEmail();
         this.endereco = contato.getEndereco();
+        this.cpf = contato.getCpf();
+        this.localTrabalho = contato.getLocalTrabalho();
         this.quantidadeVinculos = quantidadeVinculos;
     }
 
@@ -61,6 +65,22 @@ public class ContatoListagemDTO {
 
     public void setEndereco(String endereco) {
         this.endereco = endereco;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getLocalTrabalho() {
+        return localTrabalho;
+    }
+
+    public void setLocalTrabalho(String localTrabalho) {
+        this.localTrabalho = localTrabalho;
     }
 
     public long getQuantidadeVinculos() {

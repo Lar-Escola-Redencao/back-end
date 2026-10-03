@@ -3,12 +3,12 @@ package br.org.larescolaredencao.service;
 import br.org.larescolaredencao.dto.AtualizarContatoDTO;
 import br.org.larescolaredencao.dto.ContatoListagemDTO;
 import br.org.larescolaredencao.dto.VinculoContatoResponseDTO;
-import br.org.larescolaredencao.model.Assistido;
+import br.org.larescolaredencao.model.Usuario;
 import br.org.larescolaredencao.model.Contato;
-import br.org.larescolaredencao.model.ContatoAssistido;
+import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
-import br.org.larescolaredencao.repository.ContatoAssistidoRepository;
+import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import org.springframework.data.domain.Page;
@@ -25,19 +25,19 @@ import java.util.stream.Collectors;
 public class ContatoService {
 
     private final ContatoRepository contatoRepository;
-    private final ContatoAssistidoRepository contatoAssistidoRepository;
+    private final ContatoUsuarioRepository contatoUsuarioRepository;
     private final MatriculaRepository matriculaRepository;
 
-    public ContatoService(ContatoRepository contatoRepository, ContatoAssistidoRepository contatoAssistidoRepository, MatriculaRepository matriculaRepository) {
+    public ContatoService(ContatoRepository contatoRepository, ContatoUsuarioRepository contatoUsuarioRepository, MatriculaRepository matriculaRepository) {
         this.contatoRepository = contatoRepository;
-        this.contatoAssistidoRepository = contatoAssistidoRepository;
+        this.contatoUsuarioRepository = contatoUsuarioRepository;
         this.matriculaRepository = matriculaRepository;
     }
 
     @Transactional(readOnly = true)
     public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable) {
-        return contatoRepository.findVisibleByMembroId(membroId, pageable).map(contato -> {
-            long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
+        return contatoRepository.findAll(pageable).map(contato -> {
+            long vinculos = contatoUsuarioRepository.countByContatoId(contato.getId());
             return new ContatoListagemDTO(contato, vinculos);
         });
     }
@@ -47,11 +47,11 @@ public class ContatoService {
         Contato contato = contatoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
 
-        List<ContatoAssistido> contatosAssistidos = contatoAssistidoRepository.findByContatoId(contato.getId());
+        List<ContatoUsuario> contatosUsuarios = contatoUsuarioRepository.findByContatoId(contato.getId());
 
-        List<VinculoContatoResponseDTO> vinculos = contatosAssistidos.stream().map(ca -> {
-            Assistido assistido = ca.getAssistido();
-            Matricula matriculaAtiva = matriculaRepository.findByAssistido(assistido).stream()
+        List<VinculoContatoResponseDTO> vinculos = contatosUsuarios.stream().map(ca -> {
+            Usuario usuario = ca.getUsuario();
+            Matricula matriculaAtiva = matriculaRepository.findByUsuario(usuario).stream()
                     .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
                     .findFirst()
                     .orElse(null);
@@ -66,15 +66,15 @@ public class ContatoService {
     }
 
     @Transactional(readOnly = true)
-    public List<ContatoListagemDTO> buscarContatosAutocomplete(Integer membroId, String termo) {
+    public List<ContatoListagemDTO> buscarContatosGlobal(String termo) {
         String termoTelefone = termo.replaceAll("\\D", "");
         if (termoTelefone.isEmpty()) {
             termoTelefone = null;
         }
 
-        return contatoRepository.searchVisibleByMembroIdAndTermo(membroId, termo, termoTelefone).stream()
+        return contatoRepository.searchGlobalByTermo(termo, termoTelefone).stream()
                 .map(contato -> {
-                    long vinculos = contatoAssistidoRepository.countByContatoId(contato.getId());
+                    long vinculos = contatoUsuarioRepository.countByContatoId(contato.getId());
                     return new ContatoListagemDTO(contato, vinculos);
                 })
                 .collect(Collectors.toList());
@@ -86,10 +86,10 @@ public class ContatoService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado.");
         }
         
-        return contatoAssistidoRepository.findByContatoId(contatoId)
+        return contatoUsuarioRepository.findByContatoId(contatoId)
                 .stream()
                 .map(ca -> {
-                    Matricula matriculaAtiva = matriculaRepository.findByAssistido(ca.getAssistido()).stream()
+                    Matricula matriculaAtiva = matriculaRepository.findByUsuario(ca.getUsuario()).stream()
                             .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
                             .findFirst()
                             .orElse(null);
@@ -119,7 +119,7 @@ public class ContatoService {
                 });
         
         Contato salvo = contatoRepository.save(contato);
-        long vinculos = contatoAssistidoRepository.countByContatoId(salvo.getId());
+        long vinculos = contatoUsuarioRepository.countByContatoId(salvo.getId());
         return new ContatoListagemDTO(salvo, vinculos);
     }
 
@@ -140,7 +140,7 @@ public class ContatoService {
         contato.setEndereco(dto.getEndereco());
 
         Contato salvo = contatoRepository.save(contato);
-        long vinculos = contatoAssistidoRepository.countByContatoId(salvo.getId());
+        long vinculos = contatoUsuarioRepository.countByContatoId(salvo.getId());
 
         return new ContatoListagemDTO(salvo, vinculos);
     }
@@ -150,9 +150,9 @@ public class ContatoService {
         Contato contato = contatoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
 
-        long vinculos = contatoAssistidoRepository.countByContatoId(id);
+        long vinculos = contatoUsuarioRepository.countByContatoId(id);
         if (vinculos > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível excluir o contato pois ele possui " + vinculos + " vínculo(s) ativo(s). Desvincule-o dos assistidos primeiro.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível excluir o contato pois ele possui " + vinculos + " vínculo(s) ativo(s). Desvincule-o dos usuários primeiro.");
         }
 
         contatoRepository.delete(contato);

@@ -7,28 +7,30 @@ import java.io.Serializable;
 import java.util.Objects;
 
 @Embeddable
-public class ContatoAssistidoId implements Serializable {
+public class ContatoUsuarioId implements Serializable {
 
-    @Column(name = "id_assistido")
-    private Integer idAssistido;
+	private static final long serialVersionUID = 1L;
+
+	@Column(name = "id_usuario")
+    private Integer idUsuario;
 
     @Column(name = "id_contato")
     private Integer idContato;
 
-    public ContatoAssistidoId() {
+    public ContatoUsuarioId() {
     }
 
-    public ContatoAssistidoId(Integer idAssistido, Integer idContato) {
-        this.idAssistido = idAssistido;
+    public ContatoUsuarioId(Integer idUsuario, Integer idContato) {
+        this.idUsuario = idUsuario;
         this.idContato = idContato;
     }
 
-    public Integer getIdAssistido() {
-        return idAssistido;
+    public Integer getIdUsuario() {
+        return idUsuario;
     }
 
-    public void setIdAssistido(Integer idAssistido) {
-        this.idAssistido = idAssistido;
+    public void setIdUsuario(Integer idUsuario) {
+        this.idUsuario = idUsuario;
     }
 
     public Integer getIdContato() {
@@ -43,12 +45,12 @@ public class ContatoAssistidoId implements Serializable {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        ContatoAssistidoId that = (ContatoAssistidoId) o;
-        return Objects.equals(idAssistido, that.idAssistido) && Objects.equals(idContato, that.idContato);
+        ContatoUsuarioId that = (ContatoUsuarioId) o;
+        return Objects.equals(idUsuario, that.idUsuario) && Objects.equals(idContato, that.idContato);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(idAssistido, idContato);
+        return Objects.hash(idUsuario, idContato);
     }
 }
