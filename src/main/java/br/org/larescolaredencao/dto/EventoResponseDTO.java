@@ -18,7 +18,7 @@ public class EventoResponseDTO {
     private String imagem;
     private BigDecimal valor;
     private TipoEvento tipoEvento;
-    private String comentarioPosEvento;
+    private boolean encerrado;
     private List<Parceiro> parceiros;
 
     public EventoResponseDTO(Evento evento) {
@@ -30,7 +30,7 @@ public class EventoResponseDTO {
         this.imagem = evento.getImagem();
         this.valor = evento.getValor();
         this.tipoEvento = evento.getTipoEvento();
-        this.comentarioPosEvento = evento.getComentarioPosEvento();
+        this.encerrado = evento.ehEventoEncerrado();
         this.parceiros = evento.getParceiros();
     }
 
@@ -66,8 +66,8 @@ public class EventoResponseDTO {
         return tipoEvento;
     }
 
-    public String getComentarioPosEvento() {
-        return comentarioPosEvento;
+    public boolean isEncerrado() {
+        return encerrado;
     }
     
     public List<Parceiro> getParceiros() {
