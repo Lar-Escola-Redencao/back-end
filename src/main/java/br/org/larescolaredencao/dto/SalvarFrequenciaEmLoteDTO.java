@@ -16,7 +16,7 @@ public class SalvarFrequenciaEmLoteDTO {
 
     @NotEmpty
     @Valid
-    private List<FrequenciaDTO> frequencias;
+    private List<@NotNull FrequenciaDTO> frequencias;
 
     public Integer getIdTurma() {
         return idTurma;

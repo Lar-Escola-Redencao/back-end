@@ -20,6 +20,7 @@ import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.enums.Perfil;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.ArquivoSaudeRepository;
 import br.org.larescolaredencao.repository.ComposicaoFamiliarRepository;
@@ -34,13 +35,18 @@ import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -89,13 +95,48 @@ public class UsuarioService {
                 .orElse(null);
     }
 
+    private void validarAcessoAoUsuario(Usuario usuario, Membro membroLogado) {
+        List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
+        if (matriculas.stream().anyMatch(m -> m.getStatus() == StatusMatricula.EXCLUIDO)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado.");
+        }
+        if (Perfil.ADMINISTRADOR.name().equals(membroLogado.getPapel().getNomePapel())) {
+            return;
+        }
+        Matricula matriculaDeReferencia = matriculas.stream()
+                .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
+                .findFirst()
+                .orElseGet(() -> matriculas.stream()
+                        .max((a, b) -> a.getDataIngresso().compareTo(b.getDataIngresso()))
+                        .orElse(null));
+        if (matriculaDeReferencia == null || membroLogado.getUnidades().stream()
+                .noneMatch(u -> u.getId().equals(matriculaDeReferencia.getTurma().getUnidade().getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado à unidade deste usuário.");
+        }
+    }
+
+    private void validarAcessoATurma(Integer idTurma, Membro membroLogado) {
+        if (Perfil.ADMINISTRADOR.name().equals(membroLogado.getPapel().getNomePapel())) {
+            return;
+        }
+        Turma turma = turmaRepository.findById(idTurma)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
+        
+        boolean hasAccess = membroLogado.getUnidades().stream()
+                .anyMatch(u -> u.getId().equals(turma.getUnidade().getId()));
+        if (!hasAccess) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado: Você não tem permissão para cadastrar usuários nesta unidade.");
+        }
+    }
+
+
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId) {
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 
         List<Usuario> usuarios;
-        if ("ADMINISTRADOR".equals(membro.getPapel().getNomePapel())) {
+        if (Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel())) {
             usuarios = usuarioRepository.findAtivos();
         } else {
             usuarios = usuarioRepository.findAtivosByMembroId(membroId);
@@ -106,18 +147,38 @@ public class UsuarioService {
                 .collect(Collectors.toList());
     }
 
+    private UsuarioResponseDTO montarRespostaCompleta(Usuario usuario,
+                                                     List<ContatoUsuario> contatos,
+                                                     Matricula matriculaAtiva) {
+        List<ComposicaoFamiliar> composicaoFamiliar =
+                composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(usuario.getId());
+        FichaSocioeconomica fichaSocioeconomica =
+                fichaSocioeconomicaRepository.findById(usuario.getId()).orElse(null);
+
+        return new UsuarioResponseDTO(
+                usuario,
+                contatos,
+                matriculaAtiva,
+                composicaoFamiliar,
+                fichaSocioeconomica
+        );
+    }
+
     @Transactional(readOnly = true)
-    public UsuarioResponseDTO buscarUsuarioPorId(Integer id) {
+    public UsuarioResponseDTO buscarUsuarioPorId(Integer id, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
 
-        return new UsuarioResponseDTO(usuario, contatos, obterMatriculaAtiva(usuario));
+        return montarRespostaCompleta(usuario, contatos, obterMatriculaAtiva(usuario));
     }
 
     @Transactional
-    public UsuarioResponseDTO cadastrarUsuario(CadastroUsuarioCompletoDTO dto) {
+    public UsuarioResponseDTO cadastrarUsuario(CadastroUsuarioCompletoDTO dto, Membro membroLogado) {
+        validarAcessoATurma(dto.getIdTurma(), membroLogado);
+
         Usuario usuario = null;
         boolean reingresso = false;
 
@@ -139,7 +200,6 @@ public class UsuarioService {
             }
 
             reingresso = true;
-
             mapearDadosUsuario(usuario, dto);
         } else {
             usuario = novoUsuario(dto);
@@ -235,9 +295,54 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioResponseDTO atualizarUsuario(Integer id, AtualizarUsuarioDTO dto) {
+    public UsuarioResponseDTO cadastrarUsuarioComArquivos(CadastroUsuarioCompletoDTO dto,
+                                                          List<MultipartFile> arquivosSaude,
+                                                          Membro membroLogado) {
+        if (arquivosSaude != null && arquivosSaude.size() > 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Limite máximo de 4 arquivos de saúde atingido.");
+        }
+        if (arquivosSaude != null) {
+            for (MultipartFile arquivo : arquivosSaude) {
+                if (arquivo == null || arquivo.isEmpty()) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Arquivo de saúde vazio.");
+                }
+                arquivoService.validarTipoArquivo(arquivo, TipoArquivo.SAUDE);
+            }
+        }
+
+        List<String> caminhosCriados = new ArrayList<>();
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    caminhosCriados.forEach(arquivoService::deletarArquivo);
+                }
+            }
+        });
+
+        UsuarioResponseDTO resposta = cadastrarUsuario(dto, membroLogado);
+        if (arquivosSaude != null) {
+            for (MultipartFile arquivo : arquivosSaude) {
+                String caminho = arquivoService.salvarArquivo(arquivo, "usuarios/saude/", TipoArquivo.SAUDE);
+                caminhosCriados.add(caminho);
+
+                ArquivoSaude registro = new ArquivoSaude();
+                registro.setIdUsuario(resposta.getId());
+                String titulo = arquivo.getOriginalFilename();
+                registro.setTitulo(titulo.length() > 150 ? titulo.substring(0, 150) : titulo);
+                registro.setCaminhoArquivo(caminho);
+                arquivoSaudeRepository.save(registro);
+            }
+        }
+        return resposta;
+    }
+
+    @Transactional
+    public UsuarioResponseDTO atualizarUsuario(Integer id, AtualizarUsuarioDTO dto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
             usuarioRepository.findByCpf(dto.getCpf()).ifPresent(u -> {
@@ -255,46 +360,48 @@ public class UsuarioService {
             });
         }
 
+        List<Contato> contatosResolvidos = resolverContatosParaAtualizacao(dto.getContatos());
+
         mapearDadosUsuario(usuario, dto);
         usuarioRepository.save(usuario);
 
         List<ContatoUsuario> vinculosAtuais = contatoUsuarioRepository.findByUsuario(usuario);
-        List<String> telefonesDto = dto.getContatos().stream()
-                .map(c -> c.getTelefone() != null ? c.getTelefone().replaceAll("\\D", "") : null)
-                .collect(Collectors.toList());
+        Set<Integer> idsContatosMantidos = new HashSet<>();
 
-        for (ContatoUsuario ca : vinculosAtuais) {
-            if (!telefonesDto.contains(ca.getContato().getTelefone())) {
-                contatoUsuarioRepository.delete(ca);
+        for (ContatoUsuario vinculo : vinculosAtuais) {
+            if (Boolean.TRUE.equals(vinculo.getPrincipal())) {
+                vinculo.setPrincipal(false);
+                contatoUsuarioRepository.save(vinculo);
             }
         }
 
-        removerPrincipalAtual(usuario);
-
-        for (ContatoDTO contatoDTO : dto.getContatos()) {
-            String telefoneLimpo = contatoDTO.getTelefone() != null ? contatoDTO.getTelefone().replaceAll("\\D", "") : null;
-            Contato contato;
-
-            contato = contatoRepository.findByTelefone(telefoneLimpo)
-                    .orElseGet(() -> {
-                        Contato c = new Contato();
-                        c.setTelefone(telefoneLimpo);
-                        return c;
-                    });
+        for (int i = 0; i < dto.getContatos().size(); i++) {
+            ContatoDTO contatoDTO = dto.getContatos().get(i);
+            Contato contato = contatosResolvidos.get(i);
+            String telefoneLimpo = contatoDTO.getTelefone().replaceAll("\\D", "");
 
             atualizarDadosContato(contato, contatoDTO, telefoneLimpo);
-            contato = contatoRepository.save(contato);
+            Contato contatoSalvo = contatoRepository.save(contato);
+            idsContatosMantidos.add(contatoSalvo.getId());
 
-            ContatoUsuarioId caId = new ContatoUsuarioId(usuario.getId(), contato.getId());
-            ContatoUsuario ca = contatoUsuarioRepository.findById(caId).orElse(new ContatoUsuario());
-            ca.setId(caId);
-            ca.setUsuario(usuario);
-            ca.setContato(contato);
-            ca.setParentesco(contatoDTO.getParentesco());
-            ca.setPrincipal(contatoDTO.getPrincipal());
-            contatoUsuarioRepository.save(ca);
+            ContatoUsuario vinculo = vinculosAtuais.stream()
+                    .filter(v -> v.getContato().getId().equals(contatoSalvo.getId()))
+                    .findFirst()
+                    .orElseGet(ContatoUsuario::new);
+
+            vinculo.setId(new ContatoUsuarioId(usuario.getId(), contatoSalvo.getId()));
+            vinculo.setUsuario(usuario);
+            vinculo.setContato(contatoSalvo);
+            vinculo.setParentesco(contatoDTO.getParentesco());
+            vinculo.setPrincipal(contatoDTO.getPrincipal());
+            contatoUsuarioRepository.save(vinculo);
         }
-        
+
+        for (ContatoUsuario vinculo : vinculosAtuais) {
+            if (!idsContatosMantidos.contains(vinculo.getContato().getId())) {
+                contatoUsuarioRepository.delete(vinculo);
+            }
+        }
         if (dto.getFichaSocioeconomica() != null) {
             FichaSocioeconomica ficha = fichaSocioeconomicaRepository.findById(usuario.getId()).orElse(new FichaSocioeconomica());
             ficha.setIdUsuario(usuario.getId());
@@ -326,19 +433,82 @@ public class UsuarioService {
         if (!matriculaAtiva.getTurma().getId().equals(dto.getIdTurma())) {
             TransferirTurmaDTO transDto = new TransferirTurmaDTO();
             transDto.setIdTurmaNova(dto.getIdTurma());
-            transferirTurma(usuario.getId(), transDto);
+            transferirTurma(usuario.getId(), transDto, membroLogado);
             
             matriculaAtiva = obterMatriculaAtiva(usuario);
         }
 
         List<ContatoUsuario> contatosSalvos = contatoUsuarioRepository.findByUsuario(usuario);
-        return new UsuarioResponseDTO(usuario, contatosSalvos, matriculaAtiva);
+        return montarRespostaCompleta(usuario, contatosSalvos, matriculaAtiva);
+    }
+
+    private List<Contato> resolverContatosParaAtualizacao(List<ContatoDTO> contatosDTO) {
+        if (contatosDTO == null || contatosDTO.isEmpty() || contatosDTO.size() > 4) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário deve ter entre 1 e 4 contatos/responsáveis.");
+        }
+
+        List<Contato> contatosResolvidos = new ArrayList<>();
+        Set<Integer> idsInformados = new HashSet<>();
+        Set<String> telefonesInformados = new HashSet<>();
+        long principais = 0;
+
+        for (ContatoDTO contatoDTO : contatosDTO) {
+            if (contatoDTO == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A lista de contatos não pode conter itens nulos.");
+            }
+
+            String telefoneLimpo = contatoDTO.getTelefone() != null
+                    ? contatoDTO.getTelefone().replaceAll("\\D", "")
+                    : null;
+
+            if (telefoneLimpo == null || telefoneLimpo.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O telefone do contato deve conter números.");
+            }
+
+            if (!telefonesInformados.add(telefoneLimpo)) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O mesmo telefone não pode ser informado em mais de um contato.");
+            }
+
+            if (Boolean.TRUE.equals(contatoDTO.getPrincipal())) {
+                principais++;
+            }
+
+            Contato contato;
+
+            if (contatoDTO.getId() != null) {
+                contato = contatoRepository.findById(contatoDTO.getId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato vinculado por ID não encontrado."));
+
+                contatoRepository.findByTelefone(telefoneLimpo).ifPresent(outroContato -> {
+                    if (!outroContato.getId().equals(contatoDTO.getId())) {
+                        throw new ResponseStatusException(HttpStatus.CONFLICT, "Já existe outro contato cadastrado com este telefone.");
+                    }
+                });
+            } else {
+                contato = contatoRepository.findByTelefone(telefoneLimpo)
+                        .orElseGet(Contato::new);
+            }
+
+            if (contato.getId() != null && !idsInformados.add(contato.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O mesmo contato não pode ser informado mais de uma vez.");
+            }
+
+            contatosResolvidos.add(contato);
+        }
+
+        if (principais != 1) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Deve haver exatamente um responsável marcado como principal.");
+        }
+
+        return contatosResolvidos;
     }
 
     @Transactional
-    public void atualizarFotoPerfil(Integer id, MultipartFile foto) {
+    public void atualizarFotoPerfil(Integer id, MultipartFile foto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
@@ -354,9 +524,11 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioResponseDTO transferirTurma(Integer usuarioId, TransferirTurmaDTO dto) {
+    public UsuarioResponseDTO transferirTurma(Integer usuarioId, TransferirTurmaDTO dto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         Matricula matriculaAtiva = obterMatriculaAtiva(usuario);
         if (matriculaAtiva == null) {
@@ -370,32 +542,28 @@ public class UsuarioService {
         Turma novaTurma = turmaRepository.findById(dto.getIdTurmaNova())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nova turma não encontrada."));
 
-        long horas = ChronoUnit.HOURS.between(matriculaAtiva.getDataIngresso(), LocalDateTime.now());
+        validarAcessoATurma(novaTurma.getId(), membroLogado);
+        matriculaAtiva.setStatus(StatusMatricula.INATIVO);
+        matriculaAtiva.setDataDesligamento(LocalDate.now());
+        matriculaRepository.save(matriculaAtiva);
 
-        if (horas < 24) {
-            matriculaAtiva.setTurma(novaTurma);
-            matriculaRepository.save(matriculaAtiva);
-        } else {
-            matriculaAtiva.setStatus(StatusMatricula.INATIVO);
-            matriculaAtiva.setDataDesligamento(LocalDate.now());
-            matriculaRepository.save(matriculaAtiva);
-
-            Matricula novaMatricula = new Matricula();
-            novaMatricula.setUsuario(usuario);
-            novaMatricula.setTurma(novaTurma);
-            novaMatricula.setStatus(StatusMatricula.ATIVO);
-            novaMatricula.setDataIngresso(LocalDateTime.now());
-            matriculaAtiva = matriculaRepository.save(novaMatricula);
-        }
+        Matricula novaMatricula = new Matricula();
+        novaMatricula.setUsuario(usuario);
+        novaMatricula.setTurma(novaTurma);
+        novaMatricula.setStatus(StatusMatricula.ATIVO);
+        novaMatricula.setDataIngresso(LocalDateTime.now());
+        matriculaAtiva = matriculaRepository.save(novaMatricula);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
         return new UsuarioResponseDTO(usuario, contatos, matriculaAtiva);
     }
 
     @Transactional
-    public void inativarUsuario(Integer usuarioId, InativarUsuarioDTO dto) {
+    public void inativarUsuario(Integer usuarioId, InativarUsuarioDTO dto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         Matricula matriculaAtiva = obterMatriculaAtiva(usuario);
         if (matriculaAtiva == null) {
@@ -411,9 +579,11 @@ public class UsuarioService {
     }
 
     @Transactional
-    public UsuarioResponseDTO vincularContatoExistente(Integer usuarioId, Integer contatoId, VincularContatoExistenteDTO dto) {
+    public UsuarioResponseDTO vincularContatoExistente(Integer usuarioId, Integer contatoId, VincularContatoExistenteDTO dto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         Contato contato = contatoRepository.findById(contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
@@ -437,13 +607,15 @@ public class UsuarioService {
         ca.setPrincipal(dto.getPrincipal());
         contatoUsuarioRepository.save(ca);
 
-        return buscarUsuarioPorId(usuarioId);
+        return buscarUsuarioPorId(usuarioId, membroLogado);
     }
 
     @Transactional
-    public UsuarioResponseDTO vincularNovoContato(Integer usuarioId, ContatoDTO dto) {
+    public UsuarioResponseDTO vincularNovoContato(Integer usuarioId, ContatoDTO dto, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         validarLimiteVinculos(usuario);
 
@@ -486,11 +658,16 @@ public class UsuarioService {
         ca.setPrincipal(dto.getPrincipal());
         contatoUsuarioRepository.save(ca);
 
-        return buscarUsuarioPorId(usuarioId);
+        return buscarUsuarioPorId(usuarioId, membroLogado);
     }
 
     @Transactional
-    public void atualizarVinculo(Integer usuarioId, Integer contatoId, AtualizarVinculoDTO dto) {
+    public void atualizarVinculo(Integer usuarioId, Integer contatoId, AtualizarVinculoDTO dto, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+                
+        validarAcessoAoUsuario(usuario, membroLogado);
+        
         ContatoUsuario vinculo = contatoUsuarioRepository.findByUsuarioIdAndContatoId(usuarioId, contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
 
@@ -510,16 +687,7 @@ public class UsuarioService {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
-        if (!"ADMINISTRADOR".equals(membroLogado.getPapel().getNomePapel())) {
-            Matricula matriculaAtiva = obterMatriculaAtiva(usuario);
-            if (matriculaAtiva != null) {
-                boolean hasAccess = membroLogado.getUnidades().stream()
-                        .anyMatch(u -> u.getId().equals(matriculaAtiva.getTurma().getUnidade().getId()));
-                if (!hasAccess) {
-                    throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuário autenticado não possui permissão para editar registros desta unidade.");
-                }
-            }
-        }
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         ContatoUsuario vinculo = contatoUsuarioRepository.findByUsuarioIdAndContatoId(usuarioId, contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
@@ -532,9 +700,11 @@ public class UsuarioService {
     }
 
     @Transactional
-    public void deletarUsuario(Integer id) {
+    public void deletarUsuario(Integer id, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
         String fotoAntiga = usuario.getImagemPerfil();
@@ -554,7 +724,11 @@ public class UsuarioService {
 
         long horasDesdeCadastro = ChronoUnit.HOURS.between(matriculaInicial.getDataIngresso(), LocalDateTime.now());
 
-        if (matriculas.size() == 1 && horasDesdeCadastro <= 24) {
+        List<Integer> idsMatriculas = matriculas.stream().map(Matricula::getId).toList();
+        boolean possuiHistorico = matriculaRepository.contarFrequenciasPorMatriculas(idsMatriculas) > 0
+                || matriculaRepository.contarOcorrenciasPorMatriculas(idsMatriculas) > 0;
+
+        if (matriculas.size() == 1 && horasDesdeCadastro >= 0 && horasDesdeCadastro < 24 && !possuiHistorico) {
             matriculaRepository.deleteAll(matriculas);
             limparTabelasFilhasSoftDelete(usuario.getId(), arquivosSaude);
             usuarioRepository.delete(usuario);
@@ -606,7 +780,7 @@ public class UsuarioService {
             }
         }
     }
-    
+        
     private void limparTabelasFilhasSoftDelete(Integer usuarioId, List<ArquivoSaude> arquivosSaude) {
         for (ArquivoSaude arq : arquivosSaude) {
             arquivoService.deletarArquivo(arq.getCaminhoArquivo());
@@ -700,7 +874,7 @@ public class UsuarioService {
     
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> buscarUsuariosAutocomplete(String termo, Integer unidadeId, Membro membroLogado) {
-        if (!"ADMINISTRADOR".equals(membroLogado.getPapel().getNomePapel())) {
+        if (!Perfil.ADMINISTRADOR.name().equals(membroLogado.getPapel().getNomePapel())) {
             boolean hasAccess = membroLogado.getUnidades().stream().anyMatch(u -> u.getId().equals(unidadeId));
             if (!hasAccess) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Acesso negado a esta unidade.");
@@ -713,9 +887,11 @@ public class UsuarioService {
     }
 
     @Transactional
-    public ArquivoSaude uploadArquivoSaude(Integer usuarioId, String titulo, MultipartFile arquivo) {
+    public ArquivoSaude uploadArquivoSaude(Integer usuarioId, String titulo, MultipartFile arquivo, Membro membroLogado) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+
+        validarAcessoAoUsuario(usuario, membroLogado);
 
         List<ArquivoSaude> atuais = arquivoSaudeRepository.findByIdUsuario(usuarioId);
         if (atuais.size() >= 4) {
@@ -735,14 +911,22 @@ public class UsuarioService {
     }
     
     @Transactional(readOnly = true)
-    public List<ArquivoSaude> listarArquivosSaude(Integer usuarioId) {
+    public List<ArquivoSaude> listarArquivosSaude(Integer usuarioId, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
         return arquivoSaudeRepository.findByIdUsuario(usuarioId);
     }
 
     @Transactional
-    public void deletarArquivoSaude(Integer idArquivo) {
+    public void deletarArquivoSaude(Integer idArquivo, Membro membroLogado) {
         ArquivoSaude arquivo = arquivoSaudeRepository.findById(idArquivo)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo não encontrado."));
+        
+        Usuario usuario = usuarioRepository.findById(arquivo.getIdUsuario())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário vinculado a este arquivo não encontrado."));
+                
+        validarAcessoAoUsuario(usuario, membroLogado);
         
         arquivoService.deletarArquivo(arquivo.getCaminhoArquivo());
         arquivoSaudeRepository.delete(arquivo);

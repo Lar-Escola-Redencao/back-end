@@ -11,11 +11,11 @@ import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
-import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +23,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -52,7 +55,7 @@ public class FrequenciaService {
 
         validarAcessoUnidade(membroLogado, turma.getUnidade());
 
-        LocalDateTime dataFimDia = data.atTime(23, 59, 59);
+        LocalDateTime dataFimDia = data.plusDays(1).atStartOfDay();
         List<Matricula> matriculasHistoricas = matriculaRepository.findHistoricoAtivasPorTurmaEData(turmaId, dataFimDia, data);
         
         List<Frequencia> frequencias = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turmaId, data);
@@ -79,30 +82,63 @@ public class FrequenciaService {
 
         validarAcessoUnidade(membroLogado, turma.getUnidade());
 
-        LocalDateTime dataHoraInicioTurma = LocalDateTime.of(dto.getData(), turma.getHoraInicio());
-        if (LocalDateTime.now().isBefore(dataHoraInicioTurma)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar a chamada antes do horário de início da turma.");
+        registrarEmLote(dto, membroLogado, turma, false);
+    }
+
+    @Transactional
+    public void atualizarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
+        Turma turma = turmaRepository.findById(dto.getIdTurma())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
+        validarAcessoUnidade(membroLogado, turma.getUnidade());
+        registrarEmLote(dto, membroLogado, turma, true);
+    }
+
+    private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
+        LocalDateTime agora = agora();
+        LocalDateTime inicio = LocalDateTime.of(dto.getData(), turma.getHoraInicio());
+        if (isMonitor(membroLogado) && agora.isBefore(inicio)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Não é possível registrar a chamada antes do horário de início da turma.");
+        }
+        if (apenasAtualizar) {
+            validarEdicaoFrequencia(membroLogado, inicio, agora);
         }
 
+        Set<Integer> ids = new HashSet<>();
+        List<Frequencia> registros = new ArrayList<>();
         for (FrequenciaDTO fDto : dto.getFrequencias()) {
-            Matricula matricula = matriculaRepository.findById(fDto.getIdMatricula())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada: " + fDto.getIdMatricula()));
-            
-            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || matricula.getStatus() == StatusMatricula.EGRESSO) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar frequência para aluno inativo ou excluído.");
+            if (!ids.add(fDto.getIdMatricula())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Matrícula repetida no lote.");
             }
-            
+            Matricula matricula = matriculaRepository.findById(fDto.getIdMatricula())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Matrícula não encontrada: " + fDto.getIdMatricula()));
+            validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
+            if (!matricula.getTurma().getId().equals(turma.getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A matrícula não pertence à turma informada.");
+            }
+            validarMatriculaNaData(matricula, dto.getData());
             Frequencia frequencia = frequenciaRepository.findByMatriculaIdAndDataRegistro(matricula.getId(), dto.getData())
-                    .orElseGet(() -> {
-                        Frequencia novaFreq = new Frequencia();
-                        novaFreq.setMatricula(matricula);
-                        novaFreq.setDataRegistro(dto.getData());
-                        return novaFreq;
-                    });
-                    
+                    .orElse(null);
+            if (frequencia != null) {
+                validarEdicaoFrequencia(membroLogado, inicio, agora);
+            } else {
+                if (apenasAtualizar) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado.");
+                }
+                frequencia = new Frequencia();
+                frequencia.setMatricula(matricula);
+                frequencia.setDataRegistro(dto.getData());
+            }
             frequencia.setPresente(fDto.getPresente());
             frequencia.setMembro(membroLogado);
-            frequenciaRepository.save(frequencia);
+            registros.add(frequencia);
+        }
+        try {
+            frequenciaRepository.saveAllAndFlush(registros);
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A chamada conflita com registros existentes. Recarregue o diário antes de salvar.", exception);
         }
     }
 
@@ -111,19 +147,11 @@ public class FrequenciaService {
         Frequencia frequencia = frequenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado."));
         
-        if (frequencia.getMatricula().getStatus() == StatusMatricula.EXCLUIDO || frequencia.getMatricula().getStatus() == StatusMatricula.EGRESSO) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível alterar frequência de usuário inativo ou excluído.");
-        }
-
         Turma turma = frequencia.getMatricula().getTurma();
         validarAcessoUnidade(membroLogado, turma.getUnidade());
-
-        if (isMonitor(membroLogado)) {
-            LocalDateTime dataHoraInicioReferencia = LocalDateTime.of(frequencia.getDataRegistro(), turma.getHoraInicio());
-            if (ChronoUnit.HOURS.between(dataHoraInicioReferencia, LocalDateTime.now()) > 48) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Monitores não podem alterar frequências registradas há mais de 48 horas.");
-            }
-        }
+        validarMatriculaNaData(frequencia.getMatricula(), frequencia.getDataRegistro());
+        validarEdicaoFrequencia(membroLogado,
+                LocalDateTime.of(frequencia.getDataRegistro(), turma.getHoraInicio()), agora());
 
         frequencia.setPresente(dto.getPresente());
         frequencia.setMembro(membroLogado);
@@ -133,14 +161,36 @@ public class FrequenciaService {
         return new FrequenciaUsuarioResponseDTO(frequencia.getMatricula(), frequencia, ocorrencias);
     }
 
-    private void validarAcessoUnidade(Membro membro, Unidade unidade) {
-        boolean temAcesso = membro.getUnidades().stream().anyMatch(u -> u.getId().equals(unidade.getId()));
-        if (!temAcesso) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O usuário não possui permissão de acesso a esta unidade.");
-        }
+    private LocalDateTime agora() {
+        return LocalDateTime.now(ZoneId.of("America/Sao_Paulo"));
     }
 
     private boolean isMonitor(Membro membro) {
         return Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.MONITOR;
+    }
+
+    private void validarAcessoUnidade(Membro membro, Unidade unidade) {
+        if (Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR) {
+            return;
+        }
+        if (membro.getUnidades().stream().noneMatch(u -> u.getId().equals(unidade.getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "O usuário não possui permissão de acesso a esta unidade.");
+        }
+    }
+
+    private void validarMatriculaNaData(Matricula matricula, LocalDate data) {
+        if (matricula.getDataIngresso().toLocalDate().isAfter(data)
+                || (matricula.getDataDesligamento() != null && matricula.getDataDesligamento().isBefore(data))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A matrícula não estava ativa na data informada.");
+        }
+    }
+
+    private void validarEdicaoFrequencia(Membro membro, LocalDateTime referencia, LocalDateTime agora) {
+        if (isMonitor(membro) && agora.isAfter(referencia.plusHours(48))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Monitores não podem alterar frequências registradas há mais de 48 horas.");
+        }
     }
 }

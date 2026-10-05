@@ -15,7 +15,7 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "frequencia", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"id_matricula", "data_registro"})
+    @UniqueConstraint(name = "uk_frequencia_matricula_data", columnNames = {"id_matricula", "data_registro"})
 })
 public class Frequencia {
 

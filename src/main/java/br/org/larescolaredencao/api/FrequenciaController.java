@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,10 +35,19 @@ public class FrequenciaController {
 
     @GetMapping
     public List<FrequenciaUsuarioResponseDTO> listarFrequencia(
-            @RequestParam("idTurma") Integer idTurma,
+            @RequestParam(value = "idTurma", required = false) Integer idTurma,
+            @RequestParam(value = "id_turma", required = false) Integer idTurmaAlternativo,
             @RequestParam("data") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate data,
             @AuthenticationPrincipal Membro membroLogado) {
-        return frequenciaService.listarFrequencia(idTurma, data, membroLogado);
+        if (idTurma == null && idTurmaAlternativo == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe idTurma ou id_turma.");
+        }
+        if (idTurma != null && idTurmaAlternativo != null && !idTurma.equals(idTurmaAlternativo)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "idTurma e id_turma devem identificar a mesma turma.");
+        }
+        return frequenciaService.listarFrequencia(idTurma != null ? idTurma : idTurmaAlternativo, data, membroLogado);
     }
 
     @PostMapping
@@ -46,6 +56,13 @@ public class FrequenciaController {
             @Valid @RequestBody SalvarFrequenciaEmLoteDTO dto,
             @AuthenticationPrincipal Membro membroLogado) {
         frequenciaService.salvarFrequenciaEmLote(dto, membroLogado);
+    }
+
+    @PutMapping
+    public void atualizarFrequenciaEmLote(
+            @Valid @RequestBody SalvarFrequenciaEmLoteDTO dto,
+            @AuthenticationPrincipal Membro membroLogado) {
+        frequenciaService.atualizarFrequenciaEmLote(dto, membroLogado);
     }
 
     @PutMapping("/{id}")

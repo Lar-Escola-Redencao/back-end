@@ -81,10 +81,14 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.PUT, "/membro/me").authenticated();  
                     
                     req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/{id:[0-9]+}",
+                            "/usuarios/{id:[0-9]+}/arquivos-saude").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers("/usuarios/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/buscar").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     
+                    req.requestMatchers("/frequencia/**", "/ocorrencia/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling

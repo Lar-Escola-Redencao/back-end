@@ -36,7 +36,7 @@ public class ContatoService {
 
     @Transactional(readOnly = true)
     public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable) {
-        return contatoRepository.findVisibleByMembroId(membroId, pageable).map(contato -> {
+        return contatoRepository.findAll(pageable).map(contato -> {
             long vinculos = contatoUsuarioRepository.countByContatoId(contato.getId());
             return new ContatoListagemDTO(contato, vinculos);
         });

@@ -8,7 +8,6 @@ import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
-import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import org.springframework.http.HttpStatus;
@@ -18,7 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
+import java.time.ZoneId;
 
 @Service
 public class OcorrenciaService {
@@ -36,19 +35,19 @@ public class OcorrenciaService {
         Matricula matricula = matriculaRepository.findById(dto.getIdMatricula())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada."));
         
-        if (matricula.getStatus() == StatusMatricula.EXCLUIDO || matricula.getStatus() == StatusMatricula.EGRESSO) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência para usuário inativo ou excluído.");
-        }
-
         validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
-
-        if (isMonitor(membroLogado)) {
-            if (ChronoUnit.DAYS.between(dto.getDataOcorrencia(), LocalDate.now()) > 7) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Monitores não podem registrar ocorrências retroativas passando de 7 dias.");
-            }
+        LocalDateTime agora = agora();
+        if (isMonitor(membroLogado) && dto.getDataOcorrencia().isBefore(agora.toLocalDate().minusDays(7))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Monitores não podem registrar ocorrências retroativas passando de 7 dias.");
         }
+        if (isMonitor(membroLogado) && dto.getDataOcorrencia().isAfter(agora.toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência em data futura.");
+        }
+        validarMatriculaNaData(matricula, dto.getDataOcorrencia());
 
         Ocorrencia ocorrencia = new Ocorrencia();
+        ocorrencia.setDataCriacao(agora);
         ocorrencia.setMatricula(matricula);
         ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
         ocorrencia.setDescricao(dto.getDescricao());
@@ -64,17 +63,8 @@ public class OcorrenciaService {
         Ocorrencia ocorrencia = ocorrenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ocorrência não encontrada."));
         
-        if (ocorrencia.getMatricula().getStatus() == StatusMatricula.EXCLUIDO || ocorrencia.getMatricula().getStatus() == StatusMatricula.EGRESSO) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível alterar ocorrência de usuário inativo ou excluído.");
-        }
-
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
-
-        if (isMonitor(membroLogado)) {
-            if (ChronoUnit.HOURS.between(ocorrencia.getDataCriacao(), LocalDateTime.now()) > 24) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Monitores não podem alterar ocorrências criadas há mais de 24 horas.");
-            }
-        }
+        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
 
         ocorrencia.setDescricao(dto.getDescricao());
         ocorrencia.setTipoOcorrencia(dto.getTipoOcorrencia());
@@ -91,23 +81,41 @@ public class OcorrenciaService {
 
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
 
-        if (isMonitor(membroLogado)) {
-            if (ChronoUnit.HOURS.between(ocorrencia.getDataCriacao(), LocalDateTime.now()) > 24) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Monitores não podem excluir ocorrências criadas há mais de 24 horas.");
-            }
-        }
+        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
 
         ocorrenciaRepository.delete(ocorrencia);
     }
 
-    private void validarAcessoUnidade(Membro membro, Unidade unidade) {
-        boolean temAcesso = membro.getUnidades().stream().anyMatch(u -> u.getId().equals(unidade.getId()));
-        if (!temAcesso) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O usuário não possui permissão de acesso a esta unidade.");
-        }
+    private LocalDateTime agora() {
+        return LocalDateTime.now(ZoneId.of("America/Sao_Paulo"));
     }
 
     private boolean isMonitor(Membro membro) {
         return Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.MONITOR;
+    }
+
+    private void validarAcessoUnidade(Membro membro, Unidade unidade) {
+        if (Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR) {
+            return;
+        }
+        if (membro.getUnidades().stream().noneMatch(u -> u.getId().equals(unidade.getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "O usuário não possui permissão de acesso a esta unidade.");
+        }
+    }
+
+    private void validarMatriculaNaData(Matricula matricula, LocalDate data) {
+        if (matricula.getDataIngresso().toLocalDate().isAfter(data)
+                || (matricula.getDataDesligamento() != null && matricula.getDataDesligamento().isBefore(data))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A matrícula não estava ativa na data informada.");
+        }
+    }
+
+    private void validarEdicaoOcorrencia(Membro membro, LocalDateTime criacao, LocalDateTime agora) {
+        if (isMonitor(membro) && agora.isAfter(criacao.plusHours(24))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Monitores não podem alterar ou excluir ocorrências criadas há mais de 24 horas.");
+        }
     }
 }

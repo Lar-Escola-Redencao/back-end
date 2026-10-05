@@ -19,10 +19,17 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     boolean existsByUsuarioAndStatus(Usuario usuario, StatusMatricula status);
 
-    @Query("SELECT m FROM Matricula m WHERE m.turma.id = :turmaId " +
-           "AND m.dataIngresso <= :dataFimDia " +
-           "AND (m.dataDesligamento IS NULL OR m.dataDesligamento >= :data)")
+    @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario WHERE m.turma.id = :turmaId " +
+           "AND m.dataIngresso < :dataFimDia " +
+           "AND (m.dataDesligamento IS NULL OR m.dataDesligamento >= :data) " +
+           "ORDER BY m.usuario.nomeCompleto, m.id")
     List<Matricula> findHistoricoAtivasPorTurmaEData(@Param("turmaId") Integer turmaId, 
                                                      @Param("dataFimDia") LocalDateTime dataFimDia, 
                                                      @Param("data") LocalDate data);
+
+    @Query(value = "SELECT COUNT(*) FROM frequencia WHERE id_matricula IN (:ids)", nativeQuery = true)
+    long contarFrequenciasPorMatriculas(@Param("ids") List<Integer> ids);
+
+    @Query(value = "SELECT COUNT(*) FROM ocorrencia WHERE id_matricula IN (:ids)", nativeQuery = true)
+    long contarOcorrenciasPorMatriculas(@Param("ids") List<Integer> ids);
 }
