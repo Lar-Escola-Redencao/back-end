@@ -4,24 +4,23 @@ import java.util.List;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class CriarMembroDTO {
-	@NotBlank
+    @NotBlank
     @Size(max = 150)
     private String nomeCompleto;
-	
-	@NotBlank
+    
+    @NotBlank
     @Email
     @Size(max = 100)
     private String email;
-	
-	@NotBlank
+    
+    @NotBlank
     private String senha;
-	
-	@NotBlank
+    
+    @NotBlank
     @Size(max = 14)
     private String cpf;
     private String endereco;
@@ -30,7 +29,6 @@ public class CriarMembroDTO {
     @NotNull
     private Integer idPapel;
     
-    @NotEmpty(message = "Selecione ao menos uma unidade.")
     private List<Integer> idsUnidades;
 
     public String getNomeCompleto() {
@@ -90,10 +88,10 @@ public class CriarMembroDTO {
     }
     
     public List<Integer> getIdsUnidades() {
-    	return idsUnidades;
-	}
+        return idsUnidades;
+    }
     
     public void setIdsUnidades(List<Integer> idsUnidades) {
-    	this.idsUnidades = idsUnidades;
+        this.idsUnidades = idsUnidades;
     }
 }

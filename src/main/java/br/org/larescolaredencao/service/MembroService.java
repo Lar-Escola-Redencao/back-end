@@ -59,8 +59,14 @@ public class MembroService {
         
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        
+        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
+        }
 
-        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        List<Unidade> unidades = dto.getIdsUnidades() != null && !dto.getIdsUnidades().isEmpty() 
+            ? unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades()) 
+            : List.of();
         
         Membro membro = new Membro();
         membro.setNomeCompleto(dto.getNomeCompleto());
@@ -98,7 +104,13 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
-        List<Unidade> unidades = unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
+        }
+
+        List<Unidade> unidades = dto.getIdsUnidades() != null && !dto.getIdsUnidades().isEmpty() 
+            ? unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades()) 
+            : List.of();
         
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
