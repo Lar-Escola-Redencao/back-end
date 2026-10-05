@@ -42,6 +42,8 @@ public class PaginaService {
     private static final String GRUPO_TELEFONE = "telefone";
     private static final String GRUPO_PRODUTOS = "produtos";
     private static final String GRUPO_PIX = "pix";
+    private static final int TITULO_TAMANHO_MINIMO = 3;
+    private static final int TITULO_TAMANHO_MAXIMO = 150;
     private static final String TITULO_TEXTO_SOBRE = "Sobre o Lar Escola Redenção";
 
     private final PaginaRepository paginaRepository;
@@ -103,6 +105,7 @@ public class PaginaService {
             return criarSecaoDeGrupo(pagina, grupoDaPagina, dto);
         }
 
+        validarTamanhoTitulo(dto.getTitulo());
         Secao secao = new Secao();
         String grupo = normalizarGrupo(dto.getGrupo());
         secao.setTitulo(resolverTituloSecao(dto.getTitulo(), grupo));
@@ -121,11 +124,15 @@ public class PaginaService {
         return persistirSecao(secao, novaImagem, null);
     }
 
-    /** Rota antiga (/paginas/secoes/{id}): resolve a página pela própria seção e aplica as mesmas regras. */
+    /**
+     * Rota antiga (/paginas/secoes/{id}): resolve a página da seção e aplica as mesmas regras.
+     * Busca só o id da página para a seção ser carregada uma única vez, já com lock.
+     */
     @Transactional
     public Secao atualizarSecao(Long id, AtualizarSecaoDTO dto) {
-        Secao secao = buscarSecaoPorId(id);
-        return atualizarSecao(secao.getPagina().getId(), id, dto);
+        Long idPagina = secaoRepository.findIdPaginaById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada."));
+        return atualizarSecao(idPagina, id, dto);
     }
 
     @Transactional
@@ -139,6 +146,7 @@ public class PaginaService {
         }
 
         if (dto.getTitulo() != null) {
+            validarTamanhoTitulo(dto.getTitulo());
             secao.setTitulo(arquivoService.sanitizarTexto(dto.getTitulo()));
         }
         if (dto.getConteudo() != null) {
@@ -182,7 +190,8 @@ public class PaginaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A imagem é obrigatória.");
         }
 
-        Secao secao = buscarSecaoPorId(id);
+        Secao secao = secaoRepository.findByIdComBloqueio(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada."));
         validarArquivoPermitido(normalizarChaveGrupo(secao.getGrupo()), imagem);
         String imagemAnterior = secao.getImagem();
 
@@ -361,13 +370,13 @@ public class PaginaService {
         switch (grupo) {
             case GRUPO_TELEFONE -> {
                 // WhatsApp em titulo, telefone alternativo (opcional) em conteudo, sem imagem.
-                secao.setTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                secao.setTitulo(validarTamanhoTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo))));
                 secao.setConteudo(textoOuNulo(conteudo));
                 secao.setImagem(null);
             }
             case GRUPO_PRODUTOS -> {
                 // Nome do produto em titulo e foto em imagem; conteudo não é usado.
-                secao.setTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                secao.setTitulo(validarTamanhoTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo))));
                 secao.setConteudo(null);
                 exigirImagem(grupo, possuiArquivo, imagemAnterior);
             }
@@ -410,6 +419,18 @@ public class PaginaService {
             throw campoObrigatorio(grupo, campo);
         }
         return texto;
+    }
+
+    /**
+     * Limite de tamanho do título, aplicado só onde o título é usado. Antes ficava no
+     * @Size dos DTOs, que rodava antes do mapeamento e recusava o pix com titulo="".
+     */
+    private String validarTamanhoTitulo(String titulo) {
+        if (titulo != null && (titulo.length() < TITULO_TAMANHO_MINIMO || titulo.length() > TITULO_TAMANHO_MAXIMO)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O campo 'titulo' deve ter entre " + TITULO_TAMANHO_MINIMO + " e " + TITULO_TAMANHO_MAXIMO + " caracteres.");
+        }
+        return titulo;
     }
 
     private String textoOuNulo(String valor) {

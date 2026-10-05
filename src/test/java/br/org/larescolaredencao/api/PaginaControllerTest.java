@@ -71,6 +71,24 @@ class PaginaControllerTest {
     }
 
     @Test
+    void tituloVazioNaoEhBarradoNoBindingPoisOGrupoDecideSeUsaTitulo() throws Exception {
+        when(paginaService.atualizarSecao(eq(4L), eq(10L), any(AtualizarSecaoDTO.class))).thenReturn(new Secao());
+        when(paginaService.criarSecao(eq(4L), any(CriarSecaoDTO.class))).thenReturn(new Secao());
+
+        mockMvc.perform(multipart(HttpMethod.PUT, "/paginas/4/secoes/10")
+                        .param("grupo", "pix")
+                        .param("titulo", "")
+                        .param("conteudo", "email@larredencao.org.br"))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(multipart("/paginas/4/secoes")
+                        .param("grupo", "pix")
+                        .param("titulo", "ab")
+                        .param("conteudo", "email@larredencao.org.br"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void postDeveAceitarMultipartFormDataERetornar201() throws Exception {
         Secao secao = new Secao();
         secao.setId(1L);

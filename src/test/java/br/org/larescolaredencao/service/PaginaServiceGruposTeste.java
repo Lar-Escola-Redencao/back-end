@@ -105,6 +105,13 @@ class PaginaServiceGruposTeste {
         lenient().when(secaoRepository.findById(anyLong())).thenAnswer(invocacao -> secoesGravadas.stream()
                 .filter(secao -> secao.getId().equals(invocacao.getArgument(0)))
                 .findFirst());
+        lenient().when(secaoRepository.findByIdComBloqueio(anyLong())).thenAnswer(invocacao -> secoesGravadas.stream()
+                .filter(secao -> secao.getId().equals(invocacao.getArgument(0)))
+                .findFirst());
+        lenient().when(secaoRepository.findIdPaginaById(anyLong())).thenAnswer(invocacao -> secoesGravadas.stream()
+                .filter(secao -> secao.getId().equals(invocacao.getArgument(0)))
+                .map(secao -> secao.getPagina().getId())
+                .findFirst());
         lenient().when(secaoRepository.findByIdAndPaginaId(anyLong(), anyLong())).thenAnswer(invocacao -> secoesGravadas.stream()
                 .filter(secao -> secao.getId().equals(invocacao.getArgument(0)))
                 .filter(secao -> secao.getPagina().getId().equals(invocacao.getArgument(1)))
@@ -303,6 +310,83 @@ class PaginaServiceGruposTeste {
 
         assertThat(secao.getGrupo()).isEqualTo("relatorios");
         assertThat(secao.getTitulo()).isEqualTo("Relatórios Financeiros");
+    }
+
+    // ---------------------------------------------------------------- título por grupo
+
+    @Test
+    void pixIgnoraTituloVazioOuCurtoNoPostENoPut() {
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "", "chave", imagem("qr.png")));
+        String qrAtual = pix.getImagem();
+        assertThat(pix.getTitulo()).isNull();
+
+        Secao comTituloCurto = paginaService.criarSecao(PAGINA_PIX, criar("pix", "ab", "chave-2", null));
+        assertThat(comTituloCurto.getTitulo()).isNull();
+
+        Secao atualizado = emTransacao(true, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
+                atualizar("pix", "", "email@larredencao.org.br", null)));
+
+        assertThat(atualizado.getTitulo()).isNull();
+        assertThat(atualizado.getConteudo()).isEqualTo("email@larredencao.org.br");
+        assertThat(atualizado.getImagem()).isEqualTo(qrAtual);
+        assertThat(arquivoNoDisco(qrAtual)).exists();
+    }
+
+    @Test
+    void gruposQueUsamTituloMantemLimiteDeTamanho() {
+        String mensagem = "O campo 'titulo' deve ter entre 3 e 150 caracteres.";
+        assertStatus(() -> paginaService.criarSecao(PAGINA_GRAFICA, criar("telefone", "16", null, null)),
+                HttpStatus.BAD_REQUEST, mensagem);
+        assertStatus(() -> paginaService.criarSecao(PAGINA_GRAFICA, criar("produtos", "x".repeat(151), null, imagem("a.png"))),
+                HttpStatus.BAD_REQUEST, mensagem);
+
+        Secao produto = paginaService.criarSecao(PAGINA_GRAFICA, criar("produtos", "Folder A3", null, imagem("a.png")));
+        assertStatus(() -> paginaService.atualizarSecao(PAGINA_GRAFICA, produto.getId(), atualizar("produtos", "A3", null, null)),
+                HttpStatus.BAD_REQUEST, mensagem);
+
+        assertThat(secoesGravadas).hasSize(1);
+        assertThat(arquivosNoStorage()).hasSize(1);
+    }
+
+    @Test
+    void paginasLivresMantemLimiteDeTamanhoDoTitulo() {
+        String mensagem = "O campo 'titulo' deve ter entre 3 e 150 caracteres.";
+        assertStatus(() -> paginaService.criarSecao(PAGINA_TRANSPARENCIA, criar(null, "ab", "Texto", null)),
+                HttpStatus.BAD_REQUEST, mensagem);
+
+        Secao secao = paginaService.criarSecao(PAGINA_TRANSPARENCIA, criar(null, "Relatórios", "Texto", null));
+        assertStatus(() -> paginaService.atualizarSecao(PAGINA_TRANSPARENCIA, secao.getId(), atualizar(null, "ab", null, null)),
+                HttpStatus.BAD_REQUEST, mensagem);
+    }
+
+    // ---------------------------------------------------------------- concorrência (lock na leitura)
+
+    @Test
+    void escritasDeSecaoCarregamASecaoComLock() {
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave", imagem("qr-1.png")));
+
+        paginaService.atualizarSecao(PAGINA_PIX, pix.getId(), atualizar("pix", null, "chave-2", imagem("qr-2.png")));
+        paginaService.atualizarSecao(pix.getId(), atualizar("pix", null, "chave-3", imagem("qr-3.png")));
+        paginaService.atualizarImagemSecao(pix.getId(), imagem("qr-4.png"));
+
+        // PUT por página e rota antiga: findByIdAndPaginaId (FOR UPDATE). A rota antiga só
+        // descobre o id da página, sem carregar a entidade antes do lock.
+        verify(secaoRepository, times(2)).findByIdAndPaginaId(pix.getId(), PAGINA_PIX);
+        verify(secaoRepository).findIdPaginaById(pix.getId());
+        verify(secaoRepository).findByIdComBloqueio(pix.getId());
+        verify(secaoRepository, never()).findById(anyLong());
+        assertThat(arquivosNoStorage()).containsExactly(arquivoNoDisco(pix.getImagem()));
+    }
+
+    @Test
+    void uploadAvulsoComRollbackRemoveOArquivoNovoEMantemOAntigo() {
+        Secao produto = paginaService.criarSecao(PAGINA_GRAFICA, criar("produtos", "Folder A3", null, imagem("antiga.png")));
+        String imagemAntiga = produto.getImagem();
+
+        Secao atualizado = emTransacao(false, () -> paginaService.atualizarImagemSecao(produto.getId(), imagem("nova.png")));
+
+        assertThat(arquivoNoDisco(atualizado.getImagem())).doesNotExist();
+        assertThat(arquivoNoDisco(imagemAntiga)).exists();
     }
 
     // ---------------------------------------------------------------- PUT

@@ -2,11 +2,9 @@ package br.org.larescolaredencao.dto;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import jakarta.validation.constraints.Size;
-
 public class AtualizarSecaoDTO {
 
-    @Size(min = 3, max = 150)
+    /** Tamanho validado no service: grupos que não usam título (ex.: pix) ignoram o valor enviado. */
     private String titulo;
 
     private String conteudo;
