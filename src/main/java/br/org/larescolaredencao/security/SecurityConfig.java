@@ -88,6 +88,8 @@ public class SecurityConfig {
                     req.requestMatchers("/contatos/buscar").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     
+                    req.requestMatchers("/frequencia/**", "/ocorrencia/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling
