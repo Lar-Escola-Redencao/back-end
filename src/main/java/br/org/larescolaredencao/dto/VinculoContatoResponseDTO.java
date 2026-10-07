@@ -3,6 +3,8 @@ package br.org.larescolaredencao.dto;
 import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
+import java.time.LocalDate;
 
 public class VinculoContatoResponseDTO {
 
@@ -13,6 +15,8 @@ public class VinculoContatoResponseDTO {
     private Boolean principal;
     private Integer idUnidade;
     private String nomeUnidade;
+    private StatusMatricula statusMatricula;
+    private LocalDate dataDesligamento;
 
     public VinculoContatoResponseDTO(ContatoUsuario ca, Matricula matriculaAtiva) {
         this.idUsuario = ca.getUsuario().getId();
@@ -24,6 +28,8 @@ public class VinculoContatoResponseDTO {
         if (matriculaAtiva != null) {
             this.idUnidade = matriculaAtiva.getTurma().getUnidade().getId();
             this.nomeUnidade = matriculaAtiva.getTurma().getUnidade().getNome();
+            this.statusMatricula = matriculaAtiva.getStatus();
+            this.dataDesligamento = matriculaAtiva.getDataDesligamento();
         }
     }
 
@@ -53,5 +59,13 @@ public class VinculoContatoResponseDTO {
 
     public String getNomeUnidade() {
         return nomeUnidade;
+    }
+
+    public StatusMatricula getStatusMatricula() {
+        return statusMatricula;
+    }
+
+    public LocalDate getDataDesligamento() {
+        return dataDesligamento;
     }
 }

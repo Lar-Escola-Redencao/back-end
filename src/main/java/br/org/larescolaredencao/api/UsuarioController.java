@@ -92,6 +92,11 @@ public class UsuarioController {
         return usuarioService.transferirTurma(id, dto, membroLogado);
     }
 
+    @PutMapping("/{id}/rematricular")
+    public UsuarioResponseDTO rematricularUsuario(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.rematricularUsuario(id, dto, membroLogado);
+    }
+
     @PutMapping("/{id}/inativar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void inativarUsuario(@PathVariable("id") Integer id, @Valid @RequestBody InativarUsuarioDTO dto, @AuthenticationPrincipal Membro membroLogado) {
