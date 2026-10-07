@@ -81,6 +81,17 @@ public class PaginaController {
         return paginaService.criarSecao(idPagina, dto);
     }
 
+    /**
+     * Atualização escopada pela página da rota: seção de outra página responde 404.
+     * Aceita multipart/form-data (Tomcat e o StandardServletMultipartResolver não restringem o método HTTP).
+     */
+    @PutMapping("/{idPagina:\\d+}/secoes/{id:\\d+}")
+    public Secao atualizarSecaoDaPagina(@PathVariable("idPagina") Long idPagina,
+                                        @PathVariable("id") Long id,
+                                        @Valid @ModelAttribute AtualizarSecaoDTO dto) {
+        return paginaService.atualizarSecao(idPagina, id, dto);
+    }
+
     @GetMapping("/secoes/{id}")
     public Secao buscarSecao(@PathVariable("id") Long id) {
         return paginaService.buscarSecaoPorId(id);

@@ -27,6 +27,9 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
                                                      @Param("dataFimDia") LocalDateTime dataFimDia, 
                                                      @Param("data") LocalDate data);
 
+    @Query("SELECT COUNT(DISTINCT m.usuario.id) FROM Matricula m WHERE m.status = :status")
+    long contarMeninosPorStatus(@Param("status") StatusMatricula status);
+
     @Query(value = "SELECT COUNT(*) FROM frequencia WHERE id_matricula IN (:ids)", nativeQuery = true)
     long contarFrequenciasPorMatriculas(@Param("ids") List<Integer> ids);
 

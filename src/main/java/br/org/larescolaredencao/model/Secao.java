@@ -17,7 +17,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 /**
@@ -32,7 +31,7 @@ public class Secao {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank
+    /** Pode ser NULL em grupos que não usam título (ex.: pix); a obrigatoriedade é validada no service. */
     @Size(min = 3, max = 150)
     private String titulo;
 

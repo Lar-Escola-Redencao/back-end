@@ -70,6 +70,7 @@ public class SecurityConfig {
                             "/rede-social/{id:\\d+}").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
+                            "/paginas/sobre/indicadores",
                             "/paginas/{id:\\d+}",
                             "/paginas/{id:\\d+}/secoes",
                             "/paginas/secoes/{id:\\d+}",
