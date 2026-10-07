@@ -25,6 +25,14 @@ public class ParceiroService {
 	}
 
 	public Page<Parceiro> getAllParceiros(Pageable pageable) {
+		return getAllParceiros(pageable, null);
+	}
+
+	public Page<Parceiro> getAllParceiros(Pageable pageable, String search) {
+		String termo = TermoBusca.like(search);
+		if (termo != null) {
+			return parceiroRepository.buscar(termo, pageable);
+		}
 		return parceiroRepository.findAll(pageable);
 	}
 

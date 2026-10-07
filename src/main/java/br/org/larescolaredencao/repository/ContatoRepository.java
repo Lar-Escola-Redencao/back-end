@@ -35,4 +35,21 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
            "LOWER(c.email) LIKE LOWER(CONCAT('%', :termo, '%')) OR " +
            "(:termoTelefone IS NOT NULL AND (c.telefone LIKE CONCAT('%', :termoTelefone, '%') OR c.cpf LIKE CONCAT('%', :termoTelefone, '%')))")
     List<Contato> searchGlobalByTermo(@Param("termo") String termo, @Param("termoTelefone") String termoTelefone);
+
+    // Listagem global (Sprint 4). Regra do fantasma: contato vinculado a usuário excluído
+    // (matrícula EXCLUIDO) não aparece; contatos sem vínculo continuam visíveis.
+    @Query("SELECT c FROM Contato c WHERE (" +
+           "   LOWER(c.nomeCompleto) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.telefone) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.email) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.cpf) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.endereco) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(c.localTrabalho) LIKE :search ESCAPE '!' OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(c.cpf, '.', ''), '-', '') LIKE :searchDigitos) OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(c.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
+           ") AND NOT EXISTS (" +
+           "   SELECT 1 FROM ContatoUsuario cu JOIN Matricula m ON m.usuario = cu.usuario " +
+           "   WHERE cu.contato = c AND m.status = 'EXCLUIDO'" +
+           ")")
+    Page<Contato> buscar(@Param("search") String search, @Param("searchDigitos") String searchDigitos, Pageable pageable);
 }

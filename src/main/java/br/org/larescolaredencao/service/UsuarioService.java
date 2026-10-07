@@ -132,11 +132,24 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId) {
+        return listarUsuariosDoMembro(membroId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId, String search) {
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 
+        String termo = TermoBusca.like(search);
+        String digitos = TermoBusca.digitosLike(search);
+        boolean administrador = Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel());
+
         List<Usuario> usuarios;
-        if (Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel())) {
+        if (termo != null) {
+            usuarios = administrador
+                    ? usuarioRepository.buscarAtivos(termo, digitos)
+                    : usuarioRepository.buscarAtivosByMembroId(membroId, termo, digitos);
+        } else if (administrador) {
             usuarios = usuarioRepository.findAtivos();
         } else {
             usuarios = usuarioRepository.findAtivosByMembroId(membroId);
