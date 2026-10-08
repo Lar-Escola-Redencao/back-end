@@ -16,9 +16,16 @@ public class FrequenciaUsuarioResponseDTO {
     private Integer idFrequencia;
     private Boolean presente;
     private StatusMatricula statusMatricula;
+    private Boolean permiteAcessoPerfil;
+    private boolean isUsuarioExcluido;
     private List<OcorrenciaResponseDTO> ocorrencias;
 
     public FrequenciaUsuarioResponseDTO(Matricula matricula, Frequencia frequencia, List<Ocorrencia> ocorrencias) {
+        this(matricula, frequencia, ocorrencias, true, usuarioTemMatriculaExcluida(matricula));
+    }
+
+    public FrequenciaUsuarioResponseDTO(Matricula matricula, Frequencia frequencia, List<Ocorrencia> ocorrencias,
+                                        Boolean permiteAcessoPerfil, boolean isUsuarioExcluido) {
         this.idMatricula = matricula.getId();
         this.idUsuario = matricula.getUsuario().getId();
         this.nomeUsuario = matricula.getUsuario().getNomeCompleto();
@@ -26,7 +33,15 @@ public class FrequenciaUsuarioResponseDTO {
         this.idFrequencia = frequencia != null ? frequencia.getId() : null;
         this.presente = frequencia != null ? frequencia.getPresente() : null;
         this.statusMatricula = matricula.getStatus();
+        this.permiteAcessoPerfil = permiteAcessoPerfil;
+        this.isUsuarioExcluido = isUsuarioExcluido;
         this.ocorrencias = ocorrencias != null ? ocorrencias.stream().map(OcorrenciaResponseDTO::new).collect(Collectors.toList()) : List.of();
+    }
+
+    private static boolean usuarioTemMatriculaExcluida(Matricula matricula) {
+        return matricula.getUsuario().getMatriculas() != null
+                && matricula.getUsuario().getMatriculas().stream()
+                        .anyMatch(m -> m.getStatus() == StatusMatricula.EXCLUIDO);
     }
 
     public Integer getIdMatricula() {
@@ -55,6 +70,14 @@ public class FrequenciaUsuarioResponseDTO {
     
     public StatusMatricula getStatusMatricula() {
     	return statusMatricula;
+    }
+
+    public Boolean getPermiteAcessoPerfil() {
+        return permiteAcessoPerfil;
+    }
+
+    public boolean getIsUsuarioExcluido() {
+        return isUsuarioExcluido;
     }
 
     public List<OcorrenciaResponseDTO> getOcorrencias() {
