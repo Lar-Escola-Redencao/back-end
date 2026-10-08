@@ -10,9 +10,12 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "usuario")
@@ -66,6 +69,9 @@ public class Usuario {
 
     @Column(name = "imagem_perfil", length = 255)
     private String imagemPerfil;
+
+    @OneToMany(mappedBy = "usuario")
+    private List<Matricula> matriculas = new ArrayList<>();
 
     public Integer getId() {
         return id;
@@ -185,5 +191,13 @@ public class Usuario {
 
     public void setImagemPerfil(String imagemPerfil) {
         this.imagemPerfil = imagemPerfil;
+    }
+
+    public List<Matricula> getMatriculas() {
+        return matriculas;
+    }
+
+    public void setMatriculas(List<Matricula> matriculas) {
+        this.matriculas = matriculas;
     }
 }

@@ -7,9 +7,11 @@ import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.Usuario;
 import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,11 @@ public class UsuarioResponseDTO {
     private String nomeTurma;
     private Integer idUnidade;
     private String nomeUnidade;
+    private StatusMatricula statusMatricula;
+    private LocalDateTime dataPrimeiraMatricula;
+    private LocalDate dataDesligamento;
+    private String justificativaEgresso;
+    private boolean matriculaCorrigida;
     private List<ContatoResponseDTO> contatos;
     private List<ComposicaoFamiliarDTO> composicaoFamiliar;
     private FichaSocioeconomicaDTO fichaSocioeconomica;
@@ -70,6 +77,9 @@ public class UsuarioResponseDTO {
                     matriculaAtiva.getTurma().getHoraFim();
             this.idUnidade = matriculaAtiva.getTurma().getUnidade().getId();
             this.nomeUnidade = matriculaAtiva.getTurma().getUnidade().getNome();
+            this.statusMatricula = matriculaAtiva.getStatus();
+            this.dataDesligamento = matriculaAtiva.getDataDesligamento();
+            this.justificativaEgresso = matriculaAtiva.getJustificativaEgresso();
         }
 
         if (contatos != null && !contatos.isEmpty()) {
@@ -207,6 +217,14 @@ public class UsuarioResponseDTO {
     public String getNomeUnidade() {
         return nomeUnidade;
     }
+
+    public StatusMatricula getStatusMatricula() { return statusMatricula; }
+    public LocalDateTime getDataPrimeiraMatricula() { return dataPrimeiraMatricula; }
+    public void setDataPrimeiraMatricula(LocalDateTime dataPrimeiraMatricula) { this.dataPrimeiraMatricula = dataPrimeiraMatricula; }
+    public LocalDate getDataDesligamento() { return dataDesligamento; }
+    public String getJustificativaEgresso() { return justificativaEgresso; }
+    public boolean isMatriculaCorrigida() { return matriculaCorrigida; }
+    public void setMatriculaCorrigida(boolean matriculaCorrigida) { this.matriculaCorrigida = matriculaCorrigida; }
 
     public List<ContatoResponseDTO> getContatos() {
         return contatos;

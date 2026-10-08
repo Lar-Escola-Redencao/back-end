@@ -5,6 +5,7 @@ import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.InativarUsuarioDTO;
+import br.org.larescolaredencao.dto.MatriculaHistoricoResponseDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
@@ -52,6 +53,11 @@ public class UsuarioController {
         return usuarioService.buscarUsuarioPorId(id, membroLogado);
     }
 
+    @GetMapping("/{id}/matriculas")
+    public List<MatriculaHistoricoResponseDTO> listarMatriculas(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.listarHistoricoMatriculas(id, membroLogado);
+    }
+
     @GetMapping("/parentescos")
     public Parentesco[] listarParentescos() {
         return Parentesco.values();
@@ -90,6 +96,11 @@ public class UsuarioController {
     @PutMapping("/{id}/turma")
     public UsuarioResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
         return usuarioService.transferirTurma(id, dto, membroLogado);
+    }
+
+    @PutMapping("/{id}/rematricular")
+    public UsuarioResponseDTO rematricularUsuario(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.rematricularUsuario(id, dto, membroLogado);
     }
 
     @PutMapping("/{id}/inativar")

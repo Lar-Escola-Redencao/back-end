@@ -34,6 +34,15 @@ public class ContatoService {
         this.matriculaRepository = matriculaRepository;
     }
 
+    private Matricula obterMatriculaDeReferencia(Usuario usuario) {
+        return matriculaRepository.findByUsuario(usuario).stream()
+                .filter(matricula -> matricula.getStatus() == StatusMatricula.ATIVO)
+                .findFirst()
+                .orElseGet(() -> matriculaRepository.findByUsuario(usuario).stream()
+                        .max((primeira, segunda) -> primeira.getDataIngresso().compareTo(segunda.getDataIngresso()))
+                        .orElse(null));
+    }
+
     @Transactional(readOnly = true)
     public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable) {
         return contatoRepository.findAll(pageable).map(contato -> {
@@ -51,10 +60,7 @@ public class ContatoService {
 
         List<VinculoContatoResponseDTO> vinculos = contatosUsuarios.stream().map(ca -> {
             Usuario usuario = ca.getUsuario();
-            Matricula matriculaAtiva = matriculaRepository.findByUsuario(usuario).stream()
-                    .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
-                    .findFirst()
-                    .orElse(null);
+            Matricula matriculaAtiva = obterMatriculaDeReferencia(usuario);
             
             return new VinculoContatoResponseDTO(ca, matriculaAtiva);
         }).collect(Collectors.toList());
@@ -89,10 +95,7 @@ public class ContatoService {
         return contatoUsuarioRepository.findByContatoId(contatoId)
                 .stream()
                 .map(ca -> {
-                    Matricula matriculaAtiva = matriculaRepository.findByUsuario(ca.getUsuario()).stream()
-                            .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
-                            .findFirst()
-                            .orElse(null);
+                    Matricula matriculaAtiva = obterMatriculaDeReferencia(ca.getUsuario());
                     return new VinculoContatoResponseDTO(ca, matriculaAtiva);
                 })
                 .collect(Collectors.toList());

@@ -11,6 +11,7 @@ import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
@@ -71,7 +72,7 @@ public class FrequenciaService {
                     .filter(o -> o.getMatricula().getId().equals(matricula.getId()))
                     .collect(Collectors.toList());
                     
-            return new FrequenciaUsuarioResponseDTO(matricula, freq, ocs);
+            return montarRespostaUsuario(matricula, freq, ocs, membroLogado);
         }).collect(Collectors.toList());
     }
 
@@ -158,7 +159,40 @@ public class FrequenciaService {
         frequencia = frequenciaRepository.save(frequencia);
 
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaIdAndDataOcorrencia(frequencia.getMatricula().getId(), frequencia.getDataRegistro());
-        return new FrequenciaUsuarioResponseDTO(frequencia.getMatricula(), frequencia, ocorrencias);
+        return montarRespostaUsuario(frequencia.getMatricula(), frequencia, ocorrencias, membroLogado);
+    }
+
+    private FrequenciaUsuarioResponseDTO montarRespostaUsuario(Matricula matricula, Frequencia frequencia,
+                                                               List<Ocorrencia> ocorrencias, Membro membroLogado) {
+        boolean usuarioExcluido = usuarioTemMatriculaExcluida(matricula);
+        boolean permiteAcessoPerfil = permiteAcessoPerfil(matricula, membroLogado);
+        return new FrequenciaUsuarioResponseDTO(matricula, frequencia, ocorrencias, permiteAcessoPerfil, usuarioExcluido);
+    }
+
+    private boolean usuarioTemMatriculaExcluida(Matricula matricula) {
+        return matricula.getUsuario().getMatriculas() != null
+                && matricula.getUsuario().getMatriculas().stream()
+                        .anyMatch(m -> m.getStatus() == StatusMatricula.EXCLUIDO);
+    }
+
+    private boolean permiteAcessoPerfil(Matricula matricula, Membro membroLogado) {
+        if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+            return false;
+        }
+        if (Perfil.fromNomePapel(membroLogado.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR) {
+            return true;
+        }
+
+        Set<Integer> unidadesPermitidas = membroLogado.getUnidades().stream()
+                .map(Unidade::getId)
+                .collect(Collectors.toSet());
+        return matricula.getUsuario().getMatriculas() != null
+                && matricula.getUsuario().getMatriculas().stream()
+                        .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
+                        .map(Matricula::getTurma)
+                        .filter(turma -> turma != null && turma.getUnidade() != null)
+                        .map(turma -> turma.getUnidade().getId())
+                        .anyMatch(unidadesPermitidas::contains);
     }
 
     private LocalDateTime agora() {

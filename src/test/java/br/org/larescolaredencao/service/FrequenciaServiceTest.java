@@ -54,6 +54,7 @@ class FrequenciaServiceTest {
         usuario.setId(20);
         usuario.setNomeCompleto("Aluno");
         matricula.setUsuario(usuario);
+        usuario.setMatriculas(List.of(matricula));
         matricula.setDataIngresso(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(2));
         Papel papel = new Papel();
         papel.setNomePapel("MONITOR");
@@ -196,6 +197,35 @@ class FrequenciaServiceTest {
         when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of());
         when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
         assertThat(service.listarFrequencia(1, data, membro)).hasSize(1);
+    }
+
+    @Test
+    void deveInformarPermissaoDePerfilEExclusaoNoGetDoDiario() {
+        Unidade outraUnidade = new Unidade();
+        outraUnidade.setId(2);
+        Turma outraTurma = new Turma();
+        outraTurma.setId(2);
+        outraTurma.setUnidade(outraUnidade);
+
+        Matricula matriculaOutraUnidade = new Matricula();
+        matriculaOutraUnidade.setId(11);
+        matriculaOutraUnidade.setTurma(outraTurma);
+        matriculaOutraUnidade.setUsuario(matricula.getUsuario());
+        matricula.getUsuario().setMatriculas(List.of(matriculaOutraUnidade));
+
+        when(turmas.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculas.findHistoricoAtivasPorTurmaEData(1, data.plusDays(1).atStartOfDay(), data)).thenReturn(List.of(matricula));
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of());
+        when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
+
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isFalse();
+
+        membro.getPapel().setNomePapel("ADMINISTRADOR");
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isTrue();
+
+        matriculaOutraUnidade.setStatus(StatusMatricula.EXCLUIDO);
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isFalse();
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getIsUsuarioExcluido()).isTrue();
     }
 
     @Test
