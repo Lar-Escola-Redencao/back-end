@@ -19,13 +19,15 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     boolean existsByUsuarioAndStatus(Usuario usuario, StatusMatricula status);
 
-    @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario WHERE m.turma.id = :turmaId " +
-           "AND m.dataIngresso < :dataFimDia " +
-           "AND (m.dataDesligamento IS NULL OR m.dataDesligamento >= :data) " +
-           "ORDER BY m.usuario.nomeCompleto, m.id")
-    List<Matricula> findHistoricoAtivasPorTurmaEData(@Param("turmaId") Integer turmaId, 
-                                                     @Param("dataFimDia") LocalDateTime dataFimDia, 
-                                                     @Param("data") LocalDate data);
+    @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario u WHERE m.id IN (" +
+            "  SELECT MAX(m2.id) FROM Matricula m2 WHERE m2.turma.id = :turmaId " +
+            "  AND m2.dataIngresso < :dataFimDia " +
+            "  AND (m2.dataDesligamento IS NULL OR m2.dataDesligamento >= :data) " +
+            "  GROUP BY m2.usuario.id" +
+            ") AND m.status != 'EXCLUIDO' ORDER BY u.nomeCompleto")
+     List<Matricula> findHistoricoAtivasPorTurmaEData(@Param("turmaId") Integer turmaId, 
+                                                      @Param("dataFimDia") LocalDateTime dataFimDia, 
+                                                      @Param("data") LocalDate data);
 
     @Query("SELECT COUNT(DISTINCT m.usuario.id) FROM Matricula m WHERE m.status = :status")
     long contarMeninosPorStatus(@Param("status") StatusMatricula status);
