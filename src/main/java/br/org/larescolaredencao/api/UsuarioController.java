@@ -5,6 +5,7 @@ import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.InativarUsuarioDTO;
+import br.org.larescolaredencao.dto.MatriculaHistoricoResponseDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
@@ -50,6 +51,11 @@ public class UsuarioController {
     @GetMapping("/{id}")
     public UsuarioResponseDTO buscarUsuario(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
         return usuarioService.buscarUsuarioPorId(id, membroLogado);
+    }
+
+    @GetMapping("/{id}/matriculas")
+    public List<MatriculaHistoricoResponseDTO> listarMatriculas(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.listarHistoricoMatriculas(id, membroLogado);
     }
 
     @GetMapping("/parentescos")

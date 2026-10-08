@@ -11,6 +11,7 @@ import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -36,6 +37,7 @@ public class UsuarioResponseDTO {
     private Integer idUnidade;
     private String nomeUnidade;
     private StatusMatricula statusMatricula;
+    private LocalDateTime dataPrimeiraMatricula;
     private LocalDate dataDesligamento;
     private String justificativaEgresso;
     private boolean matriculaCorrigida;
@@ -217,6 +219,8 @@ public class UsuarioResponseDTO {
     }
 
     public StatusMatricula getStatusMatricula() { return statusMatricula; }
+    public LocalDateTime getDataPrimeiraMatricula() { return dataPrimeiraMatricula; }
+    public void setDataPrimeiraMatricula(LocalDateTime dataPrimeiraMatricula) { this.dataPrimeiraMatricula = dataPrimeiraMatricula; }
     public LocalDate getDataDesligamento() { return dataDesligamento; }
     public String getJustificativaEgresso() { return justificativaEgresso; }
     public boolean isMatriculaCorrigida() { return matriculaCorrigida; }

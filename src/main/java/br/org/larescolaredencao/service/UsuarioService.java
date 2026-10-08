@@ -7,6 +7,7 @@ import br.org.larescolaredencao.dto.ComposicaoFamiliarDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.FichaSocioeconomicaDTO;
 import br.org.larescolaredencao.dto.InativarUsuarioDTO;
+import br.org.larescolaredencao.dto.MatriculaHistoricoResponseDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
@@ -102,6 +103,19 @@ public class UsuarioService {
                 .orElseGet(() -> matriculas.stream().max((a, b) -> a.getDataIngresso().compareTo(b.getDataIngresso())).orElse(null));
     }
 
+    private LocalDateTime obterDataPrimeiraMatricula(Usuario usuario) {
+        return matriculaRepository.findByUsuario(usuario).stream()
+                .map(Matricula::getDataIngresso)
+                .filter(java.util.Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+    }
+
+    private UsuarioResponseDTO incluirDataPrimeiraMatricula(UsuarioResponseDTO resposta, Usuario usuario) {
+        resposta.setDataPrimeiraMatricula(obterDataPrimeiraMatricula(usuario));
+        return resposta;
+    }
+
     private boolean podeCorrigirMatricula(Matricula matricula) {
         if (matricula.getDataIngresso() == null || matricula.getDataIngresso().isBefore(LocalDateTime.now().minusHours(24))) return false;
         if (matricula.getId() == null) return true;
@@ -151,7 +165,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 
         return usuarioRepository.findAll().stream()
-                .map(u -> new UsuarioResponseDTO(u, null, obterMatriculaDeReferencia(u)))
+                .map(u -> incluirDataPrimeiraMatricula(new UsuarioResponseDTO(u, null, obterMatriculaDeReferencia(u)), u))
                 .filter(dto -> dto.getStatusMatricula() != null)
                 .filter(dto -> Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel())
                         || membro.getUnidades().stream().anyMatch(unidade -> unidade.getId().equals(dto.getIdUnidade())))
@@ -166,13 +180,13 @@ public class UsuarioService {
         FichaSocioeconomica fichaSocioeconomica =
                 fichaSocioeconomicaRepository.findById(usuario.getId()).orElse(null);
 
-        return new UsuarioResponseDTO(
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(
                 usuario,
                 contatos,
                 matriculaAtiva,
                 composicaoFamiliar,
                 fichaSocioeconomica
-        );
+        ), usuario);
     }
 
     @Transactional(readOnly = true)
@@ -184,6 +198,18 @@ public class UsuarioService {
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
 
         return montarRespostaCompleta(usuario, contatos, obterMatriculaDeReferencia(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MatriculaHistoricoResponseDTO> listarHistoricoMatriculas(Integer id, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+
+        return matriculaRepository.findByUsuario(usuario).stream()
+                .sorted((primeira, segunda) -> segunda.getDataIngresso().compareTo(primeira.getDataIngresso()))
+                .map(MatriculaHistoricoResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -302,7 +328,7 @@ public class UsuarioService {
         matricula = matriculaRepository.save(matricula);
 
         List<ContatoUsuario> contatosSalvos = contatoUsuarioRepository.findByUsuario(salvo);
-        return new UsuarioResponseDTO(salvo, contatosSalvos, matricula);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(salvo, contatosSalvos, matricula), salvo);
     }
 
     @Transactional
@@ -553,10 +579,9 @@ public class UsuarioService {
         Turma novaTurma = turmaRepository.findById(dto.getIdTurmaNova())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nova turma não encontrada."));
 
-        validarAcessoATurma(novaTurma.getId(), membroLogado);
         if (podeCorrigirMatricula(matriculaAtiva)) {
             matriculaAtiva.setTurma(novaTurma);
-            UsuarioResponseDTO resposta = new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva));
+            UsuarioResponseDTO resposta = incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva)), usuario);
             resposta.setMatriculaCorrigida(true);
             return resposta;
         }
@@ -572,7 +597,7 @@ public class UsuarioService {
         matriculaAtiva = matriculaRepository.save(novaMatricula);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
-        return new UsuarioResponseDTO(usuario, contatos, matriculaAtiva);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatos, matriculaAtiva), usuario);
     }
 
     @Transactional
@@ -592,7 +617,7 @@ public class UsuarioService {
         matricula.setStatus(StatusMatricula.ATIVO);
         matricula.setDataIngresso(LocalDateTime.now());
         matricula = matriculaRepository.save(matricula);
-        return new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matricula);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matricula), usuario);
     }
 
     @Transactional
