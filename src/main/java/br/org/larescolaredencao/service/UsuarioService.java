@@ -29,6 +29,7 @@ import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
 import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
+import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
@@ -64,6 +65,7 @@ public class UsuarioService {
     private final ArquivoSaudeRepository arquivoSaudeRepository;
     private final EntrevistaSocialRepository entrevistaSocialRepository;
     private final MembroRepository membroRepository;
+    private final FrequenciaRepository frequenciaRepository;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
                           MatriculaRepository matriculaRepository,
@@ -75,7 +77,8 @@ public class UsuarioService {
                           ComposicaoFamiliarRepository composicaoFamiliarRepository,
                           ArquivoSaudeRepository arquivoSaudeRepository,
                           EntrevistaSocialRepository entrevistaSocialRepository,
-                          MembroRepository membroRepository) {
+                          MembroRepository membroRepository,
+                          FrequenciaRepository frequenciaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.matriculaRepository = matriculaRepository;
         this.contatoRepository = contatoRepository;
@@ -87,6 +90,7 @@ public class UsuarioService {
         this.arquivoSaudeRepository = arquivoSaudeRepository;
         this.entrevistaSocialRepository = entrevistaSocialRepository;
         this.membroRepository = membroRepository;
+        this.frequenciaRepository = frequenciaRepository;
     }
 
     private Matricula obterMatriculaAtiva(Usuario usuario) {
@@ -470,6 +474,7 @@ public class UsuarioService {
         if (!matriculaAtiva.getTurma().getId().equals(dto.getIdTurma())) {
             TransferirTurmaDTO transDto = new TransferirTurmaDTO();
             transDto.setIdTurmaNova(dto.getIdTurma());
+            transDto.setDataTransferencia(LocalDate.now());
             transferirTurma(usuario.getId(), transDto, membroLogado);
             
             matriculaAtiva = obterMatriculaAtiva(usuario);
@@ -572,6 +577,9 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário não possui matrícula ativa para transferir.");
         }
 
+        LocalDate dataTransferencia = dto.getDataTransferencia();
+        validarDataNaoAnteriorAoIngresso(matriculaAtiva, dataTransferencia, "A data de transferência não pode ser anterior ao ingresso da matrícula atual.");
+
         if (matriculaAtiva.getTurma().getId().equals(dto.getIdTurmaNova())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário já está matriculado nesta turma.");
         }
@@ -581,19 +589,21 @@ public class UsuarioService {
 
         if (podeCorrigirMatricula(matriculaAtiva)) {
             matriculaAtiva.setTurma(novaTurma);
+            matriculaAtiva.setDataIngresso(dataTransferencia.atStartOfDay());
             UsuarioResponseDTO resposta = incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva)), usuario);
             resposta.setMatriculaCorrigida(true);
             return resposta;
         }
         matriculaAtiva.setStatus(StatusMatricula.INATIVO);
-        matriculaAtiva.setDataDesligamento(LocalDate.now());
+        matriculaAtiva.setDataDesligamento(dataTransferencia.minusDays(1));
+        frequenciaRepository.deleteByMatriculaIdAndDataRegistroGreaterThanEqual(matriculaAtiva.getId(), dataTransferencia);
         matriculaRepository.save(matriculaAtiva);
 
         Matricula novaMatricula = new Matricula();
         novaMatricula.setUsuario(usuario);
         novaMatricula.setTurma(novaTurma);
         novaMatricula.setStatus(StatusMatricula.ATIVO);
-        novaMatricula.setDataIngresso(LocalDateTime.now());
+        novaMatricula.setDataIngresso(dataTransferencia.atStartOfDay());
         matriculaAtiva = matriculaRepository.save(novaMatricula);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
@@ -632,12 +642,26 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário não possui matrícula ativa para inativar.");
         }
 
+        LocalDate dataDesligamento = dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now();
+        validarDataNaoAnteriorAoIngresso(matriculaAtiva, dataDesligamento, "A data de desligamento não pode ser anterior ao ingresso da matrícula atual.");
+
         matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
-        matriculaAtiva.setDataDesligamento(dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now());
+        matriculaAtiva.setDataDesligamento(dataDesligamento);
+        frequenciaRepository.deleteByMatriculaIdAndDataRegistroAfter(matriculaAtiva.getId(), dataDesligamento);
         if (dto.getJustificativa() != null) {
             matriculaAtiva.setJustificativaEgresso(dto.getJustificativa());
         }
         matriculaRepository.save(matriculaAtiva);
+    }
+
+    private void validarDataNaoAnteriorAoIngresso(Matricula matricula, LocalDate data, String mensagem) {
+        if (data == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A data informada é obrigatória.");
+        }
+        LocalDate dataIngresso = matricula.getDataIngresso().toLocalDate();
+        if (data.isBefore(dataIngresso)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, mensagem);
+        }
     }
 
     @Transactional

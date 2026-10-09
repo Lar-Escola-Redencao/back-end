@@ -31,6 +31,7 @@ import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
 import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
+import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
@@ -97,6 +98,9 @@ public class UsuarioServiceTest {
 
     @Mock
     private MembroRepository membroRepository;
+
+    @Mock
+    private FrequenciaRepository frequenciaRepository;
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -221,6 +225,7 @@ public class UsuarioServiceTest {
 
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.now());
 
         usuarioService.transferirTurma(1, dto, adminLogado);
 
@@ -233,7 +238,7 @@ public class UsuarioServiceTest {
     void transferirTurmaMaisDe24HorasDeveInativarAtualECriarNova() {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
 
-        matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(30));
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 9, 1, 8, 0));
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();
@@ -243,12 +248,31 @@ public class UsuarioServiceTest {
 
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.of(2026, 10, 5));
 
         usuarioService.transferirTurma(1, dto, adminLogado);
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
+        verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroGreaterThanEqual(1, dto.getDataTransferencia());
         assertEquals(StatusMatricula.INATIVO, matriculaAtiva.getStatus());
-        assertNotNull(matriculaAtiva.getDataDesligamento());
+        assertEquals(LocalDate.of(2026, 10, 4), matriculaAtiva.getDataDesligamento());
+    }
+
+    @Test
+    void transferirTurmaComDataAnteriorAoIngressoDeveLancarBadRequest() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 10, 5, 8, 0));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        TransferirTurmaDTO dto = new TransferirTurmaDTO();
+        dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.of(2026, 10, 4));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.transferirTurma(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
@@ -263,9 +287,26 @@ public class UsuarioServiceTest {
         usuarioService.inativarUsuario(1, dto, adminLogado);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
+        verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroAfter(1, dto.getDataDesligamento());
         assertEquals(StatusMatricula.EGRESSO, matriculaAtiva.getStatus());
         assertEquals(dto.getDataDesligamento(), matriculaAtiva.getDataDesligamento());
         assertEquals("Mudança de cidade", matriculaAtiva.getJustificativaEgresso());
+    }
+
+    @Test
+    void inativarUsuarioComDataAnteriorAoIngressoDeveLancarBadRequest() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 9, 1, 8, 0));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        InativarUsuarioDTO dto = new InativarUsuarioDTO();
+        dto.setDataDesligamento(LocalDate.of(2020, 1, 1));
+        dto.setJustificativa("Mudança de cidade");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.inativarUsuario(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test

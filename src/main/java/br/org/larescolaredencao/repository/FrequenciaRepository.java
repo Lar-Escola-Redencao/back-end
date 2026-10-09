@@ -10,4 +10,6 @@ import java.util.Optional;
 public interface FrequenciaRepository extends JpaRepository<Frequencia, Integer> {
     Optional<Frequencia> findByMatriculaIdAndDataRegistro(Integer matriculaId, LocalDate dataRegistro);
     List<Frequencia> findByMatriculaTurmaIdAndDataRegistro(Integer turmaId, LocalDate dataRegistro);
+    void deleteByMatriculaIdAndDataRegistroGreaterThanEqual(Integer matriculaId, LocalDate dataRegistro);
+    void deleteByMatriculaIdAndDataRegistroAfter(Integer matriculaId, LocalDate dataRegistro);
 }
