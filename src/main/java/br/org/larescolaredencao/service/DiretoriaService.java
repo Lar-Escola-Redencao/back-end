@@ -34,7 +34,16 @@ public class DiretoriaService {
 		this.arquivoService = arquivoService;
 	}
 
+	//REaliza a busca de dados
 	public Page<Diretoria> listarTodos(Pageable pageable) {
+		return listarTodos(pageable, null);
+	}
+
+	public Page<Diretoria> listarTodos(Pageable pageable, String search) {
+		String termo = TermoBusca.like(search);
+		if (termo != null) {
+			return diretoriaRepository.buscar(termo, pageable);
+		}
 		return diretoriaRepository.findAll(pageable);
 	}
 

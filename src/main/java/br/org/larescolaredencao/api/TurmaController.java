@@ -33,13 +33,14 @@ public class TurmaController {
     }
 
     @GetMapping
-    public List<TurmaResponseDTO> listarTodasAsTurmas() {
-        return turmaService.listarTodasAsTurmas();
+    public List<TurmaResponseDTO> listarTodasAsTurmas(@RequestParam(name = "search", required = false) String search) {
+        return turmaService.listarTodasAsTurmas(search);
     }
 
     @GetMapping("/todas")
-    public PagedModel<TurmaResponseDTO> listarTurmas(Pageable pageable, @RequestParam(name = "unidadeId", required = false) Integer unidadeId) {
-        return new PagedModel<>(turmaService.listarTurmas(pageable, unidadeId));
+    public PagedModel<TurmaResponseDTO> listarTurmas(Pageable pageable, @RequestParam(name = "unidadeId", required = false) Integer unidadeId,
+                                                    @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(turmaService.listarTurmas(pageable, unidadeId, search));
     }
 
     @GetMapping("/{id}")

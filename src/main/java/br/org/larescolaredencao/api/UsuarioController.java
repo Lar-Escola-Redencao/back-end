@@ -43,8 +43,9 @@ public class UsuarioController {
     }
 
     @GetMapping
-    public List<UsuarioResponseDTO> listarUsuarios(@AuthenticationPrincipal Membro membroLogado) {
-        return usuarioService.listarUsuariosDoMembro(membroLogado.getId());
+    public List<UsuarioResponseDTO> listarUsuarios(@AuthenticationPrincipal Membro membroLogado,
+                                                   @RequestParam(name = "search", required = false) String search) {
+        return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search);
     }
 
     @GetMapping("/{id}")

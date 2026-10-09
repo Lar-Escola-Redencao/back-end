@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -67,11 +68,29 @@ public class PaginaService {
     }
 
     public List<Secao> listarSecoes(Long idPagina) {
+        return listarSecoes(idPagina, null);
+    }
+
+    /** Lista sem paginação (Gráfica/Pix); com termo, filtra pelas mesmas colunas da busca do admin. */
+    public List<Secao> listarSecoes(Long idPagina, String search) {
         buscarPaginaPorId(idPagina);
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return secaoRepository.buscar(idPagina, null, termo,
+                    Pageable.unpaged(Sort.by("grupo", "ordem"))).getContent();
+        }
         return secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(idPagina);
     }
 
     public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable, String grupo) {
+        return listarSecoesPaginado(idPagina, pageable, grupo, null);
+    }
+
+    public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable, String grupo, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return secaoRepository.buscar(idPagina, grupo == null || grupo.isBlank() ? null : grupo, termo, pageable);
+        }
         if (grupo == null || grupo.isBlank()) {
             return secaoRepository.findByPaginaId(idPagina, pageable);
         }
@@ -83,6 +102,14 @@ public class PaginaService {
     }
 
     public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable) {
+        return listarDocumentosPaginado(idPagina, pageable, null);
+    }
+
+    public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return documentoRepository.buscar(idPagina, termo, pageable).map(DocumentoResponseDTO::new);
+        }
         return documentoRepository.findBySecaoPaginaId(idPagina, pageable)
                 .map(DocumentoResponseDTO::new);
     }
