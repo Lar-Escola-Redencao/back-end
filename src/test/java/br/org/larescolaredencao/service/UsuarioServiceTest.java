@@ -43,6 +43,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -61,6 +62,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -377,4 +379,50 @@ public class UsuarioServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         verify(contatoUsuarioRepository, times(0)).delete(any());
     }
+
+    @Test
+    void atualizarFotoDeUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        MockMultipartFile foto = new MockMultipartFile("foto", "foto.png", "image/png", "conteudo".getBytes());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.atualizarFotoPerfil(1, foto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(arquivoService, never()).salvarArquivo(any(), anyString(), any());
+        verify(usuarioRepository, never()).save(usuario);
+    }
+
+    @Test
+    void uploadArquivoSaudeDeUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        MockMultipartFile arquivo = new MockMultipartFile("arquivo", "laudo.pdf", "application/pdf", "conteudo".getBytes());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.uploadArquivoSaude(1, "Laudo", arquivo, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(arquivoService, never()).salvarArquivo(any(), anyString(), any());
+        verify(arquivoSaudeRepository, never()).save(any());
+    }
+
+    @Test
+    void vincularContatoEmUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.vincularContatoExistente(1, 2, new br.org.larescolaredencao.dto.VincularContatoExistenteDTO(), adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(contatoUsuarioRepository, never()).save(any());
+    }
+
 }

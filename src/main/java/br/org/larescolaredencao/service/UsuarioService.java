@@ -148,6 +148,12 @@ public class UsuarioService {
         }
     }
 
+    private void validarUsuarioEditavel(Usuario usuario) {
+        if (obterMatriculaAtiva(usuario) == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Usuario desligado nao pode ser editado.");
+        }
+    }
+
     private void validarAcessoATurma(Integer idTurma, Membro membroLogado) {
         if (Perfil.ADMINISTRADOR.name().equals(membroLogado.getPapel().getNomePapel())) {
             return;
@@ -384,6 +390,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
             usuarioRepository.findByCpf(dto.getCpf()).ifPresent(u -> {
@@ -551,6 +558,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
@@ -670,6 +678,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         Contato contato = contatoRepository.findById(contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
@@ -702,6 +711,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         validarLimiteVinculos(usuario);
 
@@ -753,6 +763,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
                 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
         
         ContatoUsuario vinculo = contatoUsuarioRepository.findByUsuarioIdAndContatoId(usuarioId, contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
@@ -978,6 +989,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         List<ArquivoSaude> atuais = arquivoSaudeRepository.findByIdUsuario(usuarioId);
         if (atuais.size() >= 4) {
@@ -1013,6 +1025,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário vinculado a este arquivo não encontrado."));
                 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
         
         arquivoService.deletarArquivo(arquivo.getCaminhoArquivo());
         arquivoSaudeRepository.delete(arquivo);
