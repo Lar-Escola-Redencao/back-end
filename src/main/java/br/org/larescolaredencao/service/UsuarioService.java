@@ -32,6 +32,7 @@ import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
+import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
@@ -66,6 +67,7 @@ public class UsuarioService {
     private final EntrevistaSocialRepository entrevistaSocialRepository;
     private final MembroRepository membroRepository;
     private final FrequenciaRepository frequenciaRepository;
+    private final OcorrenciaRepository ocorrenciaRepository;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
                           MatriculaRepository matriculaRepository,
@@ -78,7 +80,8 @@ public class UsuarioService {
                           ArquivoSaudeRepository arquivoSaudeRepository,
                           EntrevistaSocialRepository entrevistaSocialRepository,
                           MembroRepository membroRepository,
-                          FrequenciaRepository frequenciaRepository) {
+                          FrequenciaRepository frequenciaRepository,
+                          OcorrenciaRepository ocorrenciaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.matriculaRepository = matriculaRepository;
         this.contatoRepository = contatoRepository;
@@ -91,6 +94,7 @@ public class UsuarioService {
         this.entrevistaSocialRepository = entrevistaSocialRepository;
         this.membroRepository = membroRepository;
         this.frequenciaRepository = frequenciaRepository;
+        this.ocorrenciaRepository = ocorrenciaRepository;
     }
 
     private Matricula obterMatriculaAtiva(Usuario usuario) {
@@ -605,6 +609,7 @@ public class UsuarioService {
         matriculaAtiva.setStatus(StatusMatricula.INATIVO);
         matriculaAtiva.setDataDesligamento(dataTransferencia.minusDays(1));
         frequenciaRepository.deleteByMatriculaIdAndDataRegistroGreaterThanEqual(matriculaAtiva.getId(), dataTransferencia);
+        ocorrenciaRepository.deleteByMatriculaIdAndDataOcorrenciaGreaterThanEqual(matriculaAtiva.getId(), dataTransferencia);
         matriculaRepository.save(matriculaAtiva);
 
         Matricula novaMatricula = new Matricula();
@@ -656,6 +661,7 @@ public class UsuarioService {
         matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
         matriculaAtiva.setDataDesligamento(dataDesligamento);
         frequenciaRepository.deleteByMatriculaIdAndDataRegistroAfter(matriculaAtiva.getId(), dataDesligamento);
+        ocorrenciaRepository.deleteByMatriculaIdAndDataOcorrenciaAfter(matriculaAtiva.getId(), dataDesligamento);
         if (dto.getJustificativa() != null) {
             matriculaAtiva.setJustificativaEgresso(dto.getJustificativa());
         }

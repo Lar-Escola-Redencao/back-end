@@ -34,6 +34,7 @@ import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
+import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -103,6 +104,9 @@ public class UsuarioServiceTest {
 
     @Mock
     private FrequenciaRepository frequenciaRepository;
+
+    @Mock
+    private OcorrenciaRepository ocorrenciaRepository;
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -256,6 +260,7 @@ public class UsuarioServiceTest {
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
         verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroGreaterThanEqual(1, dto.getDataTransferencia());
+        verify(ocorrenciaRepository, times(1)).deleteByMatriculaIdAndDataOcorrenciaGreaterThanEqual(1, dto.getDataTransferencia());
         assertEquals(StatusMatricula.INATIVO, matriculaAtiva.getStatus());
         assertEquals(LocalDate.of(2026, 10, 4), matriculaAtiva.getDataDesligamento());
     }
@@ -290,6 +295,7 @@ public class UsuarioServiceTest {
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroAfter(1, dto.getDataDesligamento());
+        verify(ocorrenciaRepository, times(1)).deleteByMatriculaIdAndDataOcorrenciaAfter(1, dto.getDataDesligamento());
         assertEquals(StatusMatricula.EGRESSO, matriculaAtiva.getStatus());
         assertEquals(dto.getDataDesligamento(), matriculaAtiva.getDataDesligamento());
         assertEquals("Mudança de cidade", matriculaAtiva.getJustificativaEgresso());
