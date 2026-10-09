@@ -229,6 +229,31 @@ class FrequenciaServiceTest {
     }
 
     @Test
+    void deveListarUsuarioExcluidoNoHistoricoQuandoExisteFrequenciaNoDia() {
+        matricula.setStatus(StatusMatricula.EXCLUIDO);
+        matricula.setDataDesligamento(data.plusDays(5));
+
+        Frequencia registro = new Frequencia();
+        registro.setId(99);
+        registro.setMatricula(matricula);
+        registro.setDataRegistro(data);
+        registro.setPresente(true);
+
+        when(turmas.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculas.findHistoricoAtivasPorTurmaEData(1, data.plusDays(1).atStartOfDay(), data)).thenReturn(List.of());
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of(registro));
+        when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
+
+        var resposta = service.listarFrequencia(1, data, membro);
+
+        assertThat(resposta).hasSize(1);
+        assertThat(resposta.get(0).getIdMatricula()).isEqualTo(10);
+        assertThat(resposta.get(0).getPresente()).isTrue();
+        assertThat(resposta.get(0).getIsUsuarioExcluido()).isTrue();
+        assertThat(resposta.get(0).getPermiteAcessoPerfil()).isFalse();
+    }
+
+    @Test
     void deveValidarPeriodoHistoricoNoPostParaMatriculasEncerradas() {
         LocalDate ingresso = data.minusDays(10);
         matricula.setDataIngresso(ingresso.atTime(14, 0));

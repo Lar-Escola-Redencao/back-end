@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -62,7 +63,9 @@ public class FrequenciaService {
         List<Frequencia> frequencias = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turmaId, data);
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaTurmaIdAndDataOcorrencia(turmaId, data);
 
-        return matriculasHistoricas.stream().map(matricula -> {
+        List<Matricula> matriculasDoDiario = incluirMatriculasExcluidasComFrequencia(matriculasHistoricas, frequencias);
+
+        return matriculasDoDiario.stream().map(matricula -> {
             Frequencia freq = frequencias.stream()
                     .filter(f -> f.getMatricula().getId().equals(matricula.getId()))
                     .findFirst()
@@ -74,6 +77,35 @@ public class FrequenciaService {
                     
             return montarRespostaUsuario(matricula, freq, ocs, membroLogado);
         }).collect(Collectors.toList());
+    }
+
+    private List<Matricula> incluirMatriculasExcluidasComFrequencia(List<Matricula> matriculasHistoricas,
+                                                                    List<Frequencia> frequencias) {
+        List<Matricula> matriculasDoDiario = new ArrayList<>(matriculasHistoricas);
+        Set<Integer> idsMatriculas = matriculasDoDiario.stream()
+                .map(Matricula::getId)
+                .collect(Collectors.toSet());
+
+        for (Frequencia frequencia : frequencias) {
+            Matricula matricula = frequencia.getMatricula();
+            if (matricula == null || matricula.getId() == null || idsMatriculas.contains(matricula.getId())) {
+                continue;
+            }
+            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+                matriculasDoDiario.add(matricula);
+                idsMatriculas.add(matricula.getId());
+            }
+        }
+
+        matriculasDoDiario.sort(Comparator.comparing(this::nomeUsuario, String.CASE_INSENSITIVE_ORDER));
+        return matriculasDoDiario;
+    }
+
+    private String nomeUsuario(Matricula matricula) {
+        if (matricula.getUsuario() == null || matricula.getUsuario().getNomeCompleto() == null) {
+            return "";
+        }
+        return matricula.getUsuario().getNomeCompleto();
     }
 
     @Transactional
