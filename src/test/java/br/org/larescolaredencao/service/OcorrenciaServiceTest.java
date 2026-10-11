@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
@@ -41,6 +42,8 @@ class OcorrenciaServiceTest {
         unidade.setId(1);
         Turma turma = new Turma();
         turma.setUnidade(unidade);
+        turma.setHoraInicio(LocalTime.of(8, 0));
+        turma.setHoraFim(LocalTime.of(18, 0));
         matricula = new Matricula();
         matricula.setId(10);
         matricula.setTurma(turma);

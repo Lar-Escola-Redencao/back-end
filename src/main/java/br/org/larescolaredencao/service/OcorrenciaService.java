@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.ZoneId;
 
 @Service
@@ -45,9 +46,13 @@ public class OcorrenciaService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência em data futura.");
         }
         validarMatriculaNaData(matricula, dto.getDataOcorrencia());
+        LocalDateTime dataCriacao = dto.getDataCriacao() != null
+                ? dto.getDataCriacao()
+                : LocalDateTime.of(dto.getDataOcorrencia(), matricula.getTurma().getHoraInicio());
+        validarDataHoraOcorrencia(matricula, dto.getDataOcorrencia(), dataCriacao);
 
         Ocorrencia ocorrencia = new Ocorrencia();
-        ocorrencia.setDataCriacao(agora);
+        ocorrencia.setDataCriacao(dataCriacao);
         ocorrencia.setMatricula(matricula);
         ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
         ocorrencia.setDescricao(dto.getDescricao());
@@ -65,6 +70,10 @@ public class OcorrenciaService {
         
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
         validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
+        if (dto.getDataCriacao() != null) {
+            validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia(), dto.getDataCriacao());
+            ocorrencia.setDataCriacao(dto.getDataCriacao());
+        }
 
         ocorrencia.setDescricao(dto.getDescricao());
         ocorrencia.setTipoOcorrencia(dto.getTipoOcorrencia());
@@ -109,6 +118,21 @@ public class OcorrenciaService {
                 || (matricula.getDataDesligamento() != null && matricula.getDataDesligamento().isBefore(data))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A matrícula não estava ativa na data informada.");
+        }
+    }
+
+    private void validarDataHoraOcorrencia(Matricula matricula, LocalDate dataOcorrencia, LocalDateTime dataCriacao) {
+        if (!dataCriacao.toLocalDate().equals(dataOcorrencia)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O horÃ¡rio da ocorrÃªncia deve pertencer Ã  data do diÃ¡rio.");
+        }
+
+        LocalTime hora = dataCriacao.toLocalTime();
+        LocalTime inicio = matricula.getTurma().getHoraInicio();
+        LocalTime fim = matricula.getTurma().getHoraFim();
+        if (hora.isBefore(inicio) || hora.isAfter(fim)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O horÃ¡rio da ocorrÃªncia deve estar dentro do horÃ¡rio da turma.");
         }
     }
 

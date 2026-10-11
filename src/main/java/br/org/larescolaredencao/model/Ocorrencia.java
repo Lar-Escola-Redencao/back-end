@@ -27,7 +27,7 @@ public class Ocorrencia {
     @Column(name = "data_ocorrencia", nullable = false)
     private LocalDate dataOcorrencia;
 
-    @Column(name = "data_criacao", nullable = false, updatable = false)
+    @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao = LocalDateTime.now();
 
     @Column(columnDefinition = "TEXT", nullable = false)

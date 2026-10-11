@@ -4,6 +4,7 @@ import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class CriarOcorrenciaDTO {
 
@@ -12,6 +13,8 @@ public class CriarOcorrenciaDTO {
 
     @NotNull
     private LocalDate dataOcorrencia;
+
+    private LocalDateTime dataCriacao;
 
     @NotBlank
     private String descricao;
@@ -33,6 +36,14 @@ public class CriarOcorrenciaDTO {
 
     public void setDataOcorrencia(LocalDate dataOcorrencia) {
         this.dataOcorrencia = dataOcorrencia;
+    }
+
+    public LocalDateTime getDataCriacao() {
+        return dataCriacao;
+    }
+
+    public void setDataCriacao(LocalDateTime dataCriacao) {
+        this.dataCriacao = dataCriacao;
     }
 
     public String getDescricao() {
