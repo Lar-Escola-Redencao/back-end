@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import br.org.larescolaredencao.dto.AtualizarDiretoriaDTO;
@@ -30,9 +31,10 @@ public class DiretoriaController {
 		this.diretoriaService = diretoriaService;
 	}
 
+	//Repassa o termo -> lê search e pageable
 	@GetMapping("/todos")
-	public PagedModel<Diretoria> listarTodos(Pageable pageable) {
-		return new PagedModel<>(diretoriaService.listarTodos(pageable));
+	public PagedModel<Diretoria> listarTodos(Pageable pageable, @RequestParam(name = "search", required = false) String search) {
+		return new PagedModel<>(diretoriaService.listarTodos(pageable, search));
 	}
 
 	@GetMapping("/{id}")

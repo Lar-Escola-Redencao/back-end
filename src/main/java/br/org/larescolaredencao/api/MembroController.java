@@ -35,8 +35,9 @@ public class MembroController {
 
     @GetMapping("/todos")
     public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable,
-            @RequestParam(name = "idPapel", required = false) Integer idPapel) {
-        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel));
+            @RequestParam(name = "idPapel", required = false) Integer idPapel,
+            @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel, search));
     }
 
     @GetMapping("/{id}")

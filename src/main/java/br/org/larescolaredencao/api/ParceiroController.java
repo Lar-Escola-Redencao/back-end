@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -29,8 +30,8 @@ public class ParceiroController {
 	}
 
 	@GetMapping("/todos")
-	public PagedModel<Parceiro> listarParceiros(Pageable pageable) {
-		return new PagedModel<>(parceiroService.getAllParceiros(pageable));
+	public PagedModel<Parceiro> listarParceiros(Pageable pageable, @RequestParam(name = "search", required = false) String search) {
+		return new PagedModel<>(parceiroService.getAllParceiros(pageable, search));
 	}
 
 	@GetMapping("/{id}")

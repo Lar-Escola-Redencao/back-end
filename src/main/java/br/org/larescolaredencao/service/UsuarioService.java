@@ -175,14 +175,31 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId) {
+        return listarUsuariosDoMembro(membroId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId, String search) {
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 
-        return usuarioRepository.findAll().stream()
-                .map(u -> incluirDataPrimeiraMatricula(new UsuarioResponseDTO(u, null, obterMatriculaDeReferencia(u)), u))
-                .filter(dto -> dto.getStatusMatricula() != null)
-                .filter(dto -> Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel())
-                        || membro.getUnidades().stream().anyMatch(unidade -> unidade.getId().equals(dto.getIdUnidade())))
+        String termo = TermoBusca.like(search);
+        String digitos = TermoBusca.digitosLike(search);
+        boolean administrador = Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel());
+
+        List<Usuario> usuarios;
+        if (termo != null) {
+            usuarios = administrador
+                    ? usuarioRepository.buscarAtivos(termo, digitos)
+                    : usuarioRepository.buscarAtivosByMembroId(membroId, termo, digitos);
+        } else if (administrador) {
+            usuarios = usuarioRepository.findAtivos();
+        } else {
+            usuarios = usuarioRepository.findAtivosByMembroId(membroId);
+        }
+
+        return usuarios.stream()
+                .map(u -> new UsuarioResponseDTO(u, null, obterMatriculaAtiva(u)))
                 .collect(Collectors.toList());
     }
 

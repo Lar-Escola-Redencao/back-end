@@ -38,12 +38,30 @@ public class TurmaService {
     }
 
     public List<TurmaResponseDTO> listarTodasAsTurmas() {
+        return listarTodasAsTurmas(null);
+    }
+
+    public List<TurmaResponseDTO> listarTodasAsTurmas(String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return turmaRepository.buscar(termo, null, Pageable.unpaged()).stream()
+                    .map(TurmaResponseDTO::new)
+                    .collect(Collectors.toList());
+        }
         return turmaRepository.findAll().stream()
                 .map(TurmaResponseDTO::new)
                 .collect(Collectors.toList());
     }
 
     public Page<TurmaResponseDTO> listarTurmas(Pageable pageable, Integer unidadeId) {
+        return listarTurmas(pageable, unidadeId, null);
+    }
+
+    public Page<TurmaResponseDTO> listarTurmas(Pageable pageable, Integer unidadeId, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return turmaRepository.buscar(termo, unidadeId, pageable).map(TurmaResponseDTO::new);
+        }
         if (unidadeId != null) {
             return turmaRepository.findByUnidadeId(unidadeId, pageable).map(TurmaResponseDTO::new);
         }

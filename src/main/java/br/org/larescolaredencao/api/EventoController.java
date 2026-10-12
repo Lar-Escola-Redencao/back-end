@@ -39,8 +39,9 @@ public class EventoController {
 
     @GetMapping("/todos")
     public PagedModel<EventoResponseDTO> listarEventos(Pageable pageable,
-            @RequestParam(name = "tipo", required = false) TipoEvento tipo) {
-        return new PagedModel<>(eventoService.getAllEventos(pageable, tipo));
+            @RequestParam(name = "tipo", required = false) TipoEvento tipo,
+            @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(eventoService.getAllEventos(pageable, tipo, search));
     }
 
     @GetMapping("/{id}")

@@ -37,6 +37,15 @@ public class MembroService {
     }
 
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel) {
+        return getAllMembros(pageable, idPapel, null);
+    }
+
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return membroRepository.buscar(termo, TermoBusca.digitosLike(search), idPapel, pageable)
+                    .map(MembroResponseDTO::new);
+        }
         Page<Membro> membros = idPapel != null
                 ? membroRepository.findByPapelId(idPapel, pageable)
                 : membroRepository.findAll(pageable);
