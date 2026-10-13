@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 
 import br.org.larescolaredencao.dto.IndicadoresSobreDTO;
 import br.org.larescolaredencao.dto.MatriculaResumoDTO;
-import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 
 @Service
@@ -20,8 +19,12 @@ public class SobrePublicoService {
 
     public IndicadoresSobreDTO obterIndicadores() {
         var matriculasAtivas = new MatriculaResumoDTO(
-                matriculaRepository.contarMeninosPorStatus(StatusMatricula.ATIVO));
+                arredondarParaDezenaInferior(matriculaRepository.contarUsuariosComUltimaMatriculaAtiva()));
         return new IndicadoresSobreDTO(
                 matriculasAtivas.getTotalMeninos(), DATA_FUNDACAO);
+    }
+
+    private long arredondarParaDezenaInferior(long valor) {
+        return (valor / 10) * 10;
     }
 }
