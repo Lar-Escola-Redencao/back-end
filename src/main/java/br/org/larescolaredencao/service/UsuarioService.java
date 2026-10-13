@@ -207,19 +207,24 @@ public class UsuarioService {
     }
 
     private Matricula obterMatriculaParaListagem(Usuario usuario,
-                                                 Integer idUnidade,
-                                                 Integer idTurma,
-                                                 StatusMatricula statusMatricula) {
-        List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
-        return matriculas.stream()
-                .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
-                .filter(m -> statusMatricula == null || m.getStatus() == statusMatricula)
-                .filter(m -> idTurma == null || (m.getTurma() != null && idTurma.equals(m.getTurma().getId())))
-                .filter(m -> idUnidade == null || (m.getTurma() != null && m.getTurma().getUnidade() != null
-                        && idUnidade.equals(m.getTurma().getUnidade().getId())))
-                .findFirst()
-                .orElseGet(() -> obterMatriculaDeReferencia(usuario));
-    }
+                                             Integer idUnidade,
+                                             Integer idTurma,
+                                             StatusMatricula statusMatricula) {
+    List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
+    return matriculas.stream()
+            .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
+            .filter(m -> statusMatricula == null || m.getStatus() == statusMatricula)
+            .filter(m -> idTurma == null || (m.getTurma() != null && idTurma.equals(m.getTurma().getId())))
+            .filter(m -> idUnidade == null || (m.getTurma() != null && m.getTurma().getUnidade() != null
+                    && idUnidade.equals(m.getTurma().getUnidade().getId())))
+            .sorted((m1, m2) -> {
+                if (m1.getStatus() == StatusMatricula.ATIVO && m2.getStatus() != StatusMatricula.ATIVO) return -1;
+                if (m2.getStatus() == StatusMatricula.ATIVO && m1.getStatus() != StatusMatricula.ATIVO) return 1;
+                return m2.getDataIngresso().compareTo(m1.getDataIngresso());
+            })
+            .findFirst()
+            .orElseGet(() -> obterMatriculaDeReferencia(usuario));
+}
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId, String search) {

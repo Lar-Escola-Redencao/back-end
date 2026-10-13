@@ -73,6 +73,12 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
            "JOIN t.unidade un " +
            "WHERE NOT EXISTS (SELECT 1 FROM Matricula mx WHERE mx.usuario = u AND mx.status = 'EXCLUIDO') " +
            "AND m.status <> 'EXCLUIDO' " +
+           "AND (" +
+           "   m.status = 'ATIVO' OR " +
+           "   (NOT EXISTS (SELECT 1 FROM Matricula ma WHERE ma.usuario = u AND ma.status = 'ATIVO') " +
+           "    AND m.dataIngresso = (SELECT MAX(mr.dataIngresso) FROM Matricula mr WHERE mr.usuario = u AND mr.status <> 'EXCLUIDO'))" +
+           ") " +
+           
            "AND (:membroId IS NULL OR un IN (SELECT um FROM Membro mem JOIN mem.unidades um WHERE mem.id = :membroId)) " +
            "AND (:idUnidade IS NULL OR un.id = :idUnidade) " +
            "AND (:idTurma IS NULL OR t.id = :idTurma) " +
