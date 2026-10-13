@@ -175,11 +175,57 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId) {
-        return listarUsuariosDoMembro(membroId, null);
+        return listarUsuariosDoMembro(membroId, null, null, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId,
+                                                          String search,
+                                                          Integer idUnidade,
+                                                          Integer idTurma,
+                                                          StatusMatricula statusMatricula) {
+        Membro membro = membroRepository.findById(membroId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
+
+        String termo = TermoBusca.like(search);
+        String digitos = TermoBusca.digitosLike(search);
+        boolean administrador = Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel());
+        Integer membroFiltro = administrador ? null : membroId;
+
+        List<Usuario> usuarios = usuarioRepository.buscarListagem(
+                membroFiltro,
+                termo,
+                digitos,
+                idUnidade,
+                idTurma,
+                statusMatricula
+        );
+
+        return usuarios.stream()
+                .map(u -> new UsuarioResponseDTO(u, null, obterMatriculaParaListagem(u, idUnidade, idTurma, statusMatricula)))
+                .collect(Collectors.toList());
+    }
+
+    private Matricula obterMatriculaParaListagem(Usuario usuario,
+                                                 Integer idUnidade,
+                                                 Integer idTurma,
+                                                 StatusMatricula statusMatricula) {
+        List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
+        return matriculas.stream()
+                .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
+                .filter(m -> statusMatricula == null || m.getStatus() == statusMatricula)
+                .filter(m -> idTurma == null || (m.getTurma() != null && idTurma.equals(m.getTurma().getId())))
+                .filter(m -> idUnidade == null || (m.getTurma() != null && m.getTurma().getUnidade() != null
+                        && idUnidade.equals(m.getTurma().getUnidade().getId())))
+                .findFirst()
+                .orElseGet(() -> obterMatriculaDeReferencia(usuario));
     }
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId, String search) {
+        if (membroId != null || membroId == null) {
+            return listarUsuariosDoMembro(membroId, search, null, null, null);
+        }
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 

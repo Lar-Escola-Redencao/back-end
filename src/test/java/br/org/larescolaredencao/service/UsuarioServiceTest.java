@@ -205,6 +205,27 @@ public class UsuarioServiceTest {
     }
 
     @Test
+    void listarUsuariosDeveAceitarEgressosEFiltrosDeMatricula() {
+        when(membroRepository.findById(999)).thenReturn(Optional.of(adminLogado));
+        when(usuarioRepository.buscarListagem(null, null, null, 1, 1, StatusMatricula.EGRESSO))
+                .thenReturn(List.of(usuario));
+
+        Matricula matriculaEgresso = new Matricula();
+        matriculaEgresso.setId(2);
+        matriculaEgresso.setUsuario(usuario);
+        matriculaEgresso.setTurma(turma);
+        matriculaEgresso.setStatus(StatusMatricula.EGRESSO);
+        matriculaEgresso.setDataIngresso(LocalDateTime.now().minusMonths(2));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaEgresso));
+
+        List<UsuarioResponseDTO> resposta = usuarioService.listarUsuariosDoMembro(999, null, 1, 1, StatusMatricula.EGRESSO);
+
+        assertEquals(1, resposta.size());
+        assertEquals(StatusMatricula.EGRESSO, resposta.get(0).getStatusMatricula());
+        verify(usuarioRepository).buscarListagem(null, null, null, 1, 1, StatusMatricula.EGRESSO);
+    }
+
+    @Test
     void cadastrarUsuarioComMatriculaAtivaDeveLancarConflictException() {
         when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.of(usuario));
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));

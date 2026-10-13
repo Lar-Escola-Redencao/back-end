@@ -11,6 +11,7 @@ import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
 import br.org.larescolaredencao.model.ArquivoSaude;
 import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.service.UsuarioService;
@@ -45,8 +46,11 @@ public class UsuarioController {
 
     @GetMapping
     public List<UsuarioResponseDTO> listarUsuarios(@AuthenticationPrincipal Membro membroLogado,
-                                                   @RequestParam(name = "search", required = false) String search) {
-        return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search);
+                                                   @RequestParam(name = "search", required = false) String search,
+                                                   @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
+                                                   @RequestParam(name = "idTurma", required = false) Integer idTurma,
+                                                   @RequestParam(name = "statusMatricula", required = false) StatusMatricula statusMatricula) {
+        return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search, idUnidade, idTurma, statusMatricula);
     }
 
     @GetMapping("/{id}")
