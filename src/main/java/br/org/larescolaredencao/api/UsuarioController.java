@@ -5,11 +5,13 @@ import br.org.larescolaredencao.dto.AtualizarVinculoDTO;
 import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.InativarUsuarioDTO;
+import br.org.larescolaredencao.dto.MatriculaHistoricoResponseDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
 import br.org.larescolaredencao.model.ArquivoSaude;
 import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.service.UsuarioService;
@@ -44,13 +46,21 @@ public class UsuarioController {
 
     @GetMapping
     public List<UsuarioResponseDTO> listarUsuarios(@AuthenticationPrincipal Membro membroLogado,
-                                                   @RequestParam(name = "search", required = false) String search) {
-        return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search);
+                                                   @RequestParam(name = "search", required = false) String search,
+                                                   @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
+                                                   @RequestParam(name = "idTurma", required = false) Integer idTurma,
+                                                   @RequestParam(name = "statusMatricula", required = false) StatusMatricula statusMatricula) {
+        return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search, idUnidade, idTurma, statusMatricula);
     }
 
     @GetMapping("/{id}")
     public UsuarioResponseDTO buscarUsuario(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
         return usuarioService.buscarUsuarioPorId(id, membroLogado);
+    }
+
+    @GetMapping("/{id}/matriculas")
+    public List<MatriculaHistoricoResponseDTO> listarMatriculas(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.listarHistoricoMatriculas(id, membroLogado);
     }
 
     @GetMapping("/parentescos")
@@ -91,6 +101,11 @@ public class UsuarioController {
     @PutMapping("/{id}/turma")
     public UsuarioResponseDTO transferirTurma(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
         return usuarioService.transferirTurma(id, dto, membroLogado);
+    }
+
+    @PutMapping("/{id}/rematricular")
+    public UsuarioResponseDTO rematricularUsuario(@PathVariable("id") Integer id, @Valid @RequestBody TransferirTurmaDTO dto, @AuthenticationPrincipal Membro membroLogado) {
+        return usuarioService.rematricularUsuario(id, dto, membroLogado);
     }
 
     @PutMapping("/{id}/inativar")

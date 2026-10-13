@@ -31,8 +31,10 @@ import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
 import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
+import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
+import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -42,6 +44,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -60,6 +63,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -97,6 +101,12 @@ public class UsuarioServiceTest {
 
     @Mock
     private MembroRepository membroRepository;
+
+    @Mock
+    private FrequenciaRepository frequenciaRepository;
+
+    @Mock
+    private OcorrenciaRepository ocorrenciaRepository;
 
     @InjectMocks
     private UsuarioService usuarioService;
@@ -195,6 +205,81 @@ public class UsuarioServiceTest {
     }
 
     @Test
+    void listarUsuariosDeveAceitarEgressosEFiltrosDeMatricula() {
+        when(membroRepository.findById(999)).thenReturn(Optional.of(adminLogado));
+        when(usuarioRepository.buscarListagem(null, null, null, 1, 1, StatusMatricula.EGRESSO))
+                .thenReturn(List.of(usuario));
+
+        Matricula matriculaEgresso = new Matricula();
+        matriculaEgresso.setId(2);
+        matriculaEgresso.setUsuario(usuario);
+        matriculaEgresso.setTurma(turma);
+        matriculaEgresso.setStatus(StatusMatricula.EGRESSO);
+        matriculaEgresso.setDataIngresso(LocalDateTime.now().minusMonths(2));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaEgresso));
+
+        List<UsuarioResponseDTO> resposta = usuarioService.listarUsuariosDoMembro(999, null, 1, 1, StatusMatricula.EGRESSO);
+
+        assertEquals(1, resposta.size());
+        assertEquals(StatusMatricula.EGRESSO, resposta.get(0).getStatusMatricula());
+        verify(usuarioRepository).buscarListagem(null, null, null, 1, 1, StatusMatricula.EGRESSO);
+    }
+
+    @Test
+    void listarUsuariosAposTransferenciaDeveExibirMatriculaAtivaAtual() {
+        when(membroRepository.findById(999)).thenReturn(Optional.of(adminLogado));
+        when(usuarioRepository.buscarListagem(null, null, null, null, null, null))
+                .thenReturn(List.of(usuario));
+
+        Unidade unidadeAntiga = new Unidade();
+        unidadeAntiga.setId(1);
+        unidadeAntiga.setNome("Sede São José");
+
+        Turma turmaAntiga = new Turma();
+        turmaAntiga.setId(1);
+        turmaAntiga.setUnidade(unidadeAntiga);
+        turmaAntiga.setPeriodo(Periodo.MANHA);
+        turmaAntiga.setHoraInicio(LocalTime.of(8, 0));
+        turmaAntiga.setHoraFim(LocalTime.of(12, 0));
+
+        Matricula matriculaAntiga = new Matricula();
+        matriculaAntiga.setId(1);
+        matriculaAntiga.setUsuario(usuario);
+        matriculaAntiga.setTurma(turmaAntiga);
+        matriculaAntiga.setStatus(StatusMatricula.INATIVO);
+        matriculaAntiga.setDataIngresso(LocalDateTime.of(2026, 2, 1, 8, 0));
+        matriculaAntiga.setDataDesligamento(LocalDate.of(2026, 10, 11));
+
+        Unidade unidadeAtual = new Unidade();
+        unidadeAtual.setId(2);
+        unidadeAtual.setNome("Bezerra de Menezes");
+
+        Turma turmaAtual = new Turma();
+        turmaAtual.setId(2);
+        turmaAtual.setUnidade(unidadeAtual);
+        turmaAtual.setPeriodo(Periodo.TARDE);
+        turmaAtual.setHoraInicio(LocalTime.of(13, 0));
+        turmaAtual.setHoraFim(LocalTime.of(17, 0));
+
+        Matricula matriculaAtual = new Matricula();
+        matriculaAtual.setId(2);
+        matriculaAtual.setUsuario(usuario);
+        matriculaAtual.setTurma(turmaAtual);
+        matriculaAtual.setStatus(StatusMatricula.ATIVO);
+        matriculaAtual.setDataIngresso(LocalDateTime.of(2026, 10, 12, 13, 0));
+
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAntiga, matriculaAtual));
+
+        List<UsuarioResponseDTO> resposta = usuarioService.listarUsuariosDoMembro(999, null, null, null, null);
+
+        assertEquals(1, resposta.size());
+        assertEquals(StatusMatricula.ATIVO, resposta.get(0).getStatusMatricula());
+        assertEquals(2, resposta.get(0).getIdUnidade());
+        assertEquals("Bezerra de Menezes", resposta.get(0).getNomeUnidade());
+        assertEquals(2, resposta.get(0).getIdTurma());
+    }
+
+    @Test
     void cadastrarUsuarioComMatriculaAtivaDeveLancarConflictException() {
         when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.of(usuario));
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
@@ -221,6 +306,7 @@ public class UsuarioServiceTest {
 
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.now());
 
         usuarioService.transferirTurma(1, dto, adminLogado);
 
@@ -233,7 +319,7 @@ public class UsuarioServiceTest {
     void transferirTurmaMaisDe24HorasDeveInativarAtualECriarNova() {
         when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
 
-        matriculaAtiva.setDataIngresso(LocalDateTime.now().minusHours(30));
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 9, 1, 8, 0));
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
 
         Turma novaTurma = new Turma();
@@ -243,12 +329,32 @@ public class UsuarioServiceTest {
 
         TransferirTurmaDTO dto = new TransferirTurmaDTO();
         dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.of(2026, 10, 5));
 
         usuarioService.transferirTurma(1, dto, adminLogado);
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
+        verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroGreaterThanEqual(1, dto.getDataTransferencia());
+        verify(ocorrenciaRepository, times(1)).deleteByMatriculaIdAndDataOcorrenciaGreaterThanEqual(1, dto.getDataTransferencia());
         assertEquals(StatusMatricula.INATIVO, matriculaAtiva.getStatus());
-        assertNotNull(matriculaAtiva.getDataDesligamento());
+        assertEquals(LocalDate.of(2026, 10, 4), matriculaAtiva.getDataDesligamento());
+    }
+
+    @Test
+    void transferirTurmaComDataAnteriorAoIngressoDeveLancarBadRequest() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 10, 5, 8, 0));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        TransferirTurmaDTO dto = new TransferirTurmaDTO();
+        dto.setIdTurmaNova(2);
+        dto.setDataTransferencia(LocalDate.of(2026, 10, 4));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.transferirTurma(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
@@ -263,9 +369,27 @@ public class UsuarioServiceTest {
         usuarioService.inativarUsuario(1, dto, adminLogado);
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
+        verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroAfter(1, dto.getDataDesligamento());
+        verify(ocorrenciaRepository, times(1)).deleteByMatriculaIdAndDataOcorrenciaAfter(1, dto.getDataDesligamento());
         assertEquals(StatusMatricula.EGRESSO, matriculaAtiva.getStatus());
         assertEquals(dto.getDataDesligamento(), matriculaAtiva.getDataDesligamento());
         assertEquals("Mudança de cidade", matriculaAtiva.getJustificativaEgresso());
+    }
+
+    @Test
+    void inativarUsuarioComDataAnteriorAoIngressoDeveLancarBadRequest() {
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        matriculaAtiva.setDataIngresso(LocalDateTime.of(2026, 9, 1, 8, 0));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        InativarUsuarioDTO dto = new InativarUsuarioDTO();
+        dto.setDataDesligamento(LocalDate.of(2020, 1, 1));
+        dto.setJustificativa("Mudança de cidade");
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.inativarUsuario(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
     }
 
     @Test
@@ -336,4 +460,50 @@ public class UsuarioServiceTest {
         assertEquals(HttpStatus.FORBIDDEN, exception.getStatusCode());
         verify(contatoUsuarioRepository, times(0)).delete(any());
     }
+
+    @Test
+    void atualizarFotoDeUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        MockMultipartFile foto = new MockMultipartFile("foto", "foto.png", "image/png", "conteudo".getBytes());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.atualizarFotoPerfil(1, foto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(arquivoService, never()).salvarArquivo(any(), anyString(), any());
+        verify(usuarioRepository, never()).save(usuario);
+    }
+
+    @Test
+    void uploadArquivoSaudeDeUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        MockMultipartFile arquivo = new MockMultipartFile("arquivo", "laudo.pdf", "application/pdf", "conteudo".getBytes());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.uploadArquivoSaude(1, "Laudo", arquivo, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(arquivoService, never()).salvarArquivo(any(), anyString(), any());
+        verify(arquivoSaudeRepository, never()).save(any());
+    }
+
+    @Test
+    void vincularContatoEmUsuarioEgressoDeveLancarBadRequest() {
+        matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () ->
+                usuarioService.vincularContatoExistente(1, 2, new br.org.larescolaredencao.dto.VincularContatoExistenteDTO(), adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatusCode());
+        verify(contatoUsuarioRepository, never()).save(any());
+    }
+
 }

@@ -26,7 +26,8 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
     }
 
     // Membro não tem soft delete (a exclusão é física). A senha fica de fora da busca.
-    @Query("SELECT m FROM Membro m WHERE " +
+    @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
+           "(:idUnidade IS NULL OR u.id = :idUnidade) AND " +
            "(:idPapel IS NULL OR m.papel.id = :idPapel) AND (" +
            "   LOWER(m.nomeCompleto) LIKE :search ESCAPE '!' OR " +
            "   LOWER(m.email) LIKE :search ESCAPE '!' OR " +
@@ -38,5 +39,10 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
            "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(m.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
            ")")
     Page<Membro> buscar(@Param("search") String search, @Param("searchDigitos") String searchDigitos,
-                        @Param("idPapel") Integer idPapel, Pageable pageable);
+                        @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
+
+    @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
+           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND " +
+           "(:idUnidade IS NULL OR u.id = :idUnidade)")
+    Page<Membro> filtrar(@Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
 }

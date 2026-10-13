@@ -54,6 +54,7 @@ class FrequenciaServiceTest {
         usuario.setId(20);
         usuario.setNomeCompleto("Aluno");
         matricula.setUsuario(usuario);
+        usuario.setMatriculas(List.of(matricula));
         matricula.setDataIngresso(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(2));
         Papel papel = new Papel();
         papel.setNomePapel("MONITOR");
@@ -196,6 +197,86 @@ class FrequenciaServiceTest {
         when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of());
         when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
         assertThat(service.listarFrequencia(1, data, membro)).hasSize(1);
+    }
+
+    @Test
+    void deveInformarPermissaoDePerfilEExclusaoNoGetDoDiario() {
+        Unidade outraUnidade = new Unidade();
+        outraUnidade.setId(2);
+        Turma outraTurma = new Turma();
+        outraTurma.setId(2);
+        outraTurma.setUnidade(outraUnidade);
+
+        Matricula matriculaOutraUnidade = new Matricula();
+        matriculaOutraUnidade.setId(11);
+        matriculaOutraUnidade.setTurma(outraTurma);
+        matriculaOutraUnidade.setUsuario(matricula.getUsuario());
+        matricula.getUsuario().setMatriculas(List.of(matriculaOutraUnidade));
+
+        when(turmas.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculas.findHistoricoAtivasPorTurmaEData(1, data.plusDays(1).atStartOfDay(), data)).thenReturn(List.of(matricula));
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of());
+        when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
+
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isFalse();
+
+        membro.getPapel().setNomePapel("ADMINISTRADOR");
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isTrue();
+
+        matriculaOutraUnidade.setStatus(StatusMatricula.EXCLUIDO);
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getPermiteAcessoPerfil()).isFalse();
+        assertThat(service.listarFrequencia(1, data, membro).get(0).getIsUsuarioExcluido()).isTrue();
+    }
+
+    @Test
+    void deveListarUsuarioExcluidoNoHistoricoQuandoExisteFrequenciaNoDia() {
+        matricula.setStatus(StatusMatricula.EXCLUIDO);
+        matricula.setDataDesligamento(data.plusDays(5));
+
+        Frequencia registro = new Frequencia();
+        registro.setId(99);
+        registro.setMatricula(matricula);
+        registro.setDataRegistro(data);
+        registro.setPresente(true);
+
+        when(turmas.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculas.findHistoricoAtivasPorTurmaEData(1, data.plusDays(1).atStartOfDay(), data)).thenReturn(List.of());
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of(registro));
+        when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of());
+
+        var resposta = service.listarFrequencia(1, data, membro);
+
+        assertThat(resposta).hasSize(1);
+        assertThat(resposta.get(0).getIdMatricula()).isEqualTo(10);
+        assertThat(resposta.get(0).getPresente()).isTrue();
+        assertThat(resposta.get(0).getIsUsuarioExcluido()).isTrue();
+        assertThat(resposta.get(0).getPermiteAcessoPerfil()).isFalse();
+    }
+
+    @Test
+    void deveListarUsuarioExcluidoNoHistoricoQuandoExisteOcorrenciaNoDiaMesmoSemFrequencia() {
+        matricula.setStatus(StatusMatricula.EXCLUIDO);
+        matricula.setDataDesligamento(data.plusDays(5));
+
+        Ocorrencia ocorrencia = new Ocorrencia();
+        ocorrencia.setId(77);
+        ocorrencia.setMatricula(matricula);
+        ocorrencia.setDataOcorrencia(data);
+        ocorrencia.setMembro(membro);
+        ocorrencia.setDescricao("Registro anterior");
+
+        when(turmas.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculas.findHistoricoAtivasPorTurmaEData(1, data.plusDays(1).atStartOfDay(), data)).thenReturn(List.of());
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, data)).thenReturn(List.of());
+        when(ocorrencias.findByMatriculaTurmaIdAndDataOcorrencia(1, data)).thenReturn(List.of(ocorrencia));
+
+        var resposta = service.listarFrequencia(1, data, membro);
+
+        assertThat(resposta).hasSize(1);
+        assertThat(resposta.get(0).getIdMatricula()).isEqualTo(10);
+        assertThat(resposta.get(0).getOcorrencias()).hasSize(1);
+        assertThat(resposta.get(0).getIsUsuarioExcluido()).isTrue();
+        assertThat(resposta.get(0).getPermiteAcessoPerfil()).isFalse();
     }
 
     @Test

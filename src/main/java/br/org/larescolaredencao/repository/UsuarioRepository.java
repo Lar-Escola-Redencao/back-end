@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.org.larescolaredencao.model.Usuario;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 
 public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
@@ -65,6 +66,43 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
            "(SELECT um FROM Membro mem JOIN mem.unidades um WHERE mem.id = :membroId) AND " + FILTRO_BUSCA_USUARIO)
     List<Usuario> buscarAtivosByMembroId(@Param("membroId") Integer membroId, @Param("search") String search,
                                          @Param("searchDigitos") String searchDigitos);
+
+    @Query("SELECT DISTINCT u FROM Usuario u " +
+           "JOIN Matricula m ON m.usuario = u " +
+           "JOIN m.turma t " +
+           "JOIN t.unidade un " +
+           "WHERE NOT EXISTS (SELECT 1 FROM Matricula mx WHERE mx.usuario = u AND mx.status = 'EXCLUIDO') " +
+           "AND m.status <> 'EXCLUIDO' " +
+           "AND (" +
+           "   m.status = 'ATIVO' OR " +
+           "   (NOT EXISTS (SELECT 1 FROM Matricula ma WHERE ma.usuario = u AND ma.status = 'ATIVO') " +
+           "    AND m.dataIngresso = (SELECT MAX(mr.dataIngresso) FROM Matricula mr WHERE mr.usuario = u AND mr.status <> 'EXCLUIDO'))" +
+           ") " +
+           
+           "AND (:membroId IS NULL OR un IN (SELECT um FROM Membro mem JOIN mem.unidades um WHERE mem.id = :membroId)) " +
+           "AND (:idUnidade IS NULL OR un.id = :idUnidade) " +
+           "AND (:idTurma IS NULL OR t.id = :idTurma) " +
+           "AND (:statusMatricula IS NULL OR m.status = :statusMatricula) " +
+           "AND (:search IS NULL OR " +
+           "   LOWER(u.nomeCompleto) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.cpf) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(format(u.dataNascimento as 'dd/MM/yyyy')) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.documentoAuxiliar) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(cast(u.tipoDocumento as String)) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.cadUnico) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.endereco) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.bairro) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.escola) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(u.raEscolar) LIKE :search ESCAPE '!' OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(u.cpf, '.', ''), '-', '') LIKE :searchDigitos) OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(u.cep, '-', '') LIKE :searchDigitos)" +
+           ")")
+    List<Usuario> buscarListagem(@Param("membroId") Integer membroId,
+                                 @Param("search") String search,
+                                 @Param("searchDigitos") String searchDigitos,
+                                 @Param("idUnidade") Integer idUnidade,
+                                 @Param("idTurma") Integer idTurma,
+                                 @Param("statusMatricula") StatusMatricula statusMatricula);
 
     @Modifying
     @Query("UPDATE Usuario u SET u.imagemPerfil = null WHERE u.id = :id")

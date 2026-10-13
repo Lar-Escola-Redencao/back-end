@@ -11,6 +11,7 @@ import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
@@ -25,6 +26,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
@@ -61,7 +63,9 @@ public class FrequenciaService {
         List<Frequencia> frequencias = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turmaId, data);
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaTurmaIdAndDataOcorrencia(turmaId, data);
 
-        return matriculasHistoricas.stream().map(matricula -> {
+        List<Matricula> matriculasDoDiario = incluirMatriculasExcluidasComHistorico(matriculasHistoricas, frequencias, ocorrencias);
+
+        return matriculasDoDiario.stream().map(matricula -> {
             Frequencia freq = frequencias.stream()
                     .filter(f -> f.getMatricula().getId().equals(matricula.getId()))
                     .findFirst()
@@ -71,8 +75,49 @@ public class FrequenciaService {
                     .filter(o -> o.getMatricula().getId().equals(matricula.getId()))
                     .collect(Collectors.toList());
                     
-            return new FrequenciaUsuarioResponseDTO(matricula, freq, ocs);
+            return montarRespostaUsuario(matricula, freq, ocs, membroLogado);
         }).collect(Collectors.toList());
+    }
+
+    private List<Matricula> incluirMatriculasExcluidasComHistorico(List<Matricula> matriculasHistoricas,
+                                                                   List<Frequencia> frequencias,
+                                                                   List<Ocorrencia> ocorrencias) {
+        List<Matricula> matriculasDoDiario = new ArrayList<>(matriculasHistoricas);
+        Set<Integer> idsMatriculas = matriculasDoDiario.stream()
+                .map(Matricula::getId)
+                .collect(Collectors.toSet());
+
+        for (Frequencia frequencia : frequencias) {
+            Matricula matricula = frequencia.getMatricula();
+            if (matricula == null || matricula.getId() == null || idsMatriculas.contains(matricula.getId())) {
+                continue;
+            }
+            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+                matriculasDoDiario.add(matricula);
+                idsMatriculas.add(matricula.getId());
+            }
+        }
+
+        for (Ocorrencia ocorrencia : ocorrencias) {
+            Matricula matricula = ocorrencia.getMatricula();
+            if (matricula == null || matricula.getId() == null || idsMatriculas.contains(matricula.getId())) {
+                continue;
+            }
+            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+                matriculasDoDiario.add(matricula);
+                idsMatriculas.add(matricula.getId());
+            }
+        }
+
+        matriculasDoDiario.sort(Comparator.comparing(this::nomeUsuario, String.CASE_INSENSITIVE_ORDER));
+        return matriculasDoDiario;
+    }
+
+    private String nomeUsuario(Matricula matricula) {
+        if (matricula.getUsuario() == null || matricula.getUsuario().getNomeCompleto() == null) {
+            return "";
+        }
+        return matricula.getUsuario().getNomeCompleto();
     }
 
     @Transactional
@@ -158,7 +203,40 @@ public class FrequenciaService {
         frequencia = frequenciaRepository.save(frequencia);
 
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaIdAndDataOcorrencia(frequencia.getMatricula().getId(), frequencia.getDataRegistro());
-        return new FrequenciaUsuarioResponseDTO(frequencia.getMatricula(), frequencia, ocorrencias);
+        return montarRespostaUsuario(frequencia.getMatricula(), frequencia, ocorrencias, membroLogado);
+    }
+
+    private FrequenciaUsuarioResponseDTO montarRespostaUsuario(Matricula matricula, Frequencia frequencia,
+                                                               List<Ocorrencia> ocorrencias, Membro membroLogado) {
+        boolean usuarioExcluido = usuarioTemMatriculaExcluida(matricula);
+        boolean permiteAcessoPerfil = permiteAcessoPerfil(matricula, membroLogado);
+        return new FrequenciaUsuarioResponseDTO(matricula, frequencia, ocorrencias, permiteAcessoPerfil, usuarioExcluido);
+    }
+
+    private boolean usuarioTemMatriculaExcluida(Matricula matricula) {
+        return matricula.getUsuario().getMatriculas() != null
+                && matricula.getUsuario().getMatriculas().stream()
+                        .anyMatch(m -> m.getStatus() == StatusMatricula.EXCLUIDO);
+    }
+
+    private boolean permiteAcessoPerfil(Matricula matricula, Membro membroLogado) {
+        if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+            return false;
+        }
+        if (Perfil.fromNomePapel(membroLogado.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR) {
+            return true;
+        }
+
+        Set<Integer> unidadesPermitidas = membroLogado.getUnidades().stream()
+                .map(Unidade::getId)
+                .collect(Collectors.toSet());
+        return matricula.getUsuario().getMatriculas() != null
+                && matricula.getUsuario().getMatriculas().stream()
+                        .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
+                        .map(Matricula::getTurma)
+                        .filter(turma -> turma != null && turma.getUnidade() != null)
+                        .map(turma -> turma.getUnidade().getId())
+                        .anyMatch(unidadesPermitidas::contains);
     }
 
     private LocalDateTime agora() {

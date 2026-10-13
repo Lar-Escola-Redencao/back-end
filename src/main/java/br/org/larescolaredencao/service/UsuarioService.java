@@ -7,6 +7,7 @@ import br.org.larescolaredencao.dto.ComposicaoFamiliarDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.FichaSocioeconomicaDTO;
 import br.org.larescolaredencao.dto.InativarUsuarioDTO;
+import br.org.larescolaredencao.dto.MatriculaHistoricoResponseDTO;
 import br.org.larescolaredencao.dto.TransferirTurmaDTO;
 import br.org.larescolaredencao.dto.UsuarioResponseDTO;
 import br.org.larescolaredencao.dto.VincularContatoExistenteDTO;
@@ -28,8 +29,10 @@ import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
 import br.org.larescolaredencao.repository.FichaSocioeconomicaRepository;
+import br.org.larescolaredencao.repository.FrequenciaRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.MembroRepository;
+import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
@@ -63,6 +66,8 @@ public class UsuarioService {
     private final ArquivoSaudeRepository arquivoSaudeRepository;
     private final EntrevistaSocialRepository entrevistaSocialRepository;
     private final MembroRepository membroRepository;
+    private final FrequenciaRepository frequenciaRepository;
+    private final OcorrenciaRepository ocorrenciaRepository;
 
     public UsuarioService(UsuarioRepository usuarioRepository,
                           MatriculaRepository matriculaRepository,
@@ -74,7 +79,9 @@ public class UsuarioService {
                           ComposicaoFamiliarRepository composicaoFamiliarRepository,
                           ArquivoSaudeRepository arquivoSaudeRepository,
                           EntrevistaSocialRepository entrevistaSocialRepository,
-                          MembroRepository membroRepository) {
+                          MembroRepository membroRepository,
+                          FrequenciaRepository frequenciaRepository,
+                          OcorrenciaRepository ocorrenciaRepository) {
         this.usuarioRepository = usuarioRepository;
         this.matriculaRepository = matriculaRepository;
         this.contatoRepository = contatoRepository;
@@ -86,6 +93,8 @@ public class UsuarioService {
         this.arquivoSaudeRepository = arquivoSaudeRepository;
         this.entrevistaSocialRepository = entrevistaSocialRepository;
         this.membroRepository = membroRepository;
+        this.frequenciaRepository = frequenciaRepository;
+        this.ocorrenciaRepository = ocorrenciaRepository;
     }
 
     private Matricula obterMatriculaAtiva(Usuario usuario) {
@@ -93,6 +102,34 @@ public class UsuarioService {
                 .filter(m -> m.getStatus() == StatusMatricula.ATIVO)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private Matricula obterMatriculaDeReferencia(Usuario usuario) {
+        List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
+        if (matriculas.stream().anyMatch(m -> m.getStatus() == StatusMatricula.EXCLUIDO)) return null;
+        return matriculas.stream().filter(m -> m.getStatus() == StatusMatricula.ATIVO).findFirst()
+                .orElseGet(() -> matriculas.stream().max((a, b) -> a.getDataIngresso().compareTo(b.getDataIngresso())).orElse(null));
+    }
+
+    private LocalDateTime obterDataPrimeiraMatricula(Usuario usuario) {
+        return matriculaRepository.findByUsuario(usuario).stream()
+                .map(Matricula::getDataIngresso)
+                .filter(java.util.Objects::nonNull)
+                .min(LocalDateTime::compareTo)
+                .orElse(null);
+    }
+
+    private UsuarioResponseDTO incluirDataPrimeiraMatricula(UsuarioResponseDTO resposta, Usuario usuario) {
+        resposta.setDataPrimeiraMatricula(obterDataPrimeiraMatricula(usuario));
+        return resposta;
+    }
+
+    private boolean podeCorrigirMatricula(Matricula matricula) {
+        if (matricula.getDataIngresso() == null || matricula.getDataIngresso().isBefore(LocalDateTime.now().minusHours(24))) return false;
+        if (matricula.getId() == null) return true;
+        List<Integer> ids = List.of(matricula.getId());
+        return matriculaRepository.contarFrequenciasPorMatriculas(ids) == 0
+                && matriculaRepository.contarOcorrenciasPorMatriculas(ids) == 0;
     }
 
     private void validarAcessoAoUsuario(Usuario usuario, Membro membroLogado) {
@@ -115,6 +152,12 @@ public class UsuarioService {
         }
     }
 
+    private void validarUsuarioEditavel(Usuario usuario) {
+        if (obterMatriculaAtiva(usuario) == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Usuario desligado nao pode ser editado.");
+        }
+    }
+
     private void validarAcessoATurma(Integer idTurma, Membro membroLogado) {
         if (Perfil.ADMINISTRADOR.name().equals(membroLogado.getPapel().getNomePapel())) {
             return;
@@ -132,11 +175,62 @@ public class UsuarioService {
 
     @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId) {
-        return listarUsuariosDoMembro(membroId, null);
+        return listarUsuariosDoMembro(membroId, null, null, null, null);
     }
 
     @Transactional(readOnly = true)
+    public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId,
+                                                          String search,
+                                                          Integer idUnidade,
+                                                          Integer idTurma,
+                                                          StatusMatricula statusMatricula) {
+        Membro membro = membroRepository.findById(membroId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
+
+        String termo = TermoBusca.like(search);
+        String digitos = TermoBusca.digitosLike(search);
+        boolean administrador = Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel());
+        Integer membroFiltro = administrador ? null : membroId;
+
+        List<Usuario> usuarios = usuarioRepository.buscarListagem(
+                membroFiltro,
+                termo,
+                digitos,
+                idUnidade,
+                idTurma,
+                statusMatricula
+        );
+
+        return usuarios.stream()
+                .map(u -> new UsuarioResponseDTO(u, null, obterMatriculaParaListagem(u, idUnidade, idTurma, statusMatricula)))
+                .collect(Collectors.toList());
+    }
+
+    private Matricula obterMatriculaParaListagem(Usuario usuario,
+                                             Integer idUnidade,
+                                             Integer idTurma,
+                                             StatusMatricula statusMatricula) {
+    List<Matricula> matriculas = matriculaRepository.findByUsuario(usuario);
+    return matriculas.stream()
+            .filter(m -> m.getStatus() != StatusMatricula.EXCLUIDO)
+            .filter(m -> statusMatricula == null || m.getStatus() == statusMatricula)
+            .filter(m -> idTurma == null || (m.getTurma() != null && idTurma.equals(m.getTurma().getId())))
+            .filter(m -> idUnidade == null || (m.getTurma() != null && m.getTurma().getUnidade() != null
+                    && idUnidade.equals(m.getTurma().getUnidade().getId())))
+            .sorted((m1, m2) -> {
+                if (m1.getStatus() == StatusMatricula.ATIVO && m2.getStatus() != StatusMatricula.ATIVO) return -1;
+                if (m2.getStatus() == StatusMatricula.ATIVO && m1.getStatus() != StatusMatricula.ATIVO) return 1;
+                return m2.getDataIngresso().compareTo(m1.getDataIngresso());
+            })
+            .findFirst()
+            .orElseGet(() -> obterMatriculaDeReferencia(usuario));
+}
+
+    @Transactional(readOnly = true)
     public List<UsuarioResponseDTO> listarUsuariosDoMembro(Integer membroId, String search) {
+        if (membroId != null || membroId == null) {
+            return listarUsuariosDoMembro(membroId, search, null, null, null);
+        }
         Membro membro = membroRepository.findById(membroId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
 
@@ -168,13 +262,13 @@ public class UsuarioService {
         FichaSocioeconomica fichaSocioeconomica =
                 fichaSocioeconomicaRepository.findById(usuario.getId()).orElse(null);
 
-        return new UsuarioResponseDTO(
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(
                 usuario,
                 contatos,
                 matriculaAtiva,
                 composicaoFamiliar,
                 fichaSocioeconomica
-        );
+        ), usuario);
     }
 
     @Transactional(readOnly = true)
@@ -185,7 +279,19 @@ public class UsuarioService {
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
 
-        return montarRespostaCompleta(usuario, contatos, obterMatriculaAtiva(usuario));
+        return montarRespostaCompleta(usuario, contatos, obterMatriculaDeReferencia(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MatriculaHistoricoResponseDTO> listarHistoricoMatriculas(Integer id, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+
+        return matriculaRepository.findByUsuario(usuario).stream()
+                .sorted((primeira, segunda) -> segunda.getDataIngresso().compareTo(primeira.getDataIngresso()))
+                .map(MatriculaHistoricoResponseDTO::new)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -304,7 +410,7 @@ public class UsuarioService {
         matricula = matriculaRepository.save(matricula);
 
         List<ContatoUsuario> contatosSalvos = contatoUsuarioRepository.findByUsuario(salvo);
-        return new UsuarioResponseDTO(salvo, contatosSalvos, matricula);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(salvo, contatosSalvos, matricula), salvo);
     }
 
     @Transactional
@@ -356,6 +462,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
             usuarioRepository.findByCpf(dto.getCpf()).ifPresent(u -> {
@@ -446,6 +553,7 @@ public class UsuarioService {
         if (!matriculaAtiva.getTurma().getId().equals(dto.getIdTurma())) {
             TransferirTurmaDTO transDto = new TransferirTurmaDTO();
             transDto.setIdTurmaNova(dto.getIdTurma());
+            transDto.setDataTransferencia(LocalDate.now());
             transferirTurma(usuario.getId(), transDto, membroLogado);
             
             matriculaAtiva = obterMatriculaAtiva(usuario);
@@ -522,6 +630,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
@@ -548,6 +657,9 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário não possui matrícula ativa para transferir.");
         }
 
+        LocalDate dataTransferencia = dto.getDataTransferencia();
+        validarDataNaoAnteriorAoIngresso(matriculaAtiva, dataTransferencia, "A data de transferência não pode ser anterior ao ingresso da matrícula atual.");
+
         if (matriculaAtiva.getTurma().getId().equals(dto.getIdTurmaNova())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário já está matriculado nesta turma.");
         }
@@ -555,20 +667,48 @@ public class UsuarioService {
         Turma novaTurma = turmaRepository.findById(dto.getIdTurmaNova())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nova turma não encontrada."));
 
-        validarAcessoATurma(novaTurma.getId(), membroLogado);
+        if (podeCorrigirMatricula(matriculaAtiva)) {
+            matriculaAtiva.setTurma(novaTurma);
+            matriculaAtiva.setDataIngresso(dataTransferencia.atStartOfDay());
+            UsuarioResponseDTO resposta = incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva)), usuario);
+            resposta.setMatriculaCorrigida(true);
+            return resposta;
+        }
         matriculaAtiva.setStatus(StatusMatricula.INATIVO);
-        matriculaAtiva.setDataDesligamento(LocalDate.now());
+        matriculaAtiva.setDataDesligamento(dataTransferencia.minusDays(1));
+        frequenciaRepository.deleteByMatriculaIdAndDataRegistroGreaterThanEqual(matriculaAtiva.getId(), dataTransferencia);
+        ocorrenciaRepository.deleteByMatriculaIdAndDataOcorrenciaGreaterThanEqual(matriculaAtiva.getId(), dataTransferencia);
         matriculaRepository.save(matriculaAtiva);
 
         Matricula novaMatricula = new Matricula();
         novaMatricula.setUsuario(usuario);
         novaMatricula.setTurma(novaTurma);
         novaMatricula.setStatus(StatusMatricula.ATIVO);
-        novaMatricula.setDataIngresso(LocalDateTime.now());
+        novaMatricula.setDataIngresso(dataTransferencia.atStartOfDay());
         matriculaAtiva = matriculaRepository.save(novaMatricula);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
-        return new UsuarioResponseDTO(usuario, contatos, matriculaAtiva);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatos, matriculaAtiva), usuario);
+    }
+
+    @Transactional
+    public UsuarioResponseDTO rematricularUsuario(Integer usuarioId, TransferirTurmaDTO dto, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+        if (obterMatriculaAtiva(usuario) != null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "O usuário já possui matrícula ativa.");
+        }
+        Turma turma = turmaRepository.findById(dto.getIdTurmaNova())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
+        validarAcessoATurma(turma.getId(), membroLogado);
+        Matricula matricula = new Matricula();
+        matricula.setUsuario(usuario);
+        matricula.setTurma(turma);
+        matricula.setStatus(StatusMatricula.ATIVO);
+        matricula.setDataIngresso(LocalDateTime.now());
+        matricula = matriculaRepository.save(matricula);
+        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matricula), usuario);
     }
 
     @Transactional
@@ -583,12 +723,27 @@ public class UsuarioService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O usuário não possui matrícula ativa para inativar.");
         }
 
+        LocalDate dataDesligamento = dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now();
+        validarDataNaoAnteriorAoIngresso(matriculaAtiva, dataDesligamento, "A data de desligamento não pode ser anterior ao ingresso da matrícula atual.");
+
         matriculaAtiva.setStatus(StatusMatricula.EGRESSO);
-        matriculaAtiva.setDataDesligamento(dto.getDataDesligamento() != null ? dto.getDataDesligamento() : LocalDate.now());
+        matriculaAtiva.setDataDesligamento(dataDesligamento);
+        frequenciaRepository.deleteByMatriculaIdAndDataRegistroAfter(matriculaAtiva.getId(), dataDesligamento);
+        ocorrenciaRepository.deleteByMatriculaIdAndDataOcorrenciaAfter(matriculaAtiva.getId(), dataDesligamento);
         if (dto.getJustificativa() != null) {
             matriculaAtiva.setJustificativaEgresso(dto.getJustificativa());
         }
         matriculaRepository.save(matriculaAtiva);
+    }
+
+    private void validarDataNaoAnteriorAoIngresso(Matricula matricula, LocalDate data, String mensagem) {
+        if (data == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A data informada é obrigatória.");
+        }
+        LocalDate dataIngresso = matricula.getDataIngresso().toLocalDate();
+        if (data.isBefore(dataIngresso)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, mensagem);
+        }
     }
 
     @Transactional
@@ -597,6 +752,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         Contato contato = contatoRepository.findById(contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Contato não encontrado."));
@@ -629,6 +785,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         validarLimiteVinculos(usuario);
 
@@ -680,6 +837,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
                 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
         
         ContatoUsuario vinculo = contatoUsuarioRepository.findByUsuarioIdAndContatoId(usuarioId, contatoId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Vínculo não encontrado."));
@@ -905,6 +1063,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
 
         List<ArquivoSaude> atuais = arquivoSaudeRepository.findByIdUsuario(usuarioId);
         if (atuais.size() >= 4) {
@@ -940,6 +1099,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário vinculado a este arquivo não encontrado."));
                 
         validarAcessoAoUsuario(usuario, membroLogado);
+        validarUsuarioEditavel(usuario);
         
         arquivoService.deletarArquivo(arquivo.getCaminhoArquivo());
         arquivoSaudeRepository.delete(arquivo);
