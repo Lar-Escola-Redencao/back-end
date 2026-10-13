@@ -63,7 +63,7 @@ public class FrequenciaService {
         List<Frequencia> frequencias = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turmaId, data);
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaTurmaIdAndDataOcorrencia(turmaId, data);
 
-        List<Matricula> matriculasDoDiario = incluirMatriculasExcluidasComFrequencia(matriculasHistoricas, frequencias);
+        List<Matricula> matriculasDoDiario = incluirMatriculasExcluidasComHistorico(matriculasHistoricas, frequencias, ocorrencias);
 
         return matriculasDoDiario.stream().map(matricula -> {
             Frequencia freq = frequencias.stream()
@@ -79,8 +79,9 @@ public class FrequenciaService {
         }).collect(Collectors.toList());
     }
 
-    private List<Matricula> incluirMatriculasExcluidasComFrequencia(List<Matricula> matriculasHistoricas,
-                                                                    List<Frequencia> frequencias) {
+    private List<Matricula> incluirMatriculasExcluidasComHistorico(List<Matricula> matriculasHistoricas,
+                                                                   List<Frequencia> frequencias,
+                                                                   List<Ocorrencia> ocorrencias) {
         List<Matricula> matriculasDoDiario = new ArrayList<>(matriculasHistoricas);
         Set<Integer> idsMatriculas = matriculasDoDiario.stream()
                 .map(Matricula::getId)
@@ -88,6 +89,17 @@ public class FrequenciaService {
 
         for (Frequencia frequencia : frequencias) {
             Matricula matricula = frequencia.getMatricula();
+            if (matricula == null || matricula.getId() == null || idsMatriculas.contains(matricula.getId())) {
+                continue;
+            }
+            if (matricula.getStatus() == StatusMatricula.EXCLUIDO || usuarioTemMatriculaExcluida(matricula)) {
+                matriculasDoDiario.add(matricula);
+                idsMatriculas.add(matricula.getId());
+            }
+        }
+
+        for (Ocorrencia ocorrencia : ocorrencias) {
+            Matricula matricula = ocorrencia.getMatricula();
             if (matricula == null || matricula.getId() == null || idsMatriculas.contains(matricula.getId())) {
                 continue;
             }

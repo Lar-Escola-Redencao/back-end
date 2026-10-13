@@ -93,7 +93,7 @@ class MembroServiceTeste {
         Membro membro = new Membro(3, "Ana Paula", "ana@teste.com", "senha", "11122233344", "Rua C", "777777777", papel);
 
         Page<Membro> paginaEsperada = new PageImpl<>(List.of(membro), pageable, 1);
-        when(membroRepository.buscar("%111.222%", "%111222%", 1, pageable)).thenReturn(paginaEsperada);
+        when(membroRepository.buscar("%111.222%", "%111222%", 1, null, pageable)).thenReturn(paginaEsperada);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, 1, "111.222");
 

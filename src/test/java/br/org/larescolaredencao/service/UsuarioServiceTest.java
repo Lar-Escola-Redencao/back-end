@@ -226,6 +226,60 @@ public class UsuarioServiceTest {
     }
 
     @Test
+    void listarUsuariosAposTransferenciaDeveExibirMatriculaAtivaAtual() {
+        when(membroRepository.findById(999)).thenReturn(Optional.of(adminLogado));
+        when(usuarioRepository.buscarListagem(null, null, null, null, null, null))
+                .thenReturn(List.of(usuario));
+
+        Unidade unidadeAntiga = new Unidade();
+        unidadeAntiga.setId(1);
+        unidadeAntiga.setNome("Sede São José");
+
+        Turma turmaAntiga = new Turma();
+        turmaAntiga.setId(1);
+        turmaAntiga.setUnidade(unidadeAntiga);
+        turmaAntiga.setPeriodo(Periodo.MANHA);
+        turmaAntiga.setHoraInicio(LocalTime.of(8, 0));
+        turmaAntiga.setHoraFim(LocalTime.of(12, 0));
+
+        Matricula matriculaAntiga = new Matricula();
+        matriculaAntiga.setId(1);
+        matriculaAntiga.setUsuario(usuario);
+        matriculaAntiga.setTurma(turmaAntiga);
+        matriculaAntiga.setStatus(StatusMatricula.INATIVO);
+        matriculaAntiga.setDataIngresso(LocalDateTime.of(2026, 2, 1, 8, 0));
+        matriculaAntiga.setDataDesligamento(LocalDate.of(2026, 10, 11));
+
+        Unidade unidadeAtual = new Unidade();
+        unidadeAtual.setId(2);
+        unidadeAtual.setNome("Bezerra de Menezes");
+
+        Turma turmaAtual = new Turma();
+        turmaAtual.setId(2);
+        turmaAtual.setUnidade(unidadeAtual);
+        turmaAtual.setPeriodo(Periodo.TARDE);
+        turmaAtual.setHoraInicio(LocalTime.of(13, 0));
+        turmaAtual.setHoraFim(LocalTime.of(17, 0));
+
+        Matricula matriculaAtual = new Matricula();
+        matriculaAtual.setId(2);
+        matriculaAtual.setUsuario(usuario);
+        matriculaAtual.setTurma(turmaAtual);
+        matriculaAtual.setStatus(StatusMatricula.ATIVO);
+        matriculaAtual.setDataIngresso(LocalDateTime.of(2026, 10, 12, 13, 0));
+
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAntiga, matriculaAtual));
+
+        List<UsuarioResponseDTO> resposta = usuarioService.listarUsuariosDoMembro(999, null, null, null, null);
+
+        assertEquals(1, resposta.size());
+        assertEquals(StatusMatricula.ATIVO, resposta.get(0).getStatusMatricula());
+        assertEquals(2, resposta.get(0).getIdUnidade());
+        assertEquals("Bezerra de Menezes", resposta.get(0).getNomeUnidade());
+        assertEquals(2, resposta.get(0).getIdTurma());
+    }
+
+    @Test
     void cadastrarUsuarioComMatriculaAtivaDeveLancarConflictException() {
         when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.of(usuario));
         when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
