@@ -30,6 +30,14 @@ public class UnidadeService {
     }
 
     public Page<Unidade> getAllUnidades(Pageable pageable) {
+        return getAllUnidades(pageable, null);
+    }
+
+    public Page<Unidade> getAllUnidades(Pageable pageable, String search) {
+        String termo = TermoBusca.like(search);
+        if (termo != null) {
+            return unidadeRepository.buscar(termo, TermoBusca.digitosLike(search), pageable);
+        }
         return unidadeRepository.findAll(pageable);
     }
 

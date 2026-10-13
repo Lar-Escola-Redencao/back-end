@@ -3,7 +3,7 @@ package br.org.larescolaredencao.service;
 import br.org.larescolaredencao.dto.AtualizarContatoDTO;
 import br.org.larescolaredencao.dto.ContatoListagemDTO;
 import br.org.larescolaredencao.model.Contato;
-import br.org.larescolaredencao.repository.ContatoAssistidoRepository;
+import br.org.larescolaredencao.repository.ContatoUsuarioRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +31,7 @@ public class ContatoServiceTest {
     private ContatoRepository contatoRepository;
 
     @Mock
-    private ContatoAssistidoRepository contatoAssistidoRepository;
+    private ContatoUsuarioRepository contatoAssistidoRepository;
 
     @InjectMocks
     private ContatoService contatoService;

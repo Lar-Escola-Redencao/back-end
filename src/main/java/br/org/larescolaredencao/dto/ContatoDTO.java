@@ -17,6 +17,10 @@ public class ContatoDTO {
     private String email;
     
     private String endereco;
+    
+    private String cpf;
+    
+    private String localTrabalho;
 
     @NotNull
     private Parentesco parentesco;
@@ -62,6 +66,22 @@ public class ContatoDTO {
 
     public void setEndereco(String endereco) {
         this.endereco = endereco;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getLocalTrabalho() {
+        return localTrabalho;
+    }
+
+    public void setLocalTrabalho(String localTrabalho) {
+        this.localTrabalho = localTrabalho;
     }
 
     public Parentesco getParentesco() {

@@ -13,16 +13,16 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "contato_assistido")
-public class ContatoAssistido {
+@Table(name = "contato_usuario")
+public class ContatoUsuario {
 
     @EmbeddedId
-    private ContatoAssistidoId id = new ContatoAssistidoId();
+    private ContatoUsuarioId id = new ContatoUsuarioId();
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @MapsId("idAssistido")
-    @JoinColumn(name = "id_assistido")
-    private Assistido assistido;
+    @MapsId("idUsuario")
+    @JoinColumn(name = "id_usuario")
+    private Usuario usuario;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @MapsId("idContato")
@@ -36,20 +36,20 @@ public class ContatoAssistido {
     @Column(nullable = false)
     private Boolean principal = false;
 
-    public ContatoAssistidoId getId() {
+    public ContatoUsuarioId getId() {
         return id;
     }
 
-    public void setId(ContatoAssistidoId id) {
+    public void setId(ContatoUsuarioId id) {
         this.id = id;
     }
 
-    public Assistido getAssistido() {
-        return assistido;
+    public Usuario getUsuario() {
+        return usuario;
     }
 
-    public void setAssistido(Assistido assistido) {
-        this.assistido = assistido;
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
     }
 
     public Contato getContato() {

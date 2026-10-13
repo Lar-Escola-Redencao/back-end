@@ -165,7 +165,7 @@ class PaginaServiceTeste {
     void deveTrocarImagemERemoverAAnteriorDoDisco() {
         Secao secao = secaoExistente("/uploads/paginas/1/imagens/antiga.png");
 
-        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        when(secaoRepository.findByIdComBloqueio(10L)).thenReturn(Optional.of(secao));
         when(arquivoService.salvarArquivo(any(MultipartFile.class), eq("paginas/1/imagens/"), eq(TipoArquivo.FOTO)))
                 .thenReturn("/uploads/paginas/1/imagens/nova.png");
         when(secaoRepository.save(any(Secao.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
@@ -181,7 +181,7 @@ class PaginaServiceTeste {
     void naoDeveTentarRemoverImagemAnteriorQuandoSecaoNaoTinhaImagem() {
         Secao secao = secaoExistente(null);
 
-        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        when(secaoRepository.findByIdComBloqueio(10L)).thenReturn(Optional.of(secao));
         when(arquivoService.salvarArquivo(any(MultipartFile.class), eq("paginas/1/imagens/"), eq(TipoArquivo.FOTO)))
                 .thenReturn("/uploads/paginas/1/imagens/nova.png");
         when(secaoRepository.save(any(Secao.class))).thenAnswer(invocacao -> invocacao.getArgument(0));

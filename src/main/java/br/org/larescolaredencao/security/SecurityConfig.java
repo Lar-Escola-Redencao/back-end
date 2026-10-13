@@ -70,24 +70,26 @@ public class SecurityConfig {
                             "/rede-social/{id:\\d+}").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
+                            "/paginas/sobre/indicadores",
                             "/paginas/{id:\\d+}",
                             "/paginas/{id:\\d+}/secoes",
                             "/paginas/secoes/{id:\\d+}",
                             "/paginas/documentos/{id:\\d+}/download").permitAll();
 
-                    // Listagens de gestão (/admin) e toda escrita do CMS: só quem mantém o conteúdo público.
                     req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
 
-                    req.requestMatchers(HttpMethod.GET, 
-                    		"/membro/me").authenticated();
-                    
-                    req.requestMatchers(HttpMethod.PUT, 
-                    		"/membro/me").authenticated();  
+                    req.requestMatchers(HttpMethod.GET, "/membro/me").authenticated();
+                    req.requestMatchers(HttpMethod.PUT, "/membro/me").authenticated();  
                     
                     req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
-                    req.requestMatchers("/assistidos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/{id:[0-9]+}",
+                            "/usuarios/{id:[0-9]+}/arquivos-saude").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
+                    req.requestMatchers("/usuarios/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/contatos/buscar").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     
+                    req.requestMatchers("/frequencia/**", "/ocorrencia/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.anyRequest().authenticated();
                 })
                 .exceptionHandling(handling -> handling

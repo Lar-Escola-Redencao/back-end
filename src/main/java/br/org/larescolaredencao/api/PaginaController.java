@@ -58,27 +58,41 @@ public class PaginaController {
     }
 
     @GetMapping("/{idPagina:\\d+}/secoes")
-    public List<Secao> listarSecoes(@PathVariable("idPagina") Long idPagina) {
-        return paginaService.listarSecoes(idPagina);
+    public List<Secao> listarSecoes(@PathVariable("idPagina") Long idPagina,
+                                    @RequestParam(name = "search", required = false) String search) {
+        return paginaService.listarSecoes(idPagina, search);
     }
 
     @GetMapping("/{idPagina:\\d+}/secoes/admin")
     public PagedModel<Secao> listarSecoesAdmin(@PathVariable("idPagina") Long idPagina,
                                                Pageable pageable,
-                                               @RequestParam(name = "grupo", required = false) String grupo) {
-        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable, grupo));
+                                               @RequestParam(name = "grupo", required = false) String grupo,
+                                               @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(paginaService.listarSecoesPaginado(idPagina, pageable, grupo, search));
     }
 
     @GetMapping("/{idPagina:\\d+}/documentos/admin")
     public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(@PathVariable("idPagina") Long idPagina,
-                                                                  Pageable pageable) {
-        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable));
+                                                                  Pageable pageable,
+                                                                  @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable, search));
     }
 
     @PostMapping("/{idPagina:\\d+}/secoes")
     @ResponseStatus(HttpStatus.CREATED)
     public Secao criarSecao(@PathVariable("idPagina") Long idPagina, @Valid @ModelAttribute CriarSecaoDTO dto) {
         return paginaService.criarSecao(idPagina, dto);
+    }
+
+    /**
+     * Atualização escopada pela página da rota: seção de outra página responde 404.
+     * Aceita multipart/form-data (Tomcat e o StandardServletMultipartResolver não restringem o método HTTP).
+     */
+    @PutMapping("/{idPagina:\\d+}/secoes/{id:\\d+}")
+    public Secao atualizarSecaoDaPagina(@PathVariable("idPagina") Long idPagina,
+                                        @PathVariable("id") Long id,
+                                        @Valid @ModelAttribute AtualizarSecaoDTO dto) {
+        return paginaService.atualizarSecao(idPagina, id, dto);
     }
 
     @GetMapping("/secoes/{id}")

@@ -50,9 +50,6 @@ public class Evento {
     @Enumerated(EnumType.STRING)
     private TipoEvento tipoEvento;
 
-    @Column(columnDefinition = "TEXT")
-    private String comentarioPosEvento;
-    
     @ManyToMany
     @JoinTable(
         name = "parceiro_evento",
@@ -125,19 +122,20 @@ public class Evento {
         this.tipoEvento = tipoEvento;
     }
 
-    public String getComentarioPosEvento() {
-        return comentarioPosEvento;
-    }
-
-    public void setComentarioPosEvento(String comentarioPosEvento) {
-        this.comentarioPosEvento = comentarioPosEvento;
-    }
-    
     public List<Parceiro> getParceiros() {
         return parceiros;
     }
 
     public void setParceiros(List<Parceiro> parceiros) {
         this.parceiros = parceiros;
+    }
+
+    // Encerrado quando o momento atual já passou da data do evento.
+    public boolean ehEventoEncerrado() {
+        return ehEventoEncerrado(LocalDateTime.now());
+    }
+
+    public boolean ehEventoEncerrado(LocalDateTime referencia) {
+        return dataEvento != null && referencia.isAfter(dataEvento);
     }
 }

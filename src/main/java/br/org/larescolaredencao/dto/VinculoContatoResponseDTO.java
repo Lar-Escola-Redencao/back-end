@@ -1,38 +1,44 @@
 package br.org.larescolaredencao.dto;
 
-import br.org.larescolaredencao.model.ContatoAssistido;
+import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
+import br.org.larescolaredencao.model.enums.StatusMatricula;
+import java.time.LocalDate;
 
 public class VinculoContatoResponseDTO {
 
-    private Integer idAssistido;
-    private String nomeAssistido;
+    private Integer idUsuario;
+    private String nomeUsuario;
     private String imagemPerfil;
     private Parentesco parentesco;
     private Boolean principal;
     private Integer idUnidade;
     private String nomeUnidade;
+    private StatusMatricula statusMatricula;
+    private LocalDate dataDesligamento;
 
-    public VinculoContatoResponseDTO(ContatoAssistido ca, Matricula matriculaAtiva) {
-        this.idAssistido = ca.getAssistido().getId();
-        this.nomeAssistido = ca.getAssistido().getNomeCompleto();
-        this.imagemPerfil = ca.getAssistido().getImagemPerfil();
+    public VinculoContatoResponseDTO(ContatoUsuario ca, Matricula matriculaAtiva) {
+        this.idUsuario = ca.getUsuario().getId();
+        this.nomeUsuario = ca.getUsuario().getNomeCompleto();
+        this.imagemPerfil = ca.getUsuario().getImagemPerfil();
         this.parentesco = ca.getParentesco();
         this.principal = ca.getPrincipal();
 
         if (matriculaAtiva != null) {
             this.idUnidade = matriculaAtiva.getTurma().getUnidade().getId();
             this.nomeUnidade = matriculaAtiva.getTurma().getUnidade().getNome();
+            this.statusMatricula = matriculaAtiva.getStatus();
+            this.dataDesligamento = matriculaAtiva.getDataDesligamento();
         }
     }
 
-    public Integer getIdAssistido() {
-        return idAssistido;
+    public Integer getIdUsuario() {
+        return idUsuario;
     }
 
-    public String getNomeAssistido() {
-        return nomeAssistido;
+    public String getNomeUsuario() {
+        return nomeUsuario;
     }
 
     public String getImagemPerfil() {
@@ -53,5 +59,13 @@ public class VinculoContatoResponseDTO {
 
     public String getNomeUnidade() {
         return nomeUnidade;
+    }
+
+    public StatusMatricula getStatusMatricula() {
+        return statusMatricula;
+    }
+
+    public LocalDate getDataDesligamento() {
+        return dataDesligamento;
     }
 }

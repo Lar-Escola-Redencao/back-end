@@ -34,8 +34,9 @@ public class ContatoController {
     }
 
     @GetMapping
-    public PagedModel<ContatoListagemDTO> listarContatos(@AuthenticationPrincipal Membro membroLogado, Pageable pageable) {
-        return new PagedModel<>(contatoService.listarContatos(membroLogado.getId(), pageable));
+    public PagedModel<ContatoListagemDTO> listarContatos(@AuthenticationPrincipal Membro membroLogado, Pageable pageable,
+                                                         @RequestParam(name = "search", required = false) String search) {
+        return new PagedModel<>(contatoService.listarContatos(membroLogado.getId(), pageable, search));
     }
 
     @GetMapping("/{id}")
@@ -44,8 +45,8 @@ public class ContatoController {
     }
 
     @GetMapping("/buscar")
-    public List<ContatoListagemDTO> buscarContatosAutocomplete(@AuthenticationPrincipal Membro membroLogado, @RequestParam("termo") String termo) {
-        return contatoService.buscarContatosAutocomplete(membroLogado.getId(), termo);
+    public List<ContatoListagemDTO> buscarContatosGlobais(@RequestParam("termo") String termo) {
+        return contatoService.buscarContatosGlobal(termo);
     }
 
     @GetMapping("/{id}/vinculos")

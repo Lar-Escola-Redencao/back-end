@@ -7,5 +7,7 @@ public enum Parentesco {
     PRIMO,
     IRMAO,
     TIO,
+    PADRASTO_MADRASTA,
+    VIZINHO,
     OUTRO
 }
