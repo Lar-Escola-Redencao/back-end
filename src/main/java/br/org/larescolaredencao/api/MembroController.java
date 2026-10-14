@@ -17,6 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
 import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
+import br.org.larescolaredencao.dto.AlterarSenhaDTO;
+import br.org.larescolaredencao.dto.ValidarSenhaAtualDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.model.Membro;
@@ -48,24 +50,40 @@ public class MembroController {
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
-    public MembroResponseDTO criarMembro(@Valid @RequestBody CriarMembroDTO criarMembroDTO) {
-        return membroService.criarMembro(criarMembroDTO);
+    public MembroResponseDTO criarMembro(@Valid @RequestBody CriarMembroDTO criarMembroDTO,
+                                         @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.criarMembro(criarMembroDTO, membroLogado);
     }
 
     @PutMapping("/{id}")
-    public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarMembroDTO atualizarMembroDTO) {
-        return membroService.atualizarMembro(id, atualizarMembroDTO);
+    public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarMembroDTO atualizarMembroDTO,
+                                             @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.atualizarMembro(id, atualizarMembroDTO, membroLogado);
     }
 
     @DeleteMapping("/{id}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void deletarMembro(@PathVariable("id") Integer id) {
-        membroService.deletarMembro(id);
+    public void deletarMembro(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        membroService.deletarMembro(id, membroLogado);
     }
     
     @GetMapping("/me")
     public MembroResponseDTO meuPerfil(@AuthenticationPrincipal Membro membroLogado) {
         return membroService.buscarPerfil(membroLogado.getId());
+    }
+
+    @PutMapping("/me/senha")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void alterarMinhaSenha(@AuthenticationPrincipal Membro membroLogado,
+                                 @Valid @RequestBody AlterarSenhaDTO dto) {
+        membroService.alterarSenha(membroLogado.getId(), dto);
+    }
+
+    @PostMapping("/me/senha/validar")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void validarMinhaSenha(@AuthenticationPrincipal Membro membroLogado,
+                                 @Valid @RequestBody ValidarSenhaAtualDTO dto) {
+        membroService.validarSenhaAtual(membroLogado.getId(), dto.getSenhaAtual());
     }
  
     @PutMapping("/me")

@@ -53,6 +53,7 @@ public class OcorrenciaService {
 
         Ocorrencia ocorrencia = new Ocorrencia();
         ocorrencia.setDataCriacao(dataCriacao);
+        ocorrencia.setDataRegistro(agora.withNano(0));
         ocorrencia.setMatricula(matricula);
         ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
         ocorrencia.setDescricao(dto.getDescricao());
@@ -69,7 +70,7 @@ public class OcorrenciaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ocorrência não encontrada."));
         
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
-        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
+        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataRegistro(), agora());
         if (dto.getDataCriacao() != null) {
             validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia(), dto.getDataCriacao());
             ocorrencia.setDataCriacao(dto.getDataCriacao());
@@ -90,7 +91,7 @@ public class OcorrenciaService {
 
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
 
-        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
+        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataRegistro(), agora());
 
         ocorrenciaRepository.delete(ocorrencia);
     }

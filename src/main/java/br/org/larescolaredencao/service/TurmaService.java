@@ -12,6 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import br.org.larescolaredencao.dto.AtualizarTurmaDTO;
 import br.org.larescolaredencao.dto.CriarTurmaDTO;
@@ -19,6 +21,7 @@ import br.org.larescolaredencao.dto.TurmaResponseDTO;
 import br.org.larescolaredencao.model.Turma;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Periodo;
+import br.org.larescolaredencao.repository.MatriculaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UnidadeRepository;
 import jakarta.validation.ConstraintViolation;
@@ -30,11 +33,14 @@ public class TurmaService {
     private final TurmaRepository turmaRepository;
     private final UnidadeRepository unidadeRepository;
     private final Validator validator;
+    private final MatriculaRepository matriculaRepository;
 
-    public TurmaService(TurmaRepository turmaRepository, UnidadeRepository unidadeRepository, Validator validator) {
+    public TurmaService(TurmaRepository turmaRepository, UnidadeRepository unidadeRepository, Validator validator,
+                        MatriculaRepository matriculaRepository) {
         this.turmaRepository = turmaRepository;
         this.unidadeRepository = unidadeRepository;
         this.validator = validator;
+        this.matriculaRepository = matriculaRepository;
     }
 
     public List<TurmaResponseDTO> listarTodasAsTurmas() {
@@ -101,9 +107,20 @@ public class TurmaService {
         return new TurmaResponseDTO(turmaRepository.save(turma));
     }
 
+    @Transactional
     public void deletarTurma(Integer id) {
         Turma turma = buscarTurmaOuFalhar(id);
-        turmaRepository.delete(turma);
+        if (matriculaRepository.existsByTurmaId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir a turma porque existem matrículas vinculadas.");
+        }
+        try {
+            turmaRepository.delete(turma);
+            turmaRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir a turma porque existem registros vinculados.");
+        }
     }
 
     private void validarDto(AtualizarTurmaDTO dto) {

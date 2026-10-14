@@ -88,10 +88,33 @@ class OcorrenciaServiceTest {
     }
 
     @Test
+    void ocorrenciaRetroativaRecemCriadaPodeSerCorrigidaSemRenovarJanela() {
+        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
+        final Ocorrencia[] salvo = new Ocorrencia[1];
+        doAnswer(invocacao -> {
+            salvo[0] = invocacao.getArgument(0);
+            return salvo[0];
+        }).when(ocorrencias).save(any());
+        LocalDate data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().minusDays(2);
+        service.criarOcorrencia(dto(data), membro);
+        LocalDateTime registro = salvo[0].getDataRegistro();
+        assertThat(salvo[0].getDataCriacao().toLocalDate()).isEqualTo(data);
+        assertThat(registro.toLocalDate()).isEqualTo(data.plusDays(2));
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(salvo[0]));
+        AtualizarOcorrenciaDTO atualizacao = new AtualizarOcorrenciaDTO();
+        atualizacao.setDescricao("Correção");
+        atualizacao.setTipoOcorrencia(TipoOcorrencia.SAUDE);
+        atualizacao.setDataCriacao(data.atTime(9, 0));
+        assertThatCode(() -> service.atualizarOcorrencia(1, atualizacao, membro)).doesNotThrowAnyException();
+        assertThat(salvo[0].getDataRegistro()).isEqualTo(registro);
+        assertThatCode(() -> service.deletarOcorrencia(1, membro)).doesNotThrowAnyException();
+    }
+
+    @Test
     void deveUsarCriacaoDoBancoParaBloquearEdicaoEExclusaoApos24Horas() {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
-        registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusHours(24).minusMinutes(30));
+        registro.setDataRegistro(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusHours(24).minusMinutes(30));
         registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate());
         when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
@@ -115,7 +138,7 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
-        registro.setDataCriacao(criacao);
+        registro.setDataRegistro(criacao);
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
@@ -142,7 +165,7 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
-        registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
+        registro.setDataRegistro(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção retroativa");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);

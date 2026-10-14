@@ -49,7 +49,8 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();            
                     
-                    req.requestMatchers(HttpMethod.GET, "/uploads/**").permitAll();
+                    req.requestMatchers(HttpMethod.GET, "/uploads/usuarios/saude/**", "/uploads/saude/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers(HttpMethod.GET,
                             "/uploads/parceiros/**",
                             "/uploads/diretoria/**",
@@ -57,7 +58,8 @@ public class SecurityConfig {
                             "/uploads/eventos/**",
                             "/uploads/unidades/**", 
                             "/uploads/transparencia/**",
-                            "/uploads/paginas/**").permitAll();
+                            "/uploads/paginas/**",
+                            "/uploads/usuarios/{nome}").permitAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
@@ -78,8 +80,15 @@ public class SecurityConfig {
 
                     req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
 
+                    req.requestMatchers(HttpMethod.GET, "/turmas/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
+                    req.requestMatchers("/unidade/**", "/turmas/**", "/evento/**", "/parceiro/**",
+                            "/diretoria/**", "/rede-social/**").hasRole("ADMINISTRADOR");
+
                     req.requestMatchers(HttpMethod.GET, "/membro/me").authenticated();
                     req.requestMatchers(HttpMethod.PUT, "/membro/me").authenticated();  
+                    req.requestMatchers(HttpMethod.PUT, "/membro/me/senha").authenticated();
+                    req.requestMatchers(HttpMethod.POST, "/membro/me/senha/validar").authenticated();
                     
                     req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/{id:[0-9]+}",
@@ -116,6 +125,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(allowedOrigins);
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
+        configuration.setExposedHeaders(List.of("Content-Disposition"));
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

@@ -36,6 +36,7 @@ import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -670,7 +671,7 @@ public class UsuarioService {
         if (podeCorrigirMatricula(matriculaAtiva)) {
             matriculaAtiva.setTurma(novaTurma);
             matriculaAtiva.setDataIngresso(dataTransferencia.atStartOfDay());
-            UsuarioResponseDTO resposta = incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva)), usuario);
+            UsuarioResponseDTO resposta = montarRespostaCompleta(usuario, contatoUsuarioRepository.findByUsuario(usuario), matriculaRepository.save(matriculaAtiva));
             resposta.setMatriculaCorrigida(true);
             return resposta;
         }
@@ -688,7 +689,7 @@ public class UsuarioService {
         matriculaAtiva = matriculaRepository.save(novaMatricula);
 
         List<ContatoUsuario> contatos = contatoUsuarioRepository.findByUsuario(usuario);
-        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatos, matriculaAtiva), usuario);
+        return montarRespostaCompleta(usuario, contatos, matriculaAtiva);
     }
 
     @Transactional
@@ -708,7 +709,7 @@ public class UsuarioService {
         matricula.setStatus(StatusMatricula.ATIVO);
         matricula.setDataIngresso(LocalDateTime.now());
         matricula = matriculaRepository.save(matricula);
-        return incluirDataPrimeiraMatricula(new UsuarioResponseDTO(usuario, contatoUsuarioRepository.findByUsuario(usuario), matricula), usuario);
+        return montarRespostaCompleta(usuario, contatoUsuarioRepository.findByUsuario(usuario), matricula);
     }
 
     @Transactional
@@ -1088,6 +1089,16 @@ public class UsuarioService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
         validarAcessoAoUsuario(usuario, membroLogado);
         return arquivoSaudeRepository.findByIdUsuario(usuarioId);
+    }
+
+    @Transactional(readOnly = true)
+    public Resource carregarArquivoSaude(String caminho, Membro membroLogado) {
+        ArquivoSaude arquivo = arquivoSaudeRepository.findByCaminhoArquivo(caminho)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Arquivo não encontrado."));
+        Usuario usuario = usuarioRepository.findById(arquivo.getIdUsuario())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+        return arquivoService.carregarComoRecurso(arquivo.getCaminhoArquivo());
     }
 
     @Transactional

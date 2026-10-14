@@ -148,7 +148,7 @@ public class Membro implements UserDetails {
     }
     
     public void setUnidades(List<Unidade> unidades) {
-    	this.unidades = unidades;
+        this.unidades = new ArrayList<>(unidades);
     }
 
     @Override

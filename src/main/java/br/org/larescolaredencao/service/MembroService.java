@@ -9,10 +9,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
 import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
+import br.org.larescolaredencao.dto.AlterarSenhaDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.model.Membro;
@@ -93,6 +95,76 @@ public class MembroService {
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
+    }
+
+    @Transactional
+    public MembroResponseDTO criarMembro(CriarMembroDTO dto, Membro membroLogado) {
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        validarGestaoMembro(membroLogado, papel, dto.getIdsUnidades());
+        return criarMembro(dto);
+    }
+
+    @Transactional
+    public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto, Membro membroLogado) {
+        Membro membro = membroRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarGestaoMembro(membroLogado, membro.getPapel(),
+                membro.getUnidades().stream().map(Unidade::getId).toList());
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        validarGestaoMembro(membroLogado, papel, dto.getIdsUnidades());
+        return atualizarMembro(id, dto);
+    }
+
+    @Transactional
+    public void deletarMembro(Integer id, Membro membroLogado) {
+        Membro membro = membroRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarGestaoMembro(membroLogado, membro.getPapel(),
+                membro.getUnidades().stream().map(Unidade::getId).toList());
+        deletarMembro(id);
+    }
+
+    private void validarGestaoMembro(Membro membroLogado, Papel papel, List<Integer> idsUnidades) {
+        if ("ADMINISTRADOR".equals(membroLogado.getPapel().getNomePapel())) {
+            return;
+        }
+        if (!"COORDENADOR".equals(membroLogado.getPapel().getNomePapel())
+                || !"MONITOR".equals(papel.getNomePapel())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Coordenadores podem gerenciar somente monitores.");
+        }
+        if (idsUnidades != null && idsUnidades.stream().anyMatch(id -> membroLogado.getUnidades().stream()
+                .noneMatch(unidade -> unidade.getId().equals(id)))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Não é permitido gerenciar monitores de outras unidades.");
+        }
+    }
+
+    @Transactional
+    public void alterarSenha(Integer idMembroLogado, AlterarSenhaDTO dto) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarSenhaAtual(membro, dto.getSenhaAtual());
+        if (!dto.getNovaSenha().equals(dto.getConfirmacaoSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A confirmação da senha não confere.");
+        }
+        membro.setSenha(passwordEncoder.encode(dto.getNovaSenha()));
+        membroRepository.save(membro);
+    }
+
+    @Transactional(readOnly = true)
+    public void validarSenhaAtual(Integer idMembroLogado, String senhaAtual) {
+        Membro membro = membroRepository.findById(idMembroLogado)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarSenhaAtual(membro, senhaAtual);
+    }
+
+    private void validarSenhaAtual(Membro membro, String senhaAtual) {
+        if (!passwordEncoder.matches(senhaAtual, membro.getSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A senha atual está incorreta.");
+        }
     }
 
     public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto) {

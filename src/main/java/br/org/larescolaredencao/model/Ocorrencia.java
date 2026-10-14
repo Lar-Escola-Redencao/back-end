@@ -27,8 +27,12 @@ public class Ocorrencia {
     @Column(name = "data_ocorrencia", nullable = false)
     private LocalDate dataOcorrencia;
 
+    // Campo legado utilizado para o horário do fato, informado no diário.
     @Column(name = "data_criacao", nullable = false)
     private LocalDateTime dataCriacao = LocalDateTime.now();
+
+    @Column(name = "data_registro", nullable = false, updatable = false)
+    private LocalDateTime dataRegistro;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String descricao;
@@ -67,6 +71,14 @@ public class Ocorrencia {
 
     public void setDataCriacao(LocalDateTime dataCriacao) {
         this.dataCriacao = dataCriacao;
+    }
+
+    public LocalDateTime getDataRegistro() {
+        return dataRegistro;
+    }
+
+    public void setDataRegistro(LocalDateTime dataRegistro) {
+        this.dataRegistro = dataRegistro;
     }
 
     public String getDescricao() {
