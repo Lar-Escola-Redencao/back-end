@@ -38,21 +38,18 @@ public class OcorrenciaService {
         
         validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
         LocalDateTime agora = agora();
-        if (isMonitor(membroLogado) && dto.getDataOcorrencia().isBefore(agora.toLocalDate().minusDays(7))) {
+        if (isMonitor(membroLogado) && dto.getDataOcorrencia().toLocalDate().isBefore(agora.toLocalDate().minusDays(7))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Monitores não podem registrar ocorrências retroativas passando de 7 dias.");
         }
-        if (isMonitor(membroLogado) && dto.getDataOcorrencia().isAfter(agora.toLocalDate())) {
+        if (isMonitor(membroLogado) && dto.getDataOcorrencia().toLocalDate().isAfter(agora.toLocalDate())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência em data futura.");
         }
-        validarMatriculaNaData(matricula, dto.getDataOcorrencia());
-        LocalDateTime dataCriacao = dto.getDataCriacao() != null
-                ? dto.getDataCriacao()
-                : LocalDateTime.of(dto.getDataOcorrencia(), matricula.getTurma().getHoraInicio());
-        validarDataHoraOcorrencia(matricula, dto.getDataOcorrencia(), dataCriacao);
+        validarMatriculaNaData(matricula, dto.getDataOcorrencia().toLocalDate());
+        validarDataHoraOcorrencia(matricula, dto.getDataOcorrencia().toLocalDate(), dto.getDataOcorrencia());
 
         Ocorrencia ocorrencia = new Ocorrencia();
-        ocorrencia.setDataCriacao(dataCriacao);
+        ocorrencia.setDataCriacao(agora.withNano(0));
         ocorrencia.setMatricula(matricula);
         ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
         ocorrencia.setDescricao(dto.getDescricao());
@@ -70,9 +67,9 @@ public class OcorrenciaService {
         
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
         validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
-        if (dto.getDataCriacao() != null) {
-            validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia(), dto.getDataCriacao());
-            ocorrencia.setDataCriacao(dto.getDataCriacao());
+        if (dto.getDataOcorrencia() != null) {
+            validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate(), dto.getDataOcorrencia());
+            ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
         }
 
         ocorrencia.setDescricao(dto.getDescricao());
@@ -121,13 +118,13 @@ public class OcorrenciaService {
         }
     }
 
-    private void validarDataHoraOcorrencia(Matricula matricula, LocalDate dataOcorrencia, LocalDateTime dataCriacao) {
-        if (!dataCriacao.toLocalDate().equals(dataOcorrencia)) {
+    private void validarDataHoraOcorrencia(Matricula matricula, LocalDate dataDiario, LocalDateTime dataOcorrencia) {
+        if (!dataOcorrencia.toLocalDate().equals(dataDiario)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "O horÃ¡rio da ocorrÃªncia deve pertencer Ã  data do diÃ¡rio.");
         }
 
-        LocalTime hora = dataCriacao.toLocalTime();
+        LocalTime hora = dataOcorrencia.toLocalTime();
         LocalTime inicio = matricula.getTurma().getHoraInicio();
         LocalTime fim = matricula.getTurma().getHoraFim();
         if (hora.isBefore(inicio) || hora.isAfter(fim)) {
