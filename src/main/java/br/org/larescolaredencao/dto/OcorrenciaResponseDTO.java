@@ -3,14 +3,13 @@ package br.org.larescolaredencao.dto;
 import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class OcorrenciaResponseDTO {
 
     private Integer id;
     private Integer idMatricula;
-    private LocalDate dataOcorrencia;
+    private LocalDateTime dataOcorrencia;
     private LocalDateTime dataCriacao;
     private String descricao;
     private TipoOcorrencia tipoOcorrencia;
@@ -34,7 +33,7 @@ public class OcorrenciaResponseDTO {
         return idMatricula;
     }
 
-    public LocalDate getDataOcorrencia() {
+    public LocalDateTime getDataOcorrencia() {
         return dataOcorrencia;
     }
 

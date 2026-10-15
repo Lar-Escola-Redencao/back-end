@@ -308,7 +308,20 @@ public class UsuarioServiceTest {
         dto.setIdTurmaNova(2);
         dto.setDataTransferencia(LocalDate.now());
 
-        usuarioService.transferirTurma(1, dto, adminLogado);
+        FichaSocioeconomica ficha = new FichaSocioeconomica();
+        ficha.setTipoMoradia(TipoMoradia.PROPRIA);
+        ficha.setTemAlergia(true);
+        ficha.setDescAlergia("Alergia preservada");
+        when(fichaSocioeconomicaRepository.findById(1)).thenReturn(Optional.of(ficha));
+        ComposicaoFamiliar familiar = new ComposicaoFamiliar();
+        familiar.setNomeCompleto("Familiar preservado");
+        when(composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(1)).thenReturn(List.of(familiar));
+        when(matriculaRepository.save(any(Matricula.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        UsuarioResponseDTO resposta = usuarioService.transferirTurma(1, dto, adminLogado);
+        assertEquals(true, resposta.getFichaSocioeconomica().getTemAlergia());
+        assertEquals(TipoMoradia.PROPRIA, resposta.getFichaSocioeconomica().getTipoMoradia());
+        assertEquals("Familiar preservado", resposta.getComposicaoFamiliar().get(0).getNomeCompleto());
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(2, matriculaAtiva.getTurma().getId());
@@ -331,7 +344,20 @@ public class UsuarioServiceTest {
         dto.setIdTurmaNova(2);
         dto.setDataTransferencia(LocalDate.of(2026, 10, 5));
 
-        usuarioService.transferirTurma(1, dto, adminLogado);
+        FichaSocioeconomica ficha = new FichaSocioeconomica();
+        ficha.setTipoMoradia(TipoMoradia.PROPRIA);
+        ficha.setTemAlergia(true);
+        ficha.setDescAlergia("Alergia preservada");
+        when(fichaSocioeconomicaRepository.findById(1)).thenReturn(Optional.of(ficha));
+        ComposicaoFamiliar familiar = new ComposicaoFamiliar();
+        familiar.setNomeCompleto("Familiar preservado");
+        when(composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(1)).thenReturn(List.of(familiar));
+        when(matriculaRepository.save(any(Matricula.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        UsuarioResponseDTO resposta = usuarioService.transferirTurma(1, dto, adminLogado);
+        assertEquals(true, resposta.getFichaSocioeconomica().getTemAlergia());
+        assertEquals(TipoMoradia.PROPRIA, resposta.getFichaSocioeconomica().getTipoMoradia());
+        assertEquals("Familiar preservado", resposta.getComposicaoFamiliar().get(0).getNomeCompleto());
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
         verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroGreaterThanEqual(1, dto.getDataTransferencia());

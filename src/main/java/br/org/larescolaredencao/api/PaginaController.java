@@ -144,7 +144,7 @@ public class PaginaController {
         Resource recurso = arquivoService.carregarComoRecurso(documento.getArquivo());
 
         String extensao = arquivoService.extrairExtensao(documento.getArquivo());
-        String nomeParaDownload = extensao.isEmpty()
+        String nomeParaDownload = extensao.isEmpty() || documento.getTitulo().toLowerCase(java.util.Locale.ROOT).endsWith("." + extensao)
                 ? documento.getTitulo()
                 : documento.getTitulo() + "." + extensao;
 
