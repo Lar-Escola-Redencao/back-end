@@ -9,6 +9,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
@@ -62,16 +63,35 @@ public class MembroService {
         return new MembroResponseDTO(membro);
     }
 
-    public MembroResponseDTO criarMembro(CriarMembroDTO dto) {
+    @Transactional
+    public MembroResponseDTO criarMembro(CriarMembroDTO dto, Membro membroLogado) {
+        if (membroLogado == null || membroLogado.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária.");
+        }
+        Membro solicitante = membroRepository.findById(membroLogado.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Membro autenticado não encontrado."));
+        String perfil = solicitante.getPapel().getNomePapel();
+        if (!"ADMINISTRADOR".equals(perfil) && !"COORDENADOR".equals(perfil)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sem permissão para cadastrar colaboradores.");
+        }
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        if ("COORDENADOR".equals(perfil)) {
+            if (!"MONITOR".equals(papel.getNomePapel())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Coordenadores só podem cadastrar monitores.");
+            }
+            var unidadesPermitidas = solicitante.getUnidades().stream()
+                    .map(Unidade::getId).collect(Collectors.toSet());
+            if (dto.getIdsUnidades() != null && !unidadesPermitidas.containsAll(dto.getIdsUnidades())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Selecione apenas unidades às quais você tem acesso.");
+            }
+        }
     	if (membroRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado no sistema.");
         }
         if (membroRepository.buscarPorCpf(dto.getCpf()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está cadastrado no sistema.");
         }
-        
-        Papel papel = papelRepository.findById(dto.getIdPapel())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
         if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");

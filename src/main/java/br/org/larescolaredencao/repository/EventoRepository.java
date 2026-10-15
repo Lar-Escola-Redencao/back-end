@@ -32,4 +32,21 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
            "   LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!'" +
            ")")
     Page<Evento> buscar(@Param("search") String search, @Param("tipo") TipoEvento tipo, Pageable pageable);
+
+    @Query("SELECT e FROM Evento e WHERE " +
+           "(:tipo IS NULL OR e.tipoEvento = :tipo) " +
+           "AND (:inicio IS NULL OR e.dataEvento >= :inicio) " +
+           "AND (:fimExclusivo IS NULL OR e.dataEvento < :fimExclusivo) " +
+           "AND (:gratuito IS NULL OR (:gratuito = true AND COALESCE(e.valor, 0) = 0) " +
+           "OR (:gratuito = false AND e.valor > 0)) " +
+           "AND (:search IS NULL OR LOWER(e.titulo) LIKE :search ESCAPE '!' " +
+           "OR LOWER(e.descricao) LIKE :search ESCAPE '!' " +
+           "OR LOWER(format(e.dataEvento as 'dd/MM/yyyy HH:mm')) LIKE :search ESCAPE '!' " +
+           "OR LOWER(e.endereco) LIKE :search ESCAPE '!' " +
+           "OR LOWER(e.imagem) LIKE :search ESCAPE '!' " +
+           "OR LOWER(cast(e.valor as String)) LIKE :search ESCAPE '!' " +
+           "OR LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!')")
+    Page<Evento> buscarComFiltros(@Param("search") String search, @Param("tipo") TipoEvento tipo,
+            @Param("inicio") LocalDateTime inicio, @Param("fimExclusivo") LocalDateTime fimExclusivo,
+            @Param("gratuito") Boolean gratuito, Pageable pageable);
 }

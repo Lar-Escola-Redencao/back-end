@@ -48,8 +48,9 @@ public class MembroController {
 
     @PostMapping("/criar")
     @ResponseStatus(HttpStatus.CREATED)
-    public MembroResponseDTO criarMembro(@Valid @RequestBody CriarMembroDTO criarMembroDTO) {
-        return membroService.criarMembro(criarMembroDTO);
+    public MembroResponseDTO criarMembro(@Valid @RequestBody CriarMembroDTO criarMembroDTO,
+            @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.criarMembro(criarMembroDTO, membroLogado);
     }
 
     @PutMapping("/{id}")
