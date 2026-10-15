@@ -261,7 +261,7 @@ class FrequenciaServiceTest {
         Ocorrencia ocorrencia = new Ocorrencia();
         ocorrencia.setId(77);
         ocorrencia.setMatricula(matricula);
-        ocorrencia.setDataOcorrencia(data);
+        ocorrencia.setDataOcorrencia(data.atTime(9, 0));
         ocorrencia.setMembro(membro);
         ocorrencia.setDescricao("Registro anterior");
 

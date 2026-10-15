@@ -58,10 +58,47 @@ class OcorrenciaServiceTest {
     private CriarOcorrenciaDTO dto(LocalDate data) {
         CriarOcorrenciaDTO dto = new CriarOcorrenciaDTO();
         dto.setIdMatricula(10);
-        dto.setDataOcorrencia(data);
+        dto.setDataOcorrencia(data.atTime(8, 0));
         dto.setDescricao("Registro de acompanhamento");
         dto.setTipoOcorrencia(TipoOcorrencia.ASSISTENCIA);
         return dto;
+    }
+
+    @Test
+    void deveDefinirCriacaoPeloServidorEPreservarHorarioDoFato() {
+        LocalDateTime agora = LocalDateTime.of(2026, 10, 15, 14, 30, 20);
+        LocalDateTime fato = agora.minusDays(2).withHour(9).withMinute(15);
+        matricula.setDataIngresso(fato.minusMonths(2));
+        CriarOcorrenciaDTO dto = dto(fato.toLocalDate());
+        dto.setDataOcorrencia(fato);
+        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
+        when(ocorrencias.save(any())).thenAnswer(invocacao -> invocacao.getArgument(0));
+        try (MockedStatic<LocalDateTime> tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            var resposta = service.criarOcorrencia(dto, membro);
+            assertThat(resposta.getDataCriacao()).isEqualTo(agora);
+            assertThat(resposta.getDataOcorrencia()).isEqualTo(fato);
+        }
+    }
+
+    @Test
+    void deveRejeitarHorarioForaDaTurmaEMudancaDoDiaNaEdicao() {
+        LocalDate hoje = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate();
+        Ocorrencia registro = new Ocorrencia();
+        registro.setMatricula(matricula);
+        registro.setDataCriacao(hoje.atStartOfDay());
+        registro.setDataOcorrencia(hoje.atTime(9, 0));
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
+        AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
+        dto.setDescricao("Correção");
+        dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
+        for (LocalDateTime fato : List.of(hoje.atTime(7, 59), hoje.plusDays(1).atTime(9, 0))) {
+            dto.setDataOcorrencia(fato);
+            assertThatThrownBy(() -> service.atualizarOcorrencia(1, dto, membro))
+                    .isInstanceOfSatisfying(ResponseStatusException.class,
+                            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        }
+        verify(ocorrencias, never()).save(any());
     }
 
     @Test
@@ -84,7 +121,7 @@ class OcorrenciaServiceTest {
         matricula.setDataDesligamento(data.plusDays(1));
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(ocorrencias.save(any())).thenAnswer(invocacao -> invocacao.getArgument(0));
-        assertThat(service.criarOcorrencia(dto(data), membro).getDataOcorrencia()).isEqualTo(data);
+        assertThat(service.criarOcorrencia(dto(data), membro).getDataOcorrencia()).isEqualTo(data.atTime(8, 0));
     }
 
     @Test
@@ -97,16 +134,16 @@ class OcorrenciaServiceTest {
         }).when(ocorrencias).save(any());
         LocalDate data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().minusDays(2);
         service.criarOcorrencia(dto(data), membro);
-        LocalDateTime registro = salvo[0].getDataRegistro();
-        assertThat(salvo[0].getDataCriacao().toLocalDate()).isEqualTo(data);
+        LocalDateTime registro = salvo[0].getDataCriacao();
+        assertThat(salvo[0].getDataOcorrencia().toLocalDate()).isEqualTo(data);
         assertThat(registro.toLocalDate()).isEqualTo(data.plusDays(2));
         when(ocorrencias.findById(1)).thenReturn(Optional.of(salvo[0]));
         AtualizarOcorrenciaDTO atualizacao = new AtualizarOcorrenciaDTO();
         atualizacao.setDescricao("Correção");
         atualizacao.setTipoOcorrencia(TipoOcorrencia.SAUDE);
-        atualizacao.setDataCriacao(data.atTime(9, 0));
+        atualizacao.setDataOcorrencia(data.atTime(9, 0));
         assertThatCode(() -> service.atualizarOcorrencia(1, atualizacao, membro)).doesNotThrowAnyException();
-        assertThat(salvo[0].getDataRegistro()).isEqualTo(registro);
+        assertThat(salvo[0].getDataCriacao()).isEqualTo(registro);
         assertThatCode(() -> service.deletarOcorrencia(1, membro)).doesNotThrowAnyException();
     }
 
@@ -114,8 +151,8 @@ class OcorrenciaServiceTest {
     void deveUsarCriacaoDoBancoParaBloquearEdicaoEExclusaoApos24Horas() {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
-        registro.setDataRegistro(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusHours(24).minusMinutes(30));
-        registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate());
+        registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusHours(24).minusMinutes(30));
+        registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
         when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
@@ -138,7 +175,7 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
-        registro.setDataRegistro(criacao);
+        registro.setDataCriacao(criacao);
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
@@ -165,7 +202,7 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
-        registro.setDataRegistro(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
+        registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção retroativa");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
