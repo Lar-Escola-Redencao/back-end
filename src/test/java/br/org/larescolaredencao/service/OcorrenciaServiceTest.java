@@ -176,6 +176,7 @@ class OcorrenciaServiceTest {
         registro.setMatricula(matricula);
         registro.setMembro(membro);
         registro.setDataCriacao(criacao);
+        registro.setDataOcorrencia(criacao);
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
@@ -203,6 +204,7 @@ class OcorrenciaServiceTest {
         registro.setMatricula(matricula);
         registro.setMembro(membro);
         registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
+        registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(3));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção retroativa");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);

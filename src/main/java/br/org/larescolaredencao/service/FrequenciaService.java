@@ -140,6 +140,7 @@ public class FrequenciaService {
 
     private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
         LocalDateTime agora = agora();
+        PeriodoDiario.validar(membroLogado, dto.getData(), agora.toLocalDate());
         LocalDateTime inicio = LocalDateTime.of(dto.getData(), turma.getHoraInicio());
         if (isMonitor(membroLogado) && agora.isBefore(inicio)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,

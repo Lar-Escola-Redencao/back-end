@@ -988,13 +988,10 @@ public class UsuarioService {
     private void mapearDadosUsuario(Usuario usuario, CadastroUsuarioCompletoDTO dto) {
         usuario.setNomeCompleto(dto.getNomeCompleto());
         usuario.setDataNascimento(dto.getDataNascimento());
-        if (dto.getCpf() != null && !dto.getCpf().isBlank()) {
-            usuario.setCpf(dto.getCpf());
-        }
-        if (dto.getDocumentoAuxiliar() != null && !dto.getDocumentoAuxiliar().isBlank()) {
-            usuario.setDocumentoAuxiliar(dto.getDocumentoAuxiliar());
-            usuario.setTipoDocumento(dto.getTipoDocumento());
-        }
+        // A atualização recebe o cadastro completo: null também deve limpar o documento anterior.
+        usuario.setCpf(dto.getCpf());
+        usuario.setDocumentoAuxiliar(dto.getDocumentoAuxiliar());
+        usuario.setTipoDocumento(dto.getTipoDocumento());
         usuario.setCadUnico(dto.getCadUnico());
         usuario.setEndereco(dto.getEndereco());
         usuario.setBairro(dto.getBairro());

@@ -76,11 +76,14 @@ class FrequenciaServiceTest {
     }
 
     @Test
-    void postNaoDeveContornarLimiteDeEdicaoDe48Horas() {
+    void postEPutNaoDevemContornarLimiteDoMesAnterior() {
+        data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate()
+                .withDayOfMonth(1).minusMonths(1).minusDays(1);
         when(turmas.findById(1)).thenReturn(Optional.of(turma));
-        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
-        when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.of(new Frequencia()));
         assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        assertThatThrownBy(() -> service.atualizarFrequenciaEmLote(lote(), membro))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
         verify(frequencias, never()).saveAllAndFlush(any());

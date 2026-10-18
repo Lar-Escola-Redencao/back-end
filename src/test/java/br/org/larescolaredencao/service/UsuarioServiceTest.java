@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
+import br.org.larescolaredencao.dto.AtualizarUsuarioDTO;
 import br.org.larescolaredencao.dto.ComposicaoFamiliarDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.FichaSocioeconomicaDTO;
@@ -25,6 +26,7 @@ import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.TipoMoradia;
+import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.repository.ArquivoSaudeRepository;
 import br.org.larescolaredencao.repository.ComposicaoFamiliarRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
@@ -179,6 +181,56 @@ public class UsuarioServiceTest {
         adminLogado = new Membro();
         adminLogado.setId(999);
         adminLogado.setPapel(adminPapel);
+    }
+
+    @Test
+    void atualizarUsuarioComCpfDeveLimparDocumentoAuxiliarAnterior() {
+        usuario.setCpf(null);
+        usuario.setDocumentoAuxiliar("CERTIDAO-123");
+        usuario.setTipoDocumento(TipoDocumento.CERTIDAO_NASCIMENTO);
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setCpf("52998224725");
+        dto.setDocumentoAuxiliar(null);
+        dto.setTipoDocumento(null);
+
+        UsuarioResponseDTO resposta = usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        assertEquals("52998224725", usuario.getCpf());
+        assertNull(usuario.getDocumentoAuxiliar());
+        assertNull(usuario.getTipoDocumento());
+        assertEquals("52998224725", resposta.getCpf());
+        assertNull(resposta.getDocumentoAuxiliar());
+        assertNull(resposta.getTipoDocumento());
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void atualizarUsuarioComDocumentoAuxiliarDeveLimparCpfAnterior() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setCpf(null);
+        dto.setDocumentoAuxiliar("CERTIDAO-123");
+        dto.setTipoDocumento(TipoDocumento.CERTIDAO_NASCIMENTO);
+
+        usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        assertNull(usuario.getCpf());
+        assertEquals("CERTIDAO-123", usuario.getDocumentoAuxiliar());
+        assertEquals(TipoDocumento.CERTIDAO_NASCIMENTO, usuario.getTipoDocumento());
+        verify(usuarioRepository).save(usuario);
+    }
+
+    private AtualizarUsuarioDTO prepararAtualizacaoDocumento() {
+        AtualizarUsuarioDTO dto = new AtualizarUsuarioDTO();
+        dto.setNomeCompleto(cadastroDTO.getNomeCompleto());
+        dto.setDataNascimento(cadastroDTO.getDataNascimento());
+        dto.setIdTurma(1);
+        dto.setContatos(cadastroDTO.getContatos());
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+        Contato contato = new Contato();
+        contato.setId(10);
+        when(contatoRepository.save(any(Contato.class))).thenReturn(contato);
+        return dto;
     }
 
     @Test
