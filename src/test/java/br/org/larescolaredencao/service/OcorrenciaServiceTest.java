@@ -51,6 +51,7 @@ class OcorrenciaServiceTest {
         Papel papel = new Papel();
         papel.setNomePapel("MONITOR");
         membro = new Membro();
+        membro.setId(7);
         membro.setPapel(papel);
         membro.setUnidades(List.of(unidade));
     }
@@ -86,6 +87,7 @@ class OcorrenciaServiceTest {
         LocalDate hoje = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate();
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
+        registro.setMembro(membro);
         registro.setDataCriacao(hoje.atStartOfDay());
         registro.setDataOcorrencia(hoje.atTime(9, 0));
         when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
@@ -102,9 +104,9 @@ class OcorrenciaServiceTest {
     }
 
     @Test
-    void deveBloquearCriacaoHa8DiasParaMonitorEPermitirCoordenador() {
+    void deveBloquearCriacaoAntesDoMesAnteriorParaMonitorEPermitirCoordenador() {
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
-        CriarOcorrenciaDTO dto = dto(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().minusDays(8));
+        CriarOcorrenciaDTO dto = dto(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().withDayOfMonth(1).minusMonths(1).minusDays(1));
         assertThatThrownBy(() -> service.criarOcorrencia(dto, membro))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
@@ -151,6 +153,7 @@ class OcorrenciaServiceTest {
     void deveUsarCriacaoDoBancoParaBloquearEdicaoEExclusaoApos24Horas() {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
+        registro.setMembro(membro);
         registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusHours(24).minusMinutes(30));
         registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")));
         when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
@@ -175,8 +178,9 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
+        registro.setMembro(membro);
         registro.setDataCriacao(criacao);
-        registro.setDataOcorrencia(criacao);
+        registro.setDataOcorrencia(criacao.withHour(9));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
@@ -203,8 +207,9 @@ class OcorrenciaServiceTest {
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
+        registro.setMembro(membro);
         registro.setDataCriacao(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1));
-        registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(3));
+        registro.setDataOcorrencia(LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).minusMonths(1).withHour(9));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção retroativa");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);

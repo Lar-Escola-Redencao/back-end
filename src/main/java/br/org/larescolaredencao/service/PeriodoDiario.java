@@ -14,7 +14,7 @@ final class PeriodoDiario {
         if (Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.MONITOR
                 && dataRegistro.isBefore(limite)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Monitores não podem registrar chamadas anteriores ao primeiro dia do mês passado.");
+                    "Monitores não podem cadastrar registros anteriores ao primeiro dia do mês passado.");
         }
     }
 }
