@@ -101,4 +101,29 @@ class MembroCadastroPermissoesTest {
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
         verify(membros, never()).save(any());
     }
+
+    @Test
+    void rejeitaSolicitanteQueNaoExisteMaisNoBanco() {
+        when(membros.findById(10)).thenReturn(Optional.empty());
+        assertThatThrownBy(() -> service.criarMembro(dto, coordenador))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED));
+        verify(membros, never()).save(any());
+        verifyNoInteractions(papeis, unidades);
+    }
+
+    @Test
+    void consultaPermissaoAtualNoBancoEmVezDeConfiarNoPerfilDoToken() {
+        Membro solicitanteDoToken = new Membro();
+        solicitanteDoToken.setId(10);
+        solicitanteDoToken.setPapel(new Papel(1, "ADMINISTRADOR", ""));
+        coordenador.setPapel(new Papel(3, "MONITOR", ""));
+        when(membros.findById(10)).thenReturn(Optional.of(coordenador));
+
+        assertThatThrownBy(() -> service.criarMembro(dto, solicitanteDoToken))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        verify(membros, never()).save(any());
+        verifyNoInteractions(papeis, unidades);
+    }
 }

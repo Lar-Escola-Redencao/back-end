@@ -39,13 +39,15 @@ public class MembroController {
     public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable,
             @RequestParam(name = "idPapel", required = false) Integer idPapel,
             @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
-            @RequestParam(name = "search", required = false) String search) {
-        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel, search, idUnidade));
+            @RequestParam(name = "search", required = false) String search,
+            @AuthenticationPrincipal Membro membroLogado) {
+        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel, search, idUnidade, membroLogado));
     }
 
     @GetMapping("/{id}")
-    public MembroResponseDTO buscarMembro(@PathVariable("id") Integer id) {
-        return membroService.getMembroById(id);
+    public MembroResponseDTO buscarMembro(@PathVariable("id") Integer id,
+            @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.getMembroById(id, membroLogado);
     }
 
     @PostMapping("/criar")

@@ -37,6 +37,7 @@ class MembroCorrecoesTest {
     void preparar() {
         service = new MembroService(membros, papeis, unidades);
         coordenador = new Membro();
+        coordenador.setId(20);
         coordenador.setPapel(new Papel(2, "COORDENADOR", "Coordenador"));
         Unidade unidade = new Unidade();
         unidade.setId(1);
@@ -47,10 +48,11 @@ class MembroCorrecoesTest {
     void coordenadorNaoPodeCriarAdministrador() {
         CriarMembroDTO dto = new CriarMembroDTO();
         dto.setIdPapel(1);
+        when(membros.findById(20)).thenReturn(Optional.of(coordenador));
         when(papeis.findById(1)).thenReturn(Optional.of(new Papel(1, "ADMINISTRADOR", "Admin")));
         assertThatThrownBy(() -> service.criarMembro(dto, coordenador))
                 .isInstanceOfSatisfying(ResponseStatusException.class, e -> assertThat(e.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
-        verifyNoInteractions(membros);
+        verify(membros, never()).save(any());
     }
 
     @Test
@@ -72,12 +74,13 @@ class MembroCorrecoesTest {
 
     @Test
     void coordenadorNaoPodeVincularMonitorAOutraUnidade() {
+        when(membros.findById(20)).thenReturn(Optional.of(coordenador));
         when(papeis.findById(3)).thenReturn(Optional.of(new Papel(3, "MONITOR", "Monitor")));
         CriarMembroDTO dto = new CriarMembroDTO();
         dto.setIdPapel(3);
         dto.setIdsUnidades(List.of(2));
         assertThatThrownBy(() -> service.criarMembro(dto, coordenador)).isInstanceOf(ResponseStatusException.class);
-        verifyNoInteractions(membros);
+        verify(membros, never()).save(any());
     }
 
     @Test

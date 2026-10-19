@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.repository;
 
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -45,4 +46,21 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
            "(:idPapel IS NULL OR m.papel.id = :idPapel) AND " +
            "(:idUnidade IS NULL OR u.id = :idUnidade)")
     Page<Membro> filtrar(@Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
+
+    @Query("SELECT DISTINCT m FROM Membro m JOIN m.unidades u WHERE " +
+           "m.papel.nomePapel = 'MONITOR' AND u.id IN :idsUnidades AND " +
+           "(:idUnidade IS NULL OR u.id = :idUnidade) AND " +
+           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND (" +
+           "   :search IS NULL OR LOWER(m.nomeCompleto) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(m.email) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(m.cpf) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(m.endereco) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(m.telefone) LIKE :search ESCAPE '!' OR " +
+           "   LOWER(m.papel.nomePapel) LIKE :search ESCAPE '!' OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(m.cpf, '.', ''), '-', '') LIKE :searchDigitos) OR " +
+           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(m.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
+           ")")
+    Page<Membro> listarMonitoresDasUnidades(@Param("idsUnidades") List<Integer> idsUnidades,
+            @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade,
+            @Param("search") String search, @Param("searchDigitos") String searchDigitos, Pageable pageable);
 }
