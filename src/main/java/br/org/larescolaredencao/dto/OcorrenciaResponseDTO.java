@@ -3,18 +3,18 @@ package br.org.larescolaredencao.dto;
 import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class OcorrenciaResponseDTO {
 
     private Integer id;
     private Integer idMatricula;
-    private LocalDate dataOcorrencia;
+    private LocalDateTime dataOcorrencia;
     private LocalDateTime dataCriacao;
     private String descricao;
     private TipoOcorrencia tipoOcorrencia;
     private String nomeMembro;
+    private Integer idMembro;
 
     public OcorrenciaResponseDTO(Ocorrencia ocorrencia) {
         this.id = ocorrencia.getId();
@@ -24,6 +24,7 @@ public class OcorrenciaResponseDTO {
         this.descricao = ocorrencia.getDescricao();
         this.tipoOcorrencia = ocorrencia.getTipoOcorrencia();
         this.nomeMembro = ocorrencia.getMembro().getNomeCompleto();
+        this.idMembro = ocorrencia.getMembro().getId();
     }
 
     public Integer getId() {
@@ -34,7 +35,7 @@ public class OcorrenciaResponseDTO {
         return idMatricula;
     }
 
-    public LocalDate getDataOcorrencia() {
+    public LocalDateTime getDataOcorrencia() {
         return dataOcorrencia;
     }
 
@@ -52,5 +53,9 @@ public class OcorrenciaResponseDTO {
 
     public String getNomeMembro() {
         return nomeMembro;
+    }
+
+    public Integer getIdMembro() {
+        return idMembro;
     }
 }

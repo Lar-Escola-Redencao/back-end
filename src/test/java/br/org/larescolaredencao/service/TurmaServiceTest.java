@@ -39,11 +39,25 @@ class TurmaServiceTest {
     @Mock
     private UnidadeRepository unidadeRepository;
 
+    @Mock
+    private br.org.larescolaredencao.repository.MatriculaRepository matriculaRepository;
+
     private TurmaService turmaService;
 
     @BeforeEach
     void setUp() {
-        turmaService = new TurmaService(turmaRepository, unidadeRepository, validator);
+        turmaService = new TurmaService(turmaRepository, unidadeRepository, validator, matriculaRepository);
+    }
+
+    @Test
+    void turmaComMatriculaNaoPodeSerExcluida() {
+        Turma turma = new Turma();
+        when(turmaRepository.findById(1)).thenReturn(Optional.of(turma));
+        when(matriculaRepository.existsByTurmaId(1)).thenReturn(true);
+        assertThatThrownBy(() -> turmaService.deletarTurma(1))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        e -> assertThat(e.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.CONFLICT));
+        org.mockito.Mockito.verify(turmaRepository, org.mockito.Mockito.never()).delete(any());
     }
 
     private CriarTurmaDTO criarDto(Integer unidadeId, Periodo periodo, LocalTime inicio, LocalTime fim) {

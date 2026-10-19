@@ -41,6 +41,7 @@ class FrequenciaServiceTest {
     @BeforeEach
     void preparar() {
         service = new FrequenciaService(frequencias, matriculas, ocorrencias, turmas);
+        lenient().when(turmas.findByIdComBloqueio(1)).thenAnswer(inv -> Optional.of(turma));
         Unidade unidade = new Unidade();
         unidade.setId(1);
         turma = new Turma();
@@ -76,11 +77,13 @@ class FrequenciaServiceTest {
     }
 
     @Test
-    void postNaoDeveContornarLimiteDeEdicaoDe48Horas() {
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
-        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
-        when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.of(new Frequencia()));
+    void postEPutNaoDevemContornarLimiteDoMesAnterior() {
+        data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate()
+                .withDayOfMonth(1).minusMonths(1).minusDays(1);
         assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        assertThatThrownBy(() -> service.atualizarFrequenciaEmLote(lote(), membro))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
         verify(frequencias, never()).saveAllAndFlush(any());
@@ -92,19 +95,17 @@ class FrequenciaServiceTest {
         outra.setId(2);
         outra.setUnidade(turma.getUnidade());
         matricula.setTurma(outra);
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
-        verifyNoInteractions(frequencias);
+        verify(frequencias, never()).saveAllAndFlush(any());
     }
 
     @Test
     void devePermitirChamadaRetroativaDeEgressoQueEstavaMatriculado() {
         matricula.setStatus(StatusMatricula.EGRESSO);
         matricula.setDataDesligamento(data.plusDays(1));
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());
         service.salvarFrequenciaEmLote(lote(), membro);
@@ -117,7 +118,6 @@ class FrequenciaServiceTest {
 
     @Test
     void deveRejeitarLoteComMatriculaRepetidaSemSalvar() {
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());
         SalvarFrequenciaEmLoteDTO dto = lote();
@@ -130,10 +130,9 @@ class FrequenciaServiceTest {
     @Test
     void deveBloquearMonitorAntesDoInicioEPermitirCoordenador() {
         data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().plusDays(1);
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
         assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
         membro.getPapel().setNomePapel("COORDENADOR");
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());
@@ -150,6 +149,8 @@ class FrequenciaServiceTest {
         Frequencia registro = new Frequencia();
         registro.setMatricula(matricula);
         registro.setDataRegistro(referencia.toLocalDate());
+        registro.setDataCriacao(referencia);
+        when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, referencia.toLocalDate())).thenReturn(List.of(registro));
         AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO();
         dto.setPresente(false);
         when(frequencias.findById(1)).thenReturn(Optional.of(registro));
@@ -261,7 +262,7 @@ class FrequenciaServiceTest {
         Ocorrencia ocorrencia = new Ocorrencia();
         ocorrencia.setId(77);
         ocorrencia.setMatricula(matricula);
-        ocorrencia.setDataOcorrencia(data);
+        ocorrencia.setDataOcorrencia(data.atTime(9, 0));
         ocorrencia.setMembro(membro);
         ocorrencia.setDescricao("Registro anterior");
 
@@ -285,7 +286,6 @@ class FrequenciaServiceTest {
         matricula.setDataIngresso(ingresso.atTime(14, 0));
         matricula.setDataDesligamento(data);
         membro.getPapel().setNomePapel("COORDENADOR");
-        when(turmas.findById(1)).thenReturn(Optional.of(turma));
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(frequencias.findByMatriculaIdAndDataRegistro(10, ingresso)).thenReturn(Optional.empty());
         when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());

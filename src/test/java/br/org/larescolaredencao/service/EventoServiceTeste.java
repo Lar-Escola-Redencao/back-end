@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -65,6 +66,36 @@ class EventoServiceTeste {
     @BeforeEach
     void setUp() {
         pageable = PageRequest.of(0, 10);
+    }
+
+    @Test
+    void deveManterListagemSemFiltroDeValorSemConverterNullParaBoolean() {
+        when(eventoRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
+        assertThat(eventoService.getAllEventos(pageable, null, null, null, null, null).isEmpty()).isTrue();
+        verify(eventoRepository).findAll(pageable);
+    }
+
+    @Test
+    void deveAbrangerDiaInteiroSemFiltroDeValor() {
+        LocalDate dia = LocalDate.of(2026, 10, 15);
+        when(eventoRepository.buscarComFiltros(null, null, dia.atStartOfDay(),
+                dia.plusDays(1).atStartOfDay(), null, pageable)).thenReturn(Page.empty(pageable));
+        assertThat(eventoService.getAllEventos(pageable, null, null, dia, dia, null).isEmpty()).isTrue();
+        verify(eventoRepository).buscarComFiltros(null, null, dia.atStartOfDay(),
+                dia.plusDays(1).atStartOfDay(), null, pageable);
+    }
+
+    @Test
+    void deveCombinarBuscaCategoriaEValor() {
+        for (String valor : List.of("gratuito", "pago")) {
+            Boolean gratuito = Boolean.valueOf("gratuito".equals(valor));
+            when(eventoRepository.buscarComFiltros("%festa%", TipoEvento.CULTURAL, null,
+                    null, gratuito, pageable)).thenReturn(Page.empty(pageable));
+            assertThat(eventoService.getAllEventos(pageable, TipoEvento.CULTURAL,
+                    "Festa", null, null, valor).isEmpty()).isTrue();
+            verify(eventoRepository).buscarComFiltros("%festa%", TipoEvento.CULTURAL,
+                    null, null, gratuito, pageable);
+        }
     }
 
     @Test

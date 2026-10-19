@@ -12,6 +12,7 @@ import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "frequencia", uniqueConstraints = {
@@ -25,6 +26,10 @@ public class Frequencia {
 
     @Column(name = "data_registro", nullable = false)
     private LocalDate dataRegistro;
+
+    // Nulo somente para registros antigos cuja criação não é conhecida.
+    @Column(name = "data_criacao", updatable = false)
+    private LocalDateTime dataCriacao;
 
     @Column(nullable = false)
     private Boolean presente;
@@ -51,6 +56,14 @@ public class Frequencia {
 
     public void setDataRegistro(LocalDate dataRegistro) {
         this.dataRegistro = dataRegistro;
+    }
+
+    public LocalDateTime getDataCriacao() {
+        return dataCriacao;
+    }
+
+    public void setDataCriacao(LocalDateTime dataCriacao) {
+        this.dataCriacao = dataCriacao;
     }
 
     public Boolean getPresente() {

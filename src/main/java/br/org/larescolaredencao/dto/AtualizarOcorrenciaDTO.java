@@ -7,7 +7,7 @@ import java.time.LocalDateTime;
 
 public class AtualizarOcorrenciaDTO {
 
-    private LocalDateTime dataCriacao;
+    private LocalDateTime dataOcorrencia;
 
     @NotBlank
     private String descricao;
@@ -19,12 +19,12 @@ public class AtualizarOcorrenciaDTO {
         return descricao;
     }
 
-    public LocalDateTime getDataCriacao() {
-        return dataCriacao;
+    public LocalDateTime getDataOcorrencia() {
+        return dataOcorrencia;
     }
 
-    public void setDataCriacao(LocalDateTime dataCriacao) {
-        this.dataCriacao = dataCriacao;
+    public void setDataOcorrencia(LocalDateTime dataOcorrencia) {
+        this.dataOcorrencia = dataOcorrencia;
     }
 
     public void setDescricao(String descricao) {

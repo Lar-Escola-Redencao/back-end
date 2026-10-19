@@ -1,6 +1,9 @@
 package br.org.larescolaredencao.repository;
 
 import java.util.List;
+import java.util.Optional;
+import jakarta.persistence.LockModeType;
+import org.springframework.data.jpa.repository.Lock;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -11,6 +14,9 @@ import org.springframework.data.repository.query.Param;
 import br.org.larescolaredencao.model.Turma;
 
 public interface TurmaRepository extends JpaRepository<Turma, Integer> {
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT t FROM Turma t WHERE t.id = :id")
+    Optional<Turma> findByIdComBloqueio(@Param("id") Integer id);
     List<Turma> findByUnidadeId(Integer unidadeId);
 
     Page<Turma> findByUnidadeId(Integer unidadeId, Pageable pageable);

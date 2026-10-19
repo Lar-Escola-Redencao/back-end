@@ -64,6 +64,7 @@ public class FrequenciaService {
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaTurmaIdAndDataOcorrencia(turmaId, data);
 
         List<Matricula> matriculasDoDiario = incluirMatriculasExcluidasComHistorico(matriculasHistoricas, frequencias, ocorrencias);
+        LocalDateTime primeiraCriacao = primeiraCriacao(frequencias);
 
         return matriculasDoDiario.stream().map(matricula -> {
             Frequencia freq = frequencias.stream()
@@ -75,7 +76,10 @@ public class FrequenciaService {
                     .filter(o -> o.getMatricula().getId().equals(matricula.getId()))
                     .collect(Collectors.toList());
                     
-            return montarRespostaUsuario(matricula, freq, ocs, membroLogado);
+            var resposta = montarRespostaUsuario(matricula, freq, ocs, membroLogado);
+            resposta.setDataCriacaoChamada(primeiraCriacao);
+            resposta.setChamadaRegistrada(!frequencias.isEmpty());
+            return resposta;
         }).collect(Collectors.toList());
     }
 
@@ -122,7 +126,7 @@ public class FrequenciaService {
 
     @Transactional
     public void salvarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
-        Turma turma = turmaRepository.findById(dto.getIdTurma())
+        Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
 
         validarAcessoUnidade(membroLogado, turma.getUnidade());
@@ -132,7 +136,7 @@ public class FrequenciaService {
 
     @Transactional
     public void atualizarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
-        Turma turma = turmaRepository.findById(dto.getIdTurma())
+        Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         validarAcessoUnidade(membroLogado, turma.getUnidade());
         registrarEmLote(dto, membroLogado, turma, true);
@@ -140,13 +144,20 @@ public class FrequenciaService {
 
     private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
         LocalDateTime agora = agora();
+        List<Frequencia> historico = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turma.getId(), dto.getData());
+        boolean possuiHistorico = !historico.isEmpty();
+        if (!possuiHistorico) {
+            PeriodoDiario.validar(membroLogado, dto.getData(), agora.toLocalDate());
+            if (apenasAtualizar) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Chamada não encontrada.");
+            }
+        } else {
+            validarEdicaoFrequencia(membroLogado, primeiraCriacao(historico), agora);
+        }
         LocalDateTime inicio = LocalDateTime.of(dto.getData(), turma.getHoraInicio());
         if (isMonitor(membroLogado) && agora.isBefore(inicio)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Não é possível registrar a chamada antes do horário de início da turma.");
-        }
-        if (apenasAtualizar) {
-            validarEdicaoFrequencia(membroLogado, inicio, agora);
         }
 
         Set<Integer> ids = new HashSet<>();
@@ -165,15 +176,14 @@ public class FrequenciaService {
             validarMatriculaNaData(matricula, dto.getData());
             Frequencia frequencia = frequenciaRepository.findByMatriculaIdAndDataRegistro(matricula.getId(), dto.getData())
                     .orElse(null);
-            if (frequencia != null) {
-                validarEdicaoFrequencia(membroLogado, inicio, agora);
-            } else {
+            if (frequencia == null) {
                 if (apenasAtualizar) {
                     throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado.");
                 }
                 frequencia = new Frequencia();
                 frequencia.setMatricula(matricula);
                 frequencia.setDataRegistro(dto.getData());
+                frequencia.setDataCriacao(agora.withNano(0));
             }
             frequencia.setPresente(fDto.getPresente());
             frequencia.setMembro(membroLogado);
@@ -194,16 +204,26 @@ public class FrequenciaService {
         
         Turma turma = frequencia.getMatricula().getTurma();
         validarAcessoUnidade(membroLogado, turma.getUnidade());
+        turmaRepository.findByIdComBloqueio(turma.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         validarMatriculaNaData(frequencia.getMatricula(), frequencia.getDataRegistro());
-        validarEdicaoFrequencia(membroLogado,
-                LocalDateTime.of(frequencia.getDataRegistro(), turma.getHoraInicio()), agora());
+        List<Frequencia> historico = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turma.getId(), frequencia.getDataRegistro());
+        LocalDateTime primeiraCriacao = primeiraCriacao(historico);
+        LocalDateTime agora = agora();
+        validarEdicaoFrequencia(membroLogado, primeiraCriacao, agora);
+        if (isMonitor(membroLogado) && agora.isBefore(LocalDateTime.of(frequencia.getDataRegistro(), turma.getHoraInicio()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível corrigir presenças antes do início da aula.");
+        }
 
         frequencia.setPresente(dto.getPresente());
         frequencia.setMembro(membroLogado);
         frequencia = frequenciaRepository.save(frequencia);
 
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaIdAndDataOcorrencia(frequencia.getMatricula().getId(), frequencia.getDataRegistro());
-        return montarRespostaUsuario(frequencia.getMatricula(), frequencia, ocorrencias, membroLogado);
+        var resposta = montarRespostaUsuario(frequencia.getMatricula(), frequencia, ocorrencias, membroLogado);
+        resposta.setDataCriacaoChamada(primeiraCriacao);
+        resposta.setChamadaRegistrada(true);
+        return resposta;
     }
 
     private FrequenciaUsuarioResponseDTO montarRespostaUsuario(Matricula matricula, Frequencia frequencia,
@@ -265,8 +285,18 @@ public class FrequenciaService {
         }
     }
 
+    private LocalDateTime primeiraCriacao(List<Frequencia> frequencias) {
+        // Não ignorar nulos: um registro legado pode ser anterior aos demais.
+        if (frequencias.stream().anyMatch(f -> f.getDataCriacao() == null)) return null;
+        return frequencias.stream().map(Frequencia::getDataCriacao).min(LocalDateTime::compareTo).orElse(null);
+    }
+
     private void validarEdicaoFrequencia(Membro membro, LocalDateTime referencia, LocalDateTime agora) {
-        if (isMonitor(membro) && agora.isAfter(referencia.plusHours(48))) {
+        if (isMonitor(membro) && referencia == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Esta chamada não possui data de cadastro conhecida. Procure a coordenação para corrigir presenças.");
+        }
+        if (isMonitor(membro) && (referencia == null || referencia.isAfter(agora) || agora.isAfter(referencia.plusHours(48)))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Monitores não podem alterar frequências registradas há mais de 48 horas.");
         }

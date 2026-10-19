@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -70,6 +71,29 @@ public class EventoService {
         Evento evento = eventoRepository.findByIdComParceiros(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
         return new EventoDetalhadoResponseDTO(evento);
+    }
+
+    public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo, String search,
+            LocalDate dataInicial, LocalDate dataFinal, String valor) {
+        if (dataInicial != null && dataFinal != null && dataFinal.isBefore(dataInicial)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A data final deve ser igual ou posterior à inicial.");
+        }
+        Boolean gratuito = null;
+        if ("gratuito".equals(valor)) {
+            gratuito = Boolean.TRUE;
+        } else if ("pago".equals(valor)) {
+            gratuito = Boolean.FALSE;
+        } else if (valor != null && !valor.isBlank() && !"todos".equals(valor)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filtro de valor inválido.");
+        }
+        if (dataInicial == null && dataFinal == null && gratuito == null) {
+            return getAllEventos(pageable, tipo, search);
+        }
+        // Limite superior exclusivo evita arredondamento de frações de segundo no banco.
+        return eventoRepository.buscarComFiltros(TermoBusca.like(search), tipo,
+                dataInicial == null ? null : dataInicial.atStartOfDay(),
+                dataFinal == null ? null : dataFinal.plusDays(1).atStartOfDay(),
+                gratuito, pageable).map(EventoResponseDTO::new);
     }
 
     public EventoResponseDTO criarEvento(CriarEventoDTO dto) {

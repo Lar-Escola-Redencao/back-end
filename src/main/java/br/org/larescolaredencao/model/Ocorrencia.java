@@ -13,7 +13,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -25,10 +24,10 @@ public class Ocorrencia {
     private Integer id;
 
     @Column(name = "data_ocorrencia", nullable = false)
-    private LocalDate dataOcorrencia;
+    private LocalDateTime dataOcorrencia;
 
-    @Column(name = "data_criacao", nullable = false)
-    private LocalDateTime dataCriacao = LocalDateTime.now();
+    @Column(name = "data_criacao", nullable = false, updatable = false)
+    private LocalDateTime dataCriacao;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String descricao;
@@ -42,7 +41,7 @@ public class Ocorrencia {
     private Matricula matricula;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_membro", nullable = false)
+    @JoinColumn(name = "id_membro", nullable = false, updatable = false)
     private Membro membro;
 
     public Integer getId() {
@@ -53,11 +52,11 @@ public class Ocorrencia {
         this.id = id;
     }
 
-    public LocalDate getDataOcorrencia() {
+    public LocalDateTime getDataOcorrencia() {
         return dataOcorrencia;
     }
 
-    public void setDataOcorrencia(LocalDate dataOcorrencia) {
+    public void setDataOcorrencia(LocalDateTime dataOcorrencia) {
         this.dataOcorrencia = dataOcorrencia;
     }
 

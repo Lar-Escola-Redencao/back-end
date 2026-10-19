@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import br.org.larescolaredencao.dto.CadastroUsuarioCompletoDTO;
+import br.org.larescolaredencao.dto.AtualizarUsuarioDTO;
 import br.org.larescolaredencao.dto.ComposicaoFamiliarDTO;
 import br.org.larescolaredencao.dto.ContatoDTO;
 import br.org.larescolaredencao.dto.FichaSocioeconomicaDTO;
@@ -25,6 +26,7 @@ import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
 import br.org.larescolaredencao.model.enums.TipoMoradia;
+import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.repository.ArquivoSaudeRepository;
 import br.org.larescolaredencao.repository.ComposicaoFamiliarRepository;
 import br.org.larescolaredencao.repository.ContatoRepository;
@@ -182,6 +184,56 @@ public class UsuarioServiceTest {
     }
 
     @Test
+    void atualizarUsuarioComCpfDeveLimparDocumentoAuxiliarAnterior() {
+        usuario.setCpf(null);
+        usuario.setDocumentoAuxiliar("CERTIDAO-123");
+        usuario.setTipoDocumento(TipoDocumento.CERTIDAO_NASCIMENTO);
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setCpf("52998224725");
+        dto.setDocumentoAuxiliar(null);
+        dto.setTipoDocumento(null);
+
+        UsuarioResponseDTO resposta = usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        assertEquals("52998224725", usuario.getCpf());
+        assertNull(usuario.getDocumentoAuxiliar());
+        assertNull(usuario.getTipoDocumento());
+        assertEquals("52998224725", resposta.getCpf());
+        assertNull(resposta.getDocumentoAuxiliar());
+        assertNull(resposta.getTipoDocumento());
+        verify(usuarioRepository).save(usuario);
+    }
+
+    @Test
+    void atualizarUsuarioComDocumentoAuxiliarDeveLimparCpfAnterior() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setCpf(null);
+        dto.setDocumentoAuxiliar("CERTIDAO-123");
+        dto.setTipoDocumento(TipoDocumento.CERTIDAO_NASCIMENTO);
+
+        usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        assertNull(usuario.getCpf());
+        assertEquals("CERTIDAO-123", usuario.getDocumentoAuxiliar());
+        assertEquals(TipoDocumento.CERTIDAO_NASCIMENTO, usuario.getTipoDocumento());
+        verify(usuarioRepository).save(usuario);
+    }
+
+    private AtualizarUsuarioDTO prepararAtualizacaoDocumento() {
+        AtualizarUsuarioDTO dto = new AtualizarUsuarioDTO();
+        dto.setNomeCompleto(cadastroDTO.getNomeCompleto());
+        dto.setDataNascimento(cadastroDTO.getDataNascimento());
+        dto.setIdTurma(1);
+        dto.setContatos(cadastroDTO.getContatos());
+        when(usuarioRepository.findById(1)).thenReturn(Optional.of(usuario));
+        when(matriculaRepository.findByUsuario(usuario)).thenReturn(List.of(matriculaAtiva));
+        Contato contato = new Contato();
+        contato.setId(10);
+        when(contatoRepository.save(any(Contato.class))).thenReturn(contato);
+        return dto;
+    }
+
+    @Test
     void cadastrarUsuarioDeveCriarNovoUsuarioComMatriculaContatosETabelasAuxiliares() {
         when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.empty());
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);
@@ -308,7 +360,20 @@ public class UsuarioServiceTest {
         dto.setIdTurmaNova(2);
         dto.setDataTransferencia(LocalDate.now());
 
-        usuarioService.transferirTurma(1, dto, adminLogado);
+        FichaSocioeconomica ficha = new FichaSocioeconomica();
+        ficha.setTipoMoradia(TipoMoradia.PROPRIA);
+        ficha.setTemAlergia(true);
+        ficha.setDescAlergia("Alergia preservada");
+        when(fichaSocioeconomicaRepository.findById(1)).thenReturn(Optional.of(ficha));
+        ComposicaoFamiliar familiar = new ComposicaoFamiliar();
+        familiar.setNomeCompleto("Familiar preservado");
+        when(composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(1)).thenReturn(List.of(familiar));
+        when(matriculaRepository.save(any(Matricula.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        UsuarioResponseDTO resposta = usuarioService.transferirTurma(1, dto, adminLogado);
+        assertEquals(true, resposta.getFichaSocioeconomica().getTemAlergia());
+        assertEquals(TipoMoradia.PROPRIA, resposta.getFichaSocioeconomica().getTipoMoradia());
+        assertEquals("Familiar preservado", resposta.getComposicaoFamiliar().get(0).getNomeCompleto());
 
         verify(matriculaRepository, times(1)).save(matriculaAtiva);
         assertEquals(2, matriculaAtiva.getTurma().getId());
@@ -331,7 +396,20 @@ public class UsuarioServiceTest {
         dto.setIdTurmaNova(2);
         dto.setDataTransferencia(LocalDate.of(2026, 10, 5));
 
-        usuarioService.transferirTurma(1, dto, adminLogado);
+        FichaSocioeconomica ficha = new FichaSocioeconomica();
+        ficha.setTipoMoradia(TipoMoradia.PROPRIA);
+        ficha.setTemAlergia(true);
+        ficha.setDescAlergia("Alergia preservada");
+        when(fichaSocioeconomicaRepository.findById(1)).thenReturn(Optional.of(ficha));
+        ComposicaoFamiliar familiar = new ComposicaoFamiliar();
+        familiar.setNomeCompleto("Familiar preservado");
+        when(composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(1)).thenReturn(List.of(familiar));
+        when(matriculaRepository.save(any(Matricula.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        UsuarioResponseDTO resposta = usuarioService.transferirTurma(1, dto, adminLogado);
+        assertEquals(true, resposta.getFichaSocioeconomica().getTemAlergia());
+        assertEquals(TipoMoradia.PROPRIA, resposta.getFichaSocioeconomica().getTipoMoradia());
+        assertEquals("Familiar preservado", resposta.getComposicaoFamiliar().get(0).getNomeCompleto());
 
         verify(matriculaRepository, times(2)).save(any(Matricula.class));
         verify(frequenciaRepository, times(1)).deleteByMatriculaIdAndDataRegistroGreaterThanEqual(1, dto.getDataTransferencia());
