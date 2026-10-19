@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.dto;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
 import br.org.larescolaredencao.model.Frequencia;
@@ -8,6 +9,15 @@ import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.Ocorrencia;
 import br.org.larescolaredencao.model.enums.StatusMatricula;
 public class FrequenciaUsuarioResponseDTO {
+    private LocalDateTime dataCriacaoChamada;
+    private LocalDateTime dataCriacao;
+    private boolean chamadaRegistrada;
+
+    public LocalDateTime getDataCriacaoChamada() { return dataCriacaoChamada; }
+    public LocalDateTime getDataCriacao() { return dataCriacao; }
+    public void setDataCriacaoChamada(LocalDateTime dataCriacaoChamada) { this.dataCriacaoChamada = dataCriacaoChamada; }
+    public boolean getChamadaRegistrada() { return chamadaRegistrada; }
+    public void setChamadaRegistrada(boolean chamadaRegistrada) { this.chamadaRegistrada = chamadaRegistrada; }
 
     private Integer idMatricula;
     private Integer idUsuario;
@@ -31,6 +41,7 @@ public class FrequenciaUsuarioResponseDTO {
         this.nomeUsuario = matricula.getUsuario().getNomeCompleto();
         this.imagemPerfil = matricula.getUsuario().getImagemPerfil();
         this.idFrequencia = frequencia != null ? frequencia.getId() : null;
+        this.dataCriacao = frequencia != null ? frequencia.getDataCriacao() : null;
         this.presente = frequencia != null ? frequencia.getPresente() : null;
         this.statusMatricula = matricula.getStatus();
         this.permiteAcessoPerfil = permiteAcessoPerfil;

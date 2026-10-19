@@ -1,6 +1,8 @@
 package br.org.larescolaredencao.api;
 
 import java.util.List;
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PagedModel;
@@ -40,8 +42,11 @@ public class EventoController {
     @GetMapping("/todos")
     public PagedModel<EventoResponseDTO> listarEventos(Pageable pageable,
             @RequestParam(name = "tipo", required = false) TipoEvento tipo,
-            @RequestParam(name = "search", required = false) String search) {
-        return new PagedModel<>(eventoService.getAllEventos(pageable, tipo, search));
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "dataInicial", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataInicial,
+            @RequestParam(name = "dataFinal", required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataFinal,
+            @RequestParam(name = "valor", required = false) String valor) {
+        return new PagedModel<>(eventoService.getAllEventos(pageable, tipo, search, dataInicial, dataFinal, valor));
     }
 
     @GetMapping("/{id}")

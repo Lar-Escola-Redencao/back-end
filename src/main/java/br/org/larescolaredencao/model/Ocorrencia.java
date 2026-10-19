@@ -41,7 +41,7 @@ public class Ocorrencia {
     private Matricula matricula;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "id_membro", nullable = false)
+    @JoinColumn(name = "id_membro", nullable = false, updatable = false)
     private Membro membro;
 
     public Integer getId() {

@@ -67,13 +67,13 @@ class MembroServiceTeste {
         Membro membro = new Membro(2, "João Lima", "joao@teste.com", "senha", "98765432100", "Rua B", "888888888", papel);
 
         Page<Membro> paginaEsperada = new PageImpl<>(List.of(membro), pageable, 1);
-        when(membroRepository.findByPapelId(1, pageable)).thenReturn(paginaEsperada);
+        when(membroRepository.filtrar(1, null, pageable)).thenReturn(paginaEsperada);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, 1);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getIdPapel()).isEqualTo(1);
-        verify(membroRepository).findByPapelId(1, pageable);
+        verify(membroRepository).filtrar(1, null, pageable);
         verify(membroRepository, never()).findAll(pageable);
     }
 

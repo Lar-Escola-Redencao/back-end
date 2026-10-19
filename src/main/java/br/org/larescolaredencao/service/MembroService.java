@@ -58,22 +58,83 @@ public class MembroService {
         return membros.map(MembroResponseDTO::new);
     }
 
+    @Transactional(readOnly = true)
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
+            Integer idUnidade, Membro membroLogado) {
+        Membro solicitante = obterSolicitanteDaConsulta(membroLogado);
+        if ("ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel())) {
+            return getAllMembros(pageable, idPapel, search, idUnidade);
+        }
+        List<Integer> permitidas = solicitante.getUnidades().stream().map(Unidade::getId).toList();
+        if (permitidas.isEmpty() || (idUnidade != null && !permitidas.contains(idUnidade))) {
+            return Page.empty(pageable);
+        }
+        return membroRepository.listarMonitoresDasUnidades(permitidas, idPapel, idUnidade,
+                TermoBusca.like(search), TermoBusca.digitosLike(search), pageable).map(MembroResponseDTO::new);
+    }
+
+    @Transactional(readOnly = true)
+    public MembroResponseDTO getMembroById(Integer id, Membro membroLogado) {
+        Membro solicitante = obterSolicitanteDaConsulta(membroLogado);
+        if ("ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel())) return getMembroById(id);
+        Membro membro = membroRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        var permitidas = solicitante.getUnidades().stream().map(Unidade::getId).collect(Collectors.toSet());
+        if (!"MONITOR".equals(membro.getPapel().getNomePapel())
+                || membro.getUnidades().stream().noneMatch(unidade -> permitidas.contains(unidade.getId()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sem permissão para consultar este colaborador.");
+        }
+        return new MembroResponseDTO(membro);
+    }
+
+    private Membro obterSolicitanteDaConsulta(Membro membroLogado) {
+        if (membroLogado == null || membroLogado.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária.");
+        }
+        Membro solicitante = membroRepository.findById(membroLogado.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Membro autenticado não encontrado."));
+        String papel = solicitante.getPapel().getNomePapel();
+        if (!"ADMINISTRADOR".equals(papel) && !"COORDENADOR".equals(papel)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sem permissão para consultar colaboradores.");
+        }
+        return solicitante;
+    }
+
     public MembroResponseDTO getMembroById(Integer id) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         return new MembroResponseDTO(membro);
     }
 
-    public MembroResponseDTO criarMembro(CriarMembroDTO dto) {
+    @Transactional
+    public MembroResponseDTO criarMembro(CriarMembroDTO dto, Membro membroLogado) {
+        if (membroLogado == null || membroLogado.getId() == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Autenticação necessária.");
+        }
+        Membro solicitante = membroRepository.findById(membroLogado.getId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Membro autenticado não encontrado."));
+        String perfil = solicitante.getPapel().getNomePapel();
+        if (!"ADMINISTRADOR".equals(perfil) && !"COORDENADOR".equals(perfil)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sem permissão para cadastrar colaboradores.");
+        }
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        if ("COORDENADOR".equals(perfil)) {
+            if (!"MONITOR".equals(papel.getNomePapel())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Coordenadores só podem cadastrar monitores.");
+            }
+            var unidadesPermitidas = solicitante.getUnidades().stream()
+                    .map(Unidade::getId).collect(Collectors.toSet());
+            if (dto.getIdsUnidades() != null && !unidadesPermitidas.containsAll(dto.getIdsUnidades())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Selecione apenas unidades às quais você tem acesso.");
+            }
+        }
     	if (membroRepository.findByEmail(dto.getEmail()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado no sistema.");
         }
         if (membroRepository.buscarPorCpf(dto.getCpf()).isPresent()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está cadastrado no sistema.");
         }
-        
-        Papel papel = papelRepository.findById(dto.getIdPapel())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
         if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
@@ -95,14 +156,6 @@ public class MembroService {
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
-    }
-
-    @Transactional
-    public MembroResponseDTO criarMembro(CriarMembroDTO dto, Membro membroLogado) {
-        Papel papel = papelRepository.findById(dto.getIdPapel())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
-        validarGestaoMembro(membroLogado, papel, dto.getIdsUnidades());
-        return criarMembro(dto);
     }
 
     @Transactional

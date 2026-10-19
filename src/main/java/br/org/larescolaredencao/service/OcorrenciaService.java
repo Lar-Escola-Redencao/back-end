@@ -38,13 +38,8 @@ public class OcorrenciaService {
         
         validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
         LocalDateTime agora = agora();
-        if (isMonitor(membroLogado) && dto.getDataOcorrencia().toLocalDate().isBefore(agora.toLocalDate().minusDays(7))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Monitores não podem registrar ocorrências retroativas passando de 7 dias.");
-        }
-        if (isMonitor(membroLogado) && dto.getDataOcorrencia().toLocalDate().isAfter(agora.toLocalDate())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Não é possível registrar ocorrência em data futura.");
-        }
+        PeriodoDiario.validar(membroLogado, dto.getDataOcorrencia().toLocalDate(), agora.toLocalDate());
+        validarInstanteMonitor(membroLogado, matricula, dto.getDataOcorrencia(), agora);
         validarMatriculaNaData(matricula, dto.getDataOcorrencia().toLocalDate());
         validarDataHoraOcorrencia(matricula, dto.getDataOcorrencia().toLocalDate(), dto.getDataOcorrencia());
 
@@ -66,15 +61,16 @@ public class OcorrenciaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Ocorrência não encontrada."));
         
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
-        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
-        if (dto.getDataOcorrencia() != null) {
-            validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate(), dto.getDataOcorrencia());
-            ocorrencia.setDataOcorrencia(dto.getDataOcorrencia());
-        }
+        LocalDateTime agora = agora();
+        validarEdicaoOcorrencia(membroLogado, ocorrencia, agora);
+        validarMatriculaNaData(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate());
+        LocalDateTime fato = dto.getDataOcorrencia() != null ? dto.getDataOcorrencia() : ocorrencia.getDataOcorrencia();
+        validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate(), fato);
+        validarInstanteMonitor(membroLogado, ocorrencia.getMatricula(), fato, agora);
+        ocorrencia.setDataOcorrencia(fato);
 
         ocorrencia.setDescricao(dto.getDescricao());
         ocorrencia.setTipoOcorrencia(dto.getTipoOcorrencia());
-        ocorrencia.setMembro(membroLogado);
         ocorrencia = ocorrenciaRepository.save(ocorrencia);
         
         return new OcorrenciaResponseDTO(ocorrencia);
@@ -87,7 +83,8 @@ public class OcorrenciaService {
 
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
 
-        validarEdicaoOcorrencia(membroLogado, ocorrencia.getDataCriacao(), agora());
+        validarEdicaoOcorrencia(membroLogado, ocorrencia, agora());
+        validarMatriculaNaData(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate());
 
         ocorrenciaRepository.delete(ocorrencia);
     }
@@ -121,7 +118,7 @@ public class OcorrenciaService {
     private void validarDataHoraOcorrencia(Matricula matricula, LocalDate dataDiario, LocalDateTime dataOcorrencia) {
         if (!dataOcorrencia.toLocalDate().equals(dataDiario)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O horÃ¡rio da ocorrÃªncia deve pertencer Ã  data do diÃ¡rio.");
+                    "O horário da ocorrência deve pertencer à data do diário.");
         }
 
         LocalTime hora = dataOcorrencia.toLocalTime();
@@ -129,12 +126,29 @@ public class OcorrenciaService {
         LocalTime fim = matricula.getTurma().getHoraFim();
         if (hora.isBefore(inicio) || hora.isAfter(fim)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O horÃ¡rio da ocorrÃªncia deve estar dentro do horÃ¡rio da turma.");
+                    "O horário da ocorrência deve estar dentro do horário da turma.");
         }
     }
 
-    private void validarEdicaoOcorrencia(Membro membro, LocalDateTime criacao, LocalDateTime agora) {
-        if (isMonitor(membro) && agora.isAfter(criacao.plusHours(24))) {
+    private void validarInstanteMonitor(Membro membro, Matricula matricula, LocalDateTime fato, LocalDateTime agora) {
+        if (!isMonitor(membro)) return;
+        LocalDateTime inicio = LocalDateTime.of(fato.toLocalDate(), matricula.getTurma().getHoraInicio());
+        if (agora.isBefore(inicio)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O registro de ocorrências ficará disponível após o início da aula.");
+        }
+        if (fato.isAfter(agora)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível registrar ocorrência com data ou horário futuro.");
+        }
+    }
+
+    private void validarEdicaoOcorrencia(Membro membro, Ocorrencia ocorrencia, LocalDateTime agora) {
+        if (!isMonitor(membro)) return;
+        if (membro.getId() == null || ocorrencia.getMembro() == null
+                || !membro.getId().equals(ocorrencia.getMembro().getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Monitores só podem editar ou excluir ocorrências de sua própria autoria.");
+        }
+        LocalDateTime criacao = ocorrencia.getDataCriacao();
+        if (criacao == null || criacao.isAfter(agora) || agora.isAfter(criacao.plusHours(24))) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Monitores não podem alterar ou excluir ocorrências criadas há mais de 24 horas.");
         }

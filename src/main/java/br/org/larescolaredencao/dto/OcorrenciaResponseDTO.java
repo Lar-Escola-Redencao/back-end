@@ -14,6 +14,7 @@ public class OcorrenciaResponseDTO {
     private String descricao;
     private TipoOcorrencia tipoOcorrencia;
     private String nomeMembro;
+    private Integer idMembro;
 
     public OcorrenciaResponseDTO(Ocorrencia ocorrencia) {
         this.id = ocorrencia.getId();
@@ -23,6 +24,7 @@ public class OcorrenciaResponseDTO {
         this.descricao = ocorrencia.getDescricao();
         this.tipoOcorrencia = ocorrencia.getTipoOcorrencia();
         this.nomeMembro = ocorrencia.getMembro().getNomeCompleto();
+        this.idMembro = ocorrencia.getMembro().getId();
     }
 
     public Integer getId() {
@@ -51,5 +53,9 @@ public class OcorrenciaResponseDTO {
 
     public String getNomeMembro() {
         return nomeMembro;
+    }
+
+    public Integer getIdMembro() {
+        return idMembro;
     }
 }
