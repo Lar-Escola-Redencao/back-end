@@ -168,7 +168,19 @@ public class HistoricoService {
                 .filter(entidade -> entidade.tabela.equals(evento.entidade()))
                 .map(entidade -> entidade.descricao)
                 .findFirst()
-                .orElse("Vínculos de unidades");
+                .orElse("parceiro_evento".equals(evento.entidade()) ? "Parceiros do evento" : "Vínculos de unidades");
+        if ("secao".equals(evento.entidade())) {
+            informacaoAlterada = switch (Objects.toString(valores.get("grupo"), "")) {
+                case "historia" -> "Marco histórico";
+                case "carrossel" -> "Imagem do carrossel";
+                case "texto-sobre" -> "Texto sobre a OSC";
+                case "produtos" -> "Produto ou serviço";
+                case "telefone" -> "Contato da gráfica";
+                case "pix" -> "Dados para doação";
+                default -> informacaoAlterada;
+            };
+        }
+
         OffsetDateTime dataHora = Instant.ofEpochMilli(evento.instante())
                 .atZone(HistoricoRepository.FUSO)
                 .toOffsetDateTime();
@@ -193,6 +205,28 @@ public class HistoricoService {
         }
         if (categoria == TipoRegistroHistorico.TURMAS) {
             return obterPeriodo(valores) + ", " + obterTitulo(contexto.get("unidade"), "Unidade");
+        }
+        if (categoria == TipoRegistroHistorico.EVENTOS) {
+            return Objects.toString(valores.get("titulo"), Objects.toString(contexto.get("titulo"),
+                    obterTitulo(contexto.get("evento"), "Evento")));
+        }
+        if (categoria == TipoRegistroHistorico.DIRETORIA || categoria == TipoRegistroHistorico.PARCEIROS
+                || categoria == TipoRegistroHistorico.REDES_SOCIAIS) {
+            return Objects.toString(valores.get("nome"), "Registro");
+        }
+        if (List.of(TipoRegistroHistorico.TRANSPARENCIA, TipoRegistroHistorico.CONHECA_OSC,
+                TipoRegistroHistorico.GRAFICA, TipoRegistroHistorico.PIX).contains(categoria)) {
+            String pagina = obterTitulo(contexto.get("pagina"), "Página");
+            if (categoria == TipoRegistroHistorico.CONHECA_OSC) pagina = "Conheça a OSC";
+            String grupo = Objects.toString(valores.get("grupo"), "");
+            if (categoria == TipoRegistroHistorico.PIX) return "Doações via Pix";
+            if (categoria == TipoRegistroHistorico.GRAFICA && grupo.equals("telefone")) return "Contato da gráfica";
+            if (categoria == TipoRegistroHistorico.CONHECA_OSC) {
+                if (grupo.equals("historia")) return "Nossa história, " + valores.get("titulo");
+                if (grupo.equals("carrossel")) return "Imagem do carrossel";
+                if (grupo.equals("texto-sobre")) return "Texto sobre a OSC";
+            }
+            return Objects.toString(valores.get("titulo"), Objects.toString(valores.get("nome"), pagina));
         }
         String nomeContexto = Objects.toString(contexto.get("nomeCompleto"), "Registro");
         String identificacao = Objects.toString(valores.get("nomeCompleto"), nomeContexto);
@@ -304,6 +338,19 @@ public class HistoricoService {
         nomes.put("dataUpload", "Data do envio");
         nomes.put("parentescoVinculo", "Parentesco ou vínculo");
         nomes.put("composicaoFamiliar", "Composição familiar");
+        nomes.put("dataEvento", "Data e hora do evento");
+        nomes.put("tipoEvento", "Categoria do evento");
+        nomes.put("ativo", "Exibição no site");
+        nomes.put("url", "Endereço do link");
+        nomes.put("urlLink", "Link da publicação");
+        nomes.put("icone", "Ícone");
+        nomes.put("logo", "Logo");
+        nomes.put("conteudo", "Conteúdo");
+        nomes.put("titulo", "Título");
+        nomes.put("secao", "Seção");
+        nomes.put("pagina", "Página");
+        nomes.put("redeSocial", "Rede social");
+        nomes.put("parceiros", "Parceiros do evento");
         return Map.copyOf(nomes);
     }
 }

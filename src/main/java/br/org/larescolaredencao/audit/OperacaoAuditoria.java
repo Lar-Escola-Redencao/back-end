@@ -15,6 +15,8 @@ public final class OperacaoAuditoria {
     final Map<String, Alteracao> alteracoes = new LinkedHashMap<>();
     final Map<Integer, Map<String, Object>> unidadesAnteriores = new LinkedHashMap<>();
 
+    final Map<Integer, Map<String, Object>> parceirosAnteriores = new LinkedHashMap<>();
+
     record Alteracao(
             Map<String, Object> anterior,
             Map<String, Object> contextoAnterior) {

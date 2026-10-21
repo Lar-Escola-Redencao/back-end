@@ -57,6 +57,9 @@ public class ReferenciaInicialAuditoria implements ApplicationRunner {
             if (entidade == EntidadeAuditada.MEMBRO) {
                 copiarVinculosDeUnidades(conexao, idRevisao);
             }
+            if (entidade == EntidadeAuditada.EVENTO) {
+                copiarParceirosDosEventos(conexao, idRevisao);
+            }
         }
     }
 
@@ -146,6 +149,19 @@ public class ReferenciaInicialAuditoria implements ApplicationRunner {
                 """;
 
         try (var comando = conexao.prepareStatement(sql)) {
+            comando.setInt(1, idRevisao);
+            comando.setInt(2, idRevisao);
+            comando.executeUpdate();
+        }
+    }
+
+    private void copiarParceirosDosEventos(Connection conexao, int idRevisao) throws SQLException {
+        try (var comando = conexao.prepareStatement("""
+                insert into parceiro_evento_aud(id_evento, id_parceiro, rev, revtype)
+                select vinculo.id_evento, vinculo.id_parceiro, ?, 0
+                from parceiro_evento vinculo join evento_aud evento on evento.id = vinculo.id_evento
+                where evento.rev = ?
+                """)) {
             comando.setInt(1, idRevisao);
             comando.setInt(2, idRevisao);
             comando.executeUpdate();

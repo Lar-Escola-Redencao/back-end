@@ -1,5 +1,13 @@
 package br.org.larescolaredencao.audit;
 
+import br.org.larescolaredencao.model.Evento;
+import br.org.larescolaredencao.model.EventoRedeSocial;
+import br.org.larescolaredencao.model.Diretoria;
+import br.org.larescolaredencao.model.Parceiro;
+import br.org.larescolaredencao.model.RedeSocial;
+import br.org.larescolaredencao.model.Pagina;
+import br.org.larescolaredencao.model.Secao;
+import br.org.larescolaredencao.model.Documento;
 import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.Turma;
 import java.util.Arrays;
@@ -30,8 +38,15 @@ public enum EntidadeAuditada {
     FREQUENCIA(Frequencia.class, "frequencia", PRESENCAS, "Presença", "id"),
     OCORRENCIA(Ocorrencia.class, "ocorrencia", OCORRENCIAS, "Ocorrência", "id"),
     UNIDADE(Unidade.class, "unidade", UNIDADES, "Unidade", "id"),
-    TURMA(Turma.class, "turma", TURMAS, "Turma", "id");
-
+    TURMA(Turma.class, "turma", TURMAS, "Turma", "id"),
+    EVENTO(Evento.class, "evento", EVENTOS, "Evento", "id"),
+    LINK_EVENTO(EventoRedeSocial.class, "evento_rede_social", EVENTOS, "Publicação do evento", "id_evento", "id_rede_social"),
+    MEMBRO_DIRETORIA(Diretoria.class, "diretoria", DIRETORIA, "Membro da diretoria", "id"),
+    PARCEIRO(Parceiro.class, "parceiro", PARCEIROS, "Parceiro", "id"),
+    REDE_SOCIAL(RedeSocial.class, "rede_social", REDES_SOCIAIS, "Rede social", "id"),
+    PAGINA(Pagina.class, "pagina", TRANSPARENCIA, "Página", "id"),
+    SECAO(Secao.class, "secao", TRANSPARENCIA, "Seção", "id"),
+    DOCUMENTO(Documento.class, "documento", TRANSPARENCIA, "Documento", "id");
 
     public final Class<?> classe;
     public final String tabela;

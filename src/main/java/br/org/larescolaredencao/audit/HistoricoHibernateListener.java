@@ -2,6 +2,8 @@ package br.org.larescolaredencao.audit;
 
 import br.org.larescolaredencao.model.ContatoUsuarioId;
 import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.model.Evento;
+import br.org.larescolaredencao.model.EventoRedeSocialId;
 import org.hibernate.engine.spi.SharedSessionContractImplementor;
 import org.hibernate.event.spi.AbstractCollectionEvent;
 import org.hibernate.event.spi.PostCollectionRecreateEvent;
@@ -96,6 +98,9 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         if (id instanceof ContatoUsuarioId chaveComposta) {
             valores.put("idUsuario", chaveComposta.getIdUsuario());
             valores.put("idContato", chaveComposta.getIdContato());
+        } else if (id instanceof EventoRedeSocialId chaveEvento) {
+            valores.put("idEvento", chaveEvento.getIdEvento());
+            valores.put("idRedeSocial", chaveEvento.getIdRedeSocial());
         } else {
             valores.put("id", id);
         }
@@ -162,6 +167,9 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         if (id instanceof ContatoUsuarioId chaveComposta) {
             return chaveComposta.getIdUsuario() + ":" + chaveComposta.getIdContato();
         }
+        if (id instanceof EventoRedeSocialId chaveEvento) {
+            return chaveEvento.getIdEvento() + ":" + chaveEvento.getIdRedeSocial();
+        }
         return id.toString();
     }
 
@@ -218,6 +226,7 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         }
 
         adicionarContextoContato(conexao, entidade, valores, contexto);
+        contexto.putAll(ConteudoPublicoAuditoria.montarContexto(conexao, entidade, valores));
 
         if (valores.get("membro") != null) {
             contexto.put("autorOriginal", consultarRegistro(conexao,
@@ -353,7 +362,7 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
 
         try (var comando = conexao.prepareStatement(sql)) {
             comando.setString(1, operacao.id);
-            comando.setString(2, entidade.categoria.name());
+            comando.setString(2, ConteudoPublicoAuditoria.categoria(entidade, contextoReferencia).name());
             comando.setString(3, tabela);
             comando.setString(4, chave);
             comando.setObject(5, idRegistro);
@@ -374,6 +383,8 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
             Map<String, Object> contexto) {
 
         return switch (entidade) {
+            case LINK_EVENTO -> valores.get("idEvento");
+            case PAGINA, SECAO, DOCUMENTO -> contexto.get("idPagina");
             case MATRICULA, FICHA, COMPOSICAO, ARQUIVO -> contexto.get("idUsuario");
             case VINCULO -> valores.get("idContato");
             case FREQUENCIA -> null;
@@ -500,28 +511,83 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         });
     }
 
+    private boolean possuiParceirosDoEvento(AbstractCollectionEvent evento) {
+        String relacionamento = evento.getCollection().getRole();
+        return evento.getAffectedOwnerOrNull() instanceof Evento
+                && (relacionamento == null || relacionamento.endsWith("Evento.parceiros"));
+    }
+
+    private Map<String, Object> consultarParceirosAtuais(Connection conexao, Integer idEvento) throws SQLException {
+        List<Map<String, Object>> parceiros = new ArrayList<>();
+        try (var consulta = conexao.prepareStatement("""
+                select parceiro.id, parceiro.nome from parceiro_evento vinculo
+                join parceiro on parceiro.id = vinculo.id_parceiro
+                where vinculo.id_evento = ? order by parceiro.id
+                """)) {
+            consulta.setInt(1, idEvento);
+            try (var resultado = consulta.executeQuery()) {
+                while (resultado.next()) {
+                    parceiros.add(Map.of("id", resultado.getInt("id"), "nome", resultado.getString("nome")));
+                }
+            }
+        }
+        return Map.of("id", idEvento, "parceiros", parceiros);
+    }
+
+    private void guardarParceirosAnteriores(AbstractCollectionEvent evento) {
+        if (!possuiParceirosDoEvento(evento)) return;
+        Integer idEvento = (Integer) evento.getAffectedOwnerIdOrNull();
+        evento.getSession().doWork(conexao -> OperacaoAuditoria.atual().parceirosAnteriores
+                .putIfAbsent(idEvento, consultarParceirosAtuais(conexao, idEvento)));
+    }
+
+    private void registrarMudancaDeParceiros(AbstractCollectionEvent evento) {
+        if (!possuiParceirosDoEvento(evento)) return;
+        Integer idEvento = (Integer) evento.getAffectedOwnerIdOrNull();
+        evento.getSession().doWork(conexao -> {
+            OperacaoAuditoria operacao = OperacaoAuditoria.atual();
+            Map<String, Object> anterior = operacao.parceirosAnteriores.get(idEvento);
+            var cadastroEvento = operacao.alteracoes.get("evento:" + idEvento);
+            boolean eventoNovo = cadastroEvento != null && cadastroEvento.anterior() == null;
+            if (anterior == null && !eventoNovo) {
+                anterior = Map.of("id", idEvento, "parceiros", List.of());
+            }
+            Map<String, Object> novo = consultarParceirosAtuais(conexao, idEvento);
+            if (anterior == null && ((List<?>) novo.get("parceiros")).isEmpty()) return;
+            Evento dono = (Evento) evento.getAffectedOwnerOrNull();
+            Map<String, Object> contexto = Map.of("titulo", dono.getTitulo());
+            gravarEvento(conexao, EntidadeAuditada.EVENTO, "parceiro_evento", idEvento.toString(),
+                    anterior, novo, contexto, contexto);
+        });
+    }
+
     @Override
     public void onPreUpdateCollection(PreCollectionUpdateEvent evento) {
         guardarUnidadesAnteriores(evento);
+        guardarParceirosAnteriores(evento);
     }
 
     @Override
     public void onPreRemoveCollection(PreCollectionRemoveEvent evento) {
         guardarUnidadesAnteriores(evento);
+        guardarParceirosAnteriores(evento);
     }
 
     @Override
     public void onPostUpdateCollection(PostCollectionUpdateEvent evento) {
         registrarMudancaDeUnidades(evento);
+        registrarMudancaDeParceiros(evento);
     }
 
     @Override
     public void onPostRemoveCollection(PostCollectionRemoveEvent evento) {
         registrarMudancaDeUnidades(evento);
+        registrarMudancaDeParceiros(evento);
     }
 
     @Override
     public void onPostRecreateCollection(PostCollectionRecreateEvent evento) {
         registrarMudancaDeUnidades(evento);
+        registrarMudancaDeParceiros(evento);
     }
 }

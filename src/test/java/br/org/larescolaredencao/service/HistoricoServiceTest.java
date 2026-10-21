@@ -91,6 +91,26 @@ class HistoricoServiceTest {
     }
 
     @Test
+    void eventoMantemTituloHistoricoMesmoAposExclusao() {
+        var evento = new Linha(90, 8, 1792500000000L, 1, "Administrador", "EVENTOS", "evento", "2", 2,
+                "EXCLUSAO", "{\"id\":2,\"titulo\":\"Feira solidária\"}", null, "{}", "{}");
+
+        var resumo = historicoService.montarResumo(evento);
+
+        assertThat(resumo.identificacaoRegistro()).isEqualTo("Feira solidária");
+        assertThat(resumo.informacaoAlterada()).isEqualTo("Evento");
+        assertThat(resumo.registroExcluido()).isTrue();
+    }
+
+    @Test
+    void publicacaoIdentificaEventoENaoExibeSuaChaveCompostaComoNome() {
+        var evento = new Linha(91, 9, 1792500000000L, 1, "Administrador", "EVENTOS", "evento_rede_social", "2:3", 2,
+                "CADASTRO", null, "{\"idEvento\":2,\"idRedeSocial\":3,\"urlLink\":\"https://example.org/noticia\"}",
+                "{}", "{\"evento\":{\"titulo\":\"Feira solidária\"},\"redeSocial\":{\"nome\":\"Instagram\"}}");
+
+        assertThat(historicoService.montarResumo(evento).identificacaoRegistro()).isEqualTo("Feira solidária");
+    }
+    @Test
     void turmaIdentificaPeriodoEUnidadePeloContextoHistorico() {
         var evento = new Linha(92, 10, 1792500000000L, 1, "Administrador", "TURMAS", "turma", "4", 4,
                 "EDICAO", "{\"id\":4,\"periodo\":\"MANHA\",\"unidade\":1}",
