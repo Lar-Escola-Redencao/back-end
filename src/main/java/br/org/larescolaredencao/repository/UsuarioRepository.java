@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -104,7 +103,10 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
                                  @Param("idTurma") Integer idTurma,
                                  @Param("statusMatricula") StatusMatricula statusMatricula);
 
-    @Modifying
-    @Query("UPDATE Usuario u SET u.imagemPerfil = null WHERE u.id = :id")
-    void removerImagemPerfil(@Param("id") Integer id);
+    default void removerImagemPerfil(Integer id) {
+        findById(id).ifPresent(usuario -> {
+            usuario.setImagemPerfil(null);
+            save(usuario);
+        });
+    }
 }

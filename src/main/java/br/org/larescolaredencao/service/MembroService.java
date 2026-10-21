@@ -269,6 +269,7 @@ public class MembroService {
         return new MembroResponseDTO(membro);
     }
  
+    @Transactional
     public MembroResponseDTO atualizarPerfil(Integer idMembroLogado, AtualizarPerfilDTO dto) {
         Membro membro = membroRepository.findById(idMembroLogado)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
@@ -281,6 +282,7 @@ public class MembroService {
         return new MembroResponseDTO(salvo);
     }
 
+    @Transactional
     public void deletarMembro(Integer id) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));

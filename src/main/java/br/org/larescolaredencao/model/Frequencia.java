@@ -1,5 +1,8 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,6 +17,7 @@ import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+@Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
 @Entity
 @Table(name = "frequencia", uniqueConstraints = {
     @UniqueConstraint(name = "uk_frequencia_matricula_data", columnNames = {"id_matricula", "data_registro"})
