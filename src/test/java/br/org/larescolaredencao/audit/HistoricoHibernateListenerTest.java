@@ -31,6 +31,23 @@ class HistoricoHibernateListenerTest {
     }
 
     @Test
+    void trocaSomenteDaMascaraDoTelefoneNaoCriaEvento() {
+        var persister = mock(EntityPersister.class);
+        var sessao = mock(EventSource.class);
+        var tipoTexto = mock(Type.class);
+        doReturn(br.org.larescolaredencao.model.Contato.class).when(persister).getMappedClass();
+        when(persister.getPropertyNames()).thenReturn(new String[]{"telefone"});
+        when(persister.getPropertyTypes()).thenReturn(new Type[]{tipoTexto});
+        var evento = new PostUpdateEvent(new br.org.larescolaredencao.model.Contato(), 1,
+                new Object[]{"16991111111"}, new Object[]{"(16) 99111-1111"},
+                new int[]{0}, persister, sessao);
+
+        new HistoricoHibernateListener().onPostUpdate(evento);
+
+        verifyNoInteractions(sessao);
+    }
+
+    @Test
     void pesquisaGuardaValoresAnterioresSemIncluirNomesDeCampos() {
         String texto = HistoricoHibernateListener.textoPesquisavel(Map.of(
                 "campoInterno", "João", "cpf", "123.456.789-00", "aula", "2026-09-01"));

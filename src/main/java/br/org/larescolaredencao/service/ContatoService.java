@@ -151,6 +151,9 @@ public class ContatoService {
         contato.setEmail(dto.getEmail());
         contato.setEndereco(dto.getEndereco());
 
+        contato.setCpf(dto.getCpf() == null ? null : dto.getCpf().replaceAll("\\D", ""));
+        contato.setLocalTrabalho(dto.getLocalTrabalho());
+
         Contato salvo = contatoRepository.save(contato);
         long vinculos = contatoUsuarioRepository.countByContatoId(salvo.getId());
 

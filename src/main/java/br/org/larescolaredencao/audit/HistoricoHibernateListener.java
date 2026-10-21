@@ -112,6 +112,9 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
             if (valor != null && tipos[indice].isEntityType()) {
                 valor = obterIdRelacionamento(valor, sessao);
             }
+            if (valor instanceof String texto && List.of("telefone", "cpf").contains(nomes[indice])) {
+                valor = texto.replaceAll("\\D", "");
+            }
             valores.put(nomes[indice], converterValor(valor));
         }
 
