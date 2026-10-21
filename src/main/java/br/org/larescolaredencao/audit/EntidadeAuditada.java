@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.audit;
 
+import br.org.larescolaredencao.model.Unidade;
+import br.org.larescolaredencao.model.Turma;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -26,7 +28,10 @@ public enum EntidadeAuditada {
     CONTATO(Contato.class, "contato", CONTATOS, "Contato", "id"),
     VINCULO(ContatoUsuario.class, "contato_usuario", VINCULOS_CONTATOS, "Vínculo de contato", "id_usuario", "id_contato"),
     FREQUENCIA(Frequencia.class, "frequencia", PRESENCAS, "Presença", "id"),
-    OCORRENCIA(Ocorrencia.class, "ocorrencia", OCORRENCIAS, "Ocorrência", "id");
+    OCORRENCIA(Ocorrencia.class, "ocorrencia", OCORRENCIAS, "Ocorrência", "id"),
+    UNIDADE(Unidade.class, "unidade", UNIDADES, "Unidade", "id"),
+    TURMA(Turma.class, "turma", TURMAS, "Turma", "id");
+
 
     public final Class<?> classe;
     public final String tabela;

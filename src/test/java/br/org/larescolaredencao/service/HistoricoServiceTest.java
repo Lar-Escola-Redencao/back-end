@@ -89,4 +89,32 @@ class HistoricoServiceTest {
                                             LocalDate fim, LocalDate aula) {
         return new FiltroHistoricoDTO(tipo, null, id, null, inicio, fim, null, aula);
     }
+
+    @Test
+    void turmaIdentificaPeriodoEUnidadePeloContextoHistorico() {
+        var evento = new Linha(92, 10, 1792500000000L, 1, "Administrador", "TURMAS", "turma", "4", 4,
+                "EDICAO", "{\"id\":4,\"periodo\":\"MANHA\",\"unidade\":1}",
+                "{\"id\":4,\"periodo\":\"TARDE\",\"unidade\":2}",
+                "{\"unidade\":{\"nome\":\"Sede\"}}", "{\"unidade\":{\"nome\":\"SOS Bombeiros\"}}");
+        when(historicoRepository.buscar(92)).thenReturn(Optional.of(evento));
+
+        var detalhe = historicoService.detalhar(92);
+
+        assertThat(detalhe.evento().identificacaoRegistro()).isEqualTo("Tarde, SOS Bombeiros");
+        assertThat(detalhe.campos()).extracting(campo -> campo.nome()).contains("Período", "Unidade");
+        assertThat(detalhe.contextoAnterior()).containsEntry("unidade", java.util.Map.of("nome", "Sede"));
+        assertThat(detalhe.contextoNovo()).containsEntry("unidade", java.util.Map.of("nome", "SOS Bombeiros"));
+    }
+
+    @Test
+    void unidadeExcluidaPreservaNomeSemConsultarCadastroAtual() {
+        var evento = new Linha(93, 11, 1792500000000L, 1, "Administrador", "UNIDADES", "unidade", "3", 3,
+                "EXCLUSAO", "{\"id\":3,\"nome\":\"Unidade Centro\"}", null, "{}", "{}");
+
+        var resumo = historicoService.montarResumo(evento);
+
+        assertThat(resumo.identificacaoRegistro()).isEqualTo("Unidade Centro");
+        assertThat(resumo.informacaoAlterada()).isEqualTo("Unidade");
+        assertThat(resumo.registroExcluido()).isTrue();
+    }
 }

@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.model;
 
 import java.time.LocalTime;
+import org.hibernate.envers.Audited;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -16,6 +17,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 @Entity
+@Audited
 @Table(name = "unidade")
 public class Unidade {
 

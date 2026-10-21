@@ -66,6 +66,11 @@ public class HistoricoService {
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND, "Evento do histórico não encontrado."));
 
+        return montarDetalhe(evento);
+    }
+
+    HistoricoDetalheDTO montarDetalhe(Linha evento) {
+
         Map<String, Object> valoresAnteriores = lerValores(evento.anterior());
         Map<String, Object> valoresNovos = lerValores(evento.novo());
         boolean referenciaAnteriorDisponivel = evento.anterior() != null
@@ -151,7 +156,7 @@ public class HistoricoService {
         return camposAlterados;
     }
 
-    private HistoricoEventoDTO montarResumo(Linha evento) {
+    HistoricoEventoDTO montarResumo(Linha evento) {
         TipoRegistroHistorico categoria = TipoRegistroHistorico.valueOf(evento.categoria());
         TipoAlteracaoHistorico tipoAlteracao = TipoAlteracaoHistorico.valueOf(evento.tipoAlteracao());
         Map<String, Object> valores = lerValores(evento.novo() != null ? evento.novo() : evento.anterior());
@@ -164,7 +169,6 @@ public class HistoricoService {
                 .map(entidade -> entidade.descricao)
                 .findFirst()
                 .orElse("Vínculos de unidades");
-
         OffsetDateTime dataHora = Instant.ofEpochMilli(evento.instante())
                 .atZone(HistoricoRepository.FUSO)
                 .toOffsetDateTime();
@@ -184,6 +188,12 @@ public class HistoricoService {
             Map<String, Object> valores,
             Map<String, Object> contexto) {
 
+        if (categoria == TipoRegistroHistorico.UNIDADES) {
+            return Objects.toString(valores.get("nome"), "Unidade");
+        }
+        if (categoria == TipoRegistroHistorico.TURMAS) {
+            return obterPeriodo(valores) + ", " + obterTitulo(contexto.get("unidade"), "Unidade");
+        }
         String nomeContexto = Objects.toString(contexto.get("nomeCompleto"), "Registro");
         String identificacao = Objects.toString(valores.get("nomeCompleto"), nomeContexto);
 
@@ -196,7 +206,7 @@ public class HistoricoService {
         if (categoria == TipoRegistroHistorico.VINCULOS_CONTATOS) {
             String nomeContato = obterNome(contexto.get("contato"), "Contato");
             String nomeUsuario = obterNome(contexto.get("usuario"), "Usuário");
-            identificacao = nomeContato + " — " + nomeUsuario + " (ID " + contexto.get("idUsuario") + ")";
+            identificacao = nomeContato + " (contato de " + nomeUsuario + ")";
         }
 
         if (categoria == TipoRegistroHistorico.PRESENCAS) {
@@ -204,13 +214,17 @@ public class HistoricoService {
             if (!dataAula.isEmpty()) {
                 dataAula = LocalDate.parse(dataAula).format(FORMATO_DATA);
             }
-            return identificacao + " — " + obterPeriodo(contexto.get("turma")) + " — " + dataAula;
+            return identificacao + ", " + obterPeriodo(contexto.get("turma")) + ", " + dataAula;
         }
 
-        if (evento.idRegistro() != null) {
-            identificacao += " (ID " + evento.idRegistro() + ")";
-        }
         return identificacao;
+    }
+
+    private String obterTitulo(Object referencia, String padrao) {
+        if (referencia instanceof Map<?, ?> valores) {
+            return Objects.toString(valores.get("titulo"), Objects.toString(valores.get("nome"), padrao));
+        }
+        return padrao;
     }
 
     private String obterNome(Object referencia, String nomePadrao) {
@@ -268,6 +282,16 @@ public class HistoricoService {
         nomes.put("membro", "ID do colaborador do registro");
         nomes.put("papel", "ID do perfil");
         nomes.put("unidades", "Unidades de atuação");
+        nomes.put("unidade", "Unidade");
+        nomes.put("periodo", "Período");
+        nomes.put("horaInicio", "Horário de início");
+        nomes.put("horaFim", "Horário de término");
+        nomes.put("horarioAbertura", "Horário de abertura");
+        nomes.put("horarioFechamento", "Horário de fechamento");
+        nomes.put("diasFuncionamento", "Dias de funcionamento");
+        nomes.put("idadeMin", "Idade mínima");
+        nomes.put("idadeMax", "Idade máxima");
+        nomes.put("corHex", "Cor de identificação");
         nomes.put("dataRegistro", "Data da aula");
         nomes.put("dataCriacao", "Data de criação");
         nomes.put("dataOcorrencia", "Data e hora do fato");

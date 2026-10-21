@@ -151,7 +151,7 @@ public class HistoricoRepository {
         condicoes.append(")\n");
     }
 
-    private Linha mapearEvento(ResultSet resultado, int numeroLinha) throws SQLException {
+    Linha mapearEvento(ResultSet resultado, int numeroLinha) throws SQLException {
         return new Linha(
                 resultado.getLong("id"),
                 resultado.getInt("rev"),

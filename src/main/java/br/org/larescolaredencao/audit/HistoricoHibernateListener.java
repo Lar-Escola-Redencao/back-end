@@ -175,6 +175,11 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         Object idUsuario = obterIdUsuario(entidade, valores);
         Object idTurma = valores.get("turma");
 
+        if (entidade == EntidadeAuditada.MEMBRO && valores.get("papel") != null) {
+            contexto.put("papel", consultarRegistro(conexao,
+                    "select nome_papel as nome from papel where id = ?", valores.get("papel")));
+        }
+
         if (valores.get("matricula") != null) {
             Map<String, Object> matricula = consultarRegistro(conexao,
                     "select id_usuario, id_turma from matricula where id = ?", valores.get("matricula"));
@@ -202,6 +207,11 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
                     join unidade on unidade.id = turma.id_unidade
                     where turma.id = ?
                     """, idTurma));
+        }
+
+        if (entidade == EntidadeAuditada.TURMA && valores.get("unidade") != null) {
+            contexto.put("unidade", consultarRegistro(conexao,
+                    "select nome from unidade where id = ?", valores.get("unidade")));
         }
 
         adicionarContextoContato(conexao, entidade, valores, contexto);
