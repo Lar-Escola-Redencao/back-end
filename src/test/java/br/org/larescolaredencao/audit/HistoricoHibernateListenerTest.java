@@ -54,4 +54,54 @@ class HistoricoHibernateListenerTest {
         assertThat(texto).contains("joao", "12345678900", "01/09/2026");
         assertThat(texto).doesNotContain("campointerno", "cpf", "aula");
     }
+
+    @Test
+    void recriarMesmosVinculosRemoveEventoIntermediarioDeUnidadesVazias() throws Exception {
+        var sessao = mock(EventSource.class);
+        var conexao = mock(java.sql.Connection.class);
+        var consulta = mock(java.sql.PreparedStatement.class);
+        var gravacao = mock(java.sql.PreparedStatement.class);
+        var remocao = mock(java.sql.PreparedStatement.class);
+        var resultado = mock(java.sql.ResultSet.class);
+        var colecao = mock(org.hibernate.collection.spi.PersistentCollection.class);
+        var antes = mock(org.hibernate.event.spi.PreCollectionRemoveEvent.class);
+        var removido = mock(org.hibernate.event.spi.PostCollectionRemoveEvent.class);
+        var recriado = mock(org.hibernate.event.spi.PostCollectionRecreateEvent.class);
+        Membro membro = new Membro();
+        membro.setNomeCompleto("Monitor");
+
+        for (var evento : java.util.List.of(antes, removido, recriado)) {
+            when(evento.getAffectedOwnerOrNull()).thenReturn(membro);
+            when(evento.getAffectedOwnerIdOrNull()).thenReturn(3);
+            when(evento.getCollection()).thenReturn(colecao);
+            when(evento.getSession()).thenReturn(sessao);
+        }
+        when(colecao.getRole()).thenReturn("br.org.larescolaredencao.model.Membro.unidades");
+        when(conexao.prepareStatement(org.mockito.ArgumentMatchers.startsWith("select"))).thenReturn(consulta);
+        when(conexao.prepareStatement(org.mockito.ArgumentMatchers.startsWith("insert"))).thenReturn(gravacao);
+        when(conexao.prepareStatement(org.mockito.ArgumentMatchers.startsWith("delete"))).thenReturn(remocao);
+        when(consulta.executeQuery()).thenReturn(resultado);
+        when(resultado.next()).thenReturn(true, false, false, true, false);
+        when(resultado.getInt("id")).thenReturn(1);
+        when(resultado.getString("nome")).thenReturn("Sede São José");
+        org.mockito.Mockito.doAnswer(chamada -> {
+            chamada.getArgument(0, org.hibernate.jdbc.Work.class).execute(conexao);
+            return null;
+        }).when(sessao).doWork(org.mockito.ArgumentMatchers.any());
+
+        var listener = new HistoricoHibernateListener();
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            listener.onPreRemoveCollection(antes);
+            listener.onPostRemoveCollection(removido);
+            listener.onPostRecreateCollection(recriado);
+
+            org.mockito.Mockito.verify(gravacao).executeUpdate();
+            org.mockito.Mockito.verify(remocao).executeUpdate();
+        } finally {
+            var sincronizacoes = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            sincronizacoes.forEach(sincronizacao -> sincronizacao.afterCompletion(0));
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 }

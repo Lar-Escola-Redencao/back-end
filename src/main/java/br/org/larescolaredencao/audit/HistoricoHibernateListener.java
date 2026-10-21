@@ -490,10 +490,6 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
             }
 
             Map<String, Object> unidadesNovas = consultarUnidadesAtuais(conexao, idMembro);
-            if (Objects.equals(unidadesAnteriores, unidadesNovas)) {
-                return;
-            }
-
             Membro membro = (Membro) evento.getAffectedOwnerOrNull();
             Map<String, Object> contexto = new LinkedHashMap<>();
             contexto.put("nomeCompleto", membro.getNomeCompleto());

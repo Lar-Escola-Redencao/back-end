@@ -112,4 +112,46 @@ class MembroCorrecoesTest {
         assertThat(encoder.matches("admin123", membro.getSenha())).isFalse();
         verify(membros).save(membro);
     }
+
+    @Test
+    void administradorNaoPodeEditarOuExcluirAPropriaContaPelaGestao() {
+        Membro administrador = new Membro();
+        administrador.setId(1);
+        administrador.setPapel(new Papel(1, "ADMINISTRADOR", "Administrador"));
+
+        assertThatThrownBy(() -> service.atualizarMembro(1, new AtualizarMembroDTO(), administrador))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+                    assertThat(erro.getReason()).contains("Meu perfil");
+                });
+        assertThatThrownBy(() -> service.deletarMembro(1, administrador))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        erro -> assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        verifyNoInteractions(membros, papeis, unidades);
+    }
+
+    @Test
+    void editarSomenteNomePreservaColecaoEVinculosDeUnidades() {
+        Membro monitor = new Membro(10, "Monitor", "monitor@exemplo.com", "hash",
+                "12345678900", "Rua A", "11999999999", new Papel(3, "MONITOR", "Monitor"));
+        monitor.setUnidades(coordenador.getUnidades());
+        List<Unidade> vinculosOriginais = monitor.getUnidades();
+        AtualizarMembroDTO dto = new AtualizarMembroDTO();
+        dto.setNomeCompleto("Monitor atualizado");
+        dto.setEmail(monitor.getEmail());
+        dto.setCpf(monitor.getCpf());
+        dto.setEndereco(monitor.getEndereco());
+        dto.setTelefone(monitor.getTelefone());
+        dto.setIdPapel(3);
+        dto.setIdsUnidades(List.of(1));
+        when(membros.findById(10)).thenReturn(Optional.of(monitor));
+        when(papeis.findById(3)).thenReturn(Optional.of(monitor.getPapel()));
+        when(unidades.buscarUnidadesPorIds(List.of(1))).thenReturn(coordenador.getUnidades());
+        when(membros.save(monitor)).thenReturn(monitor);
+
+        service.atualizarMembro(10, dto, coordenador);
+
+        assertThat(monitor.getNomeCompleto()).isEqualTo("Monitor atualizado");
+        assertThat(monitor.getUnidades()).isSameAs(vinculosOriginais).containsExactlyElementsOf(coordenador.getUnidades());
+    }
 }

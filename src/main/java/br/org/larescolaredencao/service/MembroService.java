@@ -160,6 +160,7 @@ public class MembroService {
 
     @Transactional
     public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto, Membro membroLogado) {
+        validarGestaoDaPropriaConta(id, membroLogado);
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         validarGestaoMembro(membroLogado, membro.getPapel(),
@@ -172,11 +173,19 @@ public class MembroService {
 
     @Transactional
     public void deletarMembro(Integer id, Membro membroLogado) {
+        validarGestaoDaPropriaConta(id, membroLogado);
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         validarGestaoMembro(membroLogado, membro.getPapel(),
                 membro.getUnidades().stream().map(Unidade::getId).toList());
         deletarMembro(id);
+    }
+
+    private void validarGestaoDaPropriaConta(Integer id, Membro membroLogado) {
+        if (id.equals(membroLogado.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Não é permitido editar ou excluir a própria conta por aqui. Para alterar seus dados, acesse Meu perfil.");
+        }
     }
 
     private void validarGestaoMembro(Membro membroLogado, Papel papel, List<Integer> idsUnidades) {
@@ -256,7 +265,12 @@ public class MembroService {
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
-        membro.setUnidades(unidades);
+        var idsAtuais = membro.getUnidades().stream().map(Unidade::getId).collect(Collectors.toSet());
+        var idsNovos = unidades.stream().map(Unidade::getId).collect(Collectors.toSet());
+        if (!idsAtuais.equals(idsNovos)) {
+            membro.getUnidades().clear();
+            membro.getUnidades().addAll(unidades);
+        }
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
