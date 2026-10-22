@@ -57,6 +57,51 @@ class HistoricoServiceTest {
     }
 
     @Test
+    void edicaoDoTituloIgnoraRepresentacoesEquivalentesDoValor() {
+        var evento = eventoEditado(
+                """
+                {"id":2,"titulo":"Festival","valor":0.0}
+                """,
+                """
+                {"id":2,"titulo":"Festival revisado","valor":0}
+                """);
+
+        var detalhe = historicoService.montarDetalhe(evento);
+
+        assertThat(detalhe.campos()).singleElement().satisfies(campo -> {
+            assertThat(campo.campo()).isEqualTo("titulo");
+            assertThat(campo.valorAnterior()).isEqualTo("Festival");
+            assertThat(campo.valorNovo()).isEqualTo("Festival revisado");
+        });
+    }
+
+    @Test
+    void diferenciaMudancaRealDeValorDeDiferencaNasCasasDecimais() {
+        var semMudanca = eventoEditado("{\"valor\":10.50}", "{\"valor\":10.5}");
+        var comMudanca = eventoEditado("{\"valor\":10.50}", "{\"valor\":10.51}");
+
+        assertThat(historicoService.montarDetalhe(semMudanca).campos()).isEmpty();
+        assertThat(historicoService.montarDetalhe(comMudanca).campos()).singleElement().satisfies(campo -> {
+            assertThat(campo.campo()).isEqualTo("valor");
+            assertThat(campo.valorAnterior()).isEqualTo(10.5);
+            assertThat(campo.valorNovo()).isEqualTo(10.51);
+        });
+    }
+
+    @Test
+    void valorNuloContinuaDiferenteDeZero() {
+        var evento = eventoEditado("{\"valor\":null}", "{\"valor\":0}");
+
+        var detalhe = historicoService.montarDetalhe(evento);
+
+        assertThat(detalhe.campos()).singleElement().satisfies(campo -> {
+            assertThat(campo.campo()).isEqualTo("valor");
+            assertThat(campo.valorAnterior()).isNull();
+            assertThat(campo.valorNovo()).isEqualTo(0);
+        });
+    }
+
+    @Test
     void diferenciaReferenciaDesconhecidaDeCampoVazio() {
         when(historicoRepository.buscar(31)).thenReturn(Optional.of(linha("EDICAO", null,
                 "{\"id\":7,\"email\":null}")));
@@ -83,6 +128,11 @@ class HistoricoServiceTest {
     private static Linha linha(String tipo, String anterior, String novo) {
         return new Linha(31, 2, 0L, 9, "Responsável histórico", "CONTATOS", "contato", "7", 7,
                 tipo, anterior, novo, "{}", "{}");
+    }
+
+    private static Linha eventoEditado(String anterior, String novo) {
+        return new Linha(90, 8, 1792500000000L, 1, "Administrador", "EVENTOS", "evento", "2", 2,
+                "EDICAO", anterior, novo, "{}", "{}");
     }
 
     private static FiltroHistoricoDTO filtro(TipoRegistroHistorico tipo, Integer id, LocalDate inicio,

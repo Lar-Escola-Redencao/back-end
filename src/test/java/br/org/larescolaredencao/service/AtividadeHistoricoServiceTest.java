@@ -43,6 +43,17 @@ class AtividadeHistoricoServiceTest {
     }
 
     @Test
+    void resumoDaEdicaoDoEventoNaoIncluiValorNumericamenteIgual() {
+        var evento = new Linha(90, 8, 1792500000000L, 7, "Ana", "EVENTOS", "evento", "2", 2,
+                "EDICAO", "{\"titulo\":\"Festival\",\"valor\":0.0}",
+                "{\"titulo\":\"Festival revisado\",\"valor\":0}", "{}", "{}");
+
+        var atividade = service.agrupar(List.of(evento));
+
+        assertThat(atividade.resumo()).isEqualTo("Ana alterou título.");
+    }
+
+    @Test
     void leituraDeUmAdministradorNaoUtilizaIdentidadeEnviadaPeloCliente() {
         var filtro = consulta(PeriodoHistorico.TODOS);
         when(repository.consultarLeitura(filtro, 7))

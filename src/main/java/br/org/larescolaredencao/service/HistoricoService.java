@@ -19,6 +19,7 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -144,7 +145,7 @@ public class HistoricoService {
         for (String campo : nomesCampos) {
             Object valorAnterior = valoresAnteriores.get(campo);
             Object valorNovo = valoresNovos.get(campo);
-            if (edicao && referenciaAnteriorDisponivel && Objects.equals(valorAnterior, valorNovo)) {
+            if (edicao && referenciaAnteriorDisponivel && valoresEquivalentes(valorAnterior, valorNovo)) {
                 continue;
             }
 
@@ -154,6 +155,16 @@ public class HistoricoService {
         }
 
         return camposAlterados;
+    }
+
+    private boolean valoresEquivalentes(Object valorAnterior, Object valorNovo) {
+        if (valorAnterior instanceof Number numeroAnterior && valorNovo instanceof Number numeroNovo) {
+            BigDecimal anterior = new BigDecimal(numeroAnterior.toString());
+            BigDecimal novo = new BigDecimal(numeroNovo.toString());
+            return anterior.compareTo(novo) == 0;
+        }
+
+        return Objects.equals(valorAnterior, valorNovo);
     }
 
     HistoricoEventoDTO montarResumo(Linha evento) {
