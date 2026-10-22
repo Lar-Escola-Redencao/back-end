@@ -130,6 +130,9 @@ public class ContatoService {
                     return c;
                 });
         
+        contato.setCpf(dto.getCpf() == null ? null : dto.getCpf().replaceAll("\\D", ""));
+        contato.setLocalTrabalho(dto.getLocalTrabalho());
+
         Contato salvo = contatoRepository.save(contato);
         long vinculos = contatoUsuarioRepository.countByContatoId(salvo.getId());
         return new ContatoListagemDTO(salvo, vinculos);

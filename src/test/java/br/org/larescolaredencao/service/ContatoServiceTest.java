@@ -65,6 +65,41 @@ public class ContatoServiceTest {
     }
 
     @Test
+    void criarContatoAvulsoDeveSalvarCpfELocalDeTrabalho() {
+        AtualizarContatoDTO dto = new AtualizarContatoDTO();
+        dto.setNomeCompleto("João Silva");
+        dto.setTelefone("(16) 99999-9999");
+        dto.setCpf("123.456.789-00");
+        dto.setLocalTrabalho("Escola Municipal");
+
+        when(contatoRepository.save(any(Contato.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ContatoListagemDTO resultado = contatoService.criarContatoAvulso(dto);
+
+        assertEquals("12345678900", resultado.getCpf());
+        assertEquals("Escola Municipal", resultado.getLocalTrabalho());
+        assertEquals("16999999999", resultado.getTelefone());
+    }
+
+    @Test
+    void criarContatoAvulsoComTelefoneExistenteDeveAtualizarTodosOsCampos() {
+        AtualizarContatoDTO dto = new AtualizarContatoDTO();
+        dto.setNomeCompleto("João Silva");
+        dto.setTelefone("(16) 99999-9999");
+        dto.setCpf("123.456.789-00");
+        dto.setLocalTrabalho("Biblioteca Municipal");
+
+        when(contatoRepository.findByTelefone("16999999999")).thenReturn(Optional.of(contato));
+        when(contatoRepository.save(contato)).thenReturn(contato);
+
+        ContatoListagemDTO resultado = contatoService.criarContatoAvulso(dto);
+
+        assertEquals(1, resultado.getId());
+        assertEquals("12345678900", resultado.getCpf());
+        assertEquals("Biblioteca Municipal", resultado.getLocalTrabalho());
+    }
+
+    @Test
     void atualizarContatoDeveSalvarCpfSemMascaraELocalDeTrabalho() {
         AtualizarContatoDTO dto = new AtualizarContatoDTO();
         dto.setNomeCompleto("João Silva");
