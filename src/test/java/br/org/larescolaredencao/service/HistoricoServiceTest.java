@@ -89,6 +89,27 @@ class HistoricoServiceTest {
     }
 
     @Test
+    void alterarNomeIgnoraCamposQueContinuamVazios() {
+        var evento = eventoEditado(
+                "{\"nomeCompleto\":\"Arthur Silva Gomes\",\"cep\":null,\"cadUnico\":null,\"raEscolar\":null}",
+                "{\"nomeCompleto\":\"Arthur Silva GomesAL\",\"cep\":\"\",\"cadUnico\":\"\",\"raEscolar\":\"\"}");
+
+        assertThat(historicoService.montarDetalhe(evento).campos()).singleElement()
+                .satisfies(campo -> assertThat(campo.campo()).isEqualTo("nomeCompleto"));
+    }
+
+    @Test
+    void limpezaRealDoCpfContinuaNoHistorico() {
+        var evento = eventoEditado("{\"cpf\":\"52998224725\"}", "{\"cpf\":null}");
+
+        assertThat(historicoService.montarDetalhe(evento).campos()).singleElement().satisfies(campo -> {
+            assertThat(campo.campo()).isEqualTo("cpf");
+            assertThat(campo.valorAnterior()).isEqualTo("52998224725");
+            assertThat(campo.valorNovo()).isNull();
+        });
+    }
+
+    @Test
     void valorNuloContinuaDiferenteDeZero() {
         var evento = eventoEditado("{\"valor\":null}", "{\"valor\":0}");
 

@@ -158,6 +158,10 @@ public class HistoricoService {
     }
 
     private boolean valoresEquivalentes(Object valorAnterior, Object valorNovo) {
+        if (valorVazio(valorAnterior) && valorVazio(valorNovo)) {
+            return true;
+        }
+
         if (valorAnterior instanceof Number numeroAnterior && valorNovo instanceof Number numeroNovo) {
             BigDecimal anterior = new BigDecimal(numeroAnterior.toString());
             BigDecimal novo = new BigDecimal(numeroNovo.toString());
@@ -165,6 +169,10 @@ public class HistoricoService {
         }
 
         return Objects.equals(valorAnterior, valorNovo);
+    }
+
+    private boolean valorVazio(Object valor) {
+        return valor == null || valor instanceof String texto && texto.isBlank();
     }
 
     HistoricoEventoDTO montarResumo(Linha evento) {
