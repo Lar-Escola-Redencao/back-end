@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -185,8 +186,10 @@ public class FrequenciaService {
                 frequencia.setDataRegistro(dto.getData());
                 frequencia.setDataCriacao(agora.withNano(0));
             }
-            frequencia.setPresente(fDto.getPresente());
-            frequencia.setMembro(membroLogado);
+            if (!Objects.equals(frequencia.getPresente(), fDto.getPresente())) {
+                frequencia.setPresente(fDto.getPresente());
+                frequencia.setMembro(membroLogado);
+            }
             registros.add(frequencia);
         }
         try {
@@ -215,8 +218,10 @@ public class FrequenciaService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível corrigir presenças antes do início da aula.");
         }
 
-        frequencia.setPresente(dto.getPresente());
-        frequencia.setMembro(membroLogado);
+        if (!Objects.equals(frequencia.getPresente(), dto.getPresente())) {
+            frequencia.setPresente(dto.getPresente());
+            frequencia.setMembro(membroLogado);
+        }
         frequencia = frequenciaRepository.save(frequencia);
 
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaIdAndDataOcorrencia(frequencia.getMatricula().getId(), frequencia.getDataRegistro());

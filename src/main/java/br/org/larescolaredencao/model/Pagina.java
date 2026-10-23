@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,6 +17,7 @@ import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.NotBlank;
 
+@Audited
 @Entity
 @Table(name = "pagina")
 public class Pagina {

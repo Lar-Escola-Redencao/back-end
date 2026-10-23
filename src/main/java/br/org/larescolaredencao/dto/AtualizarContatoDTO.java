@@ -14,6 +14,26 @@ public class AtualizarContatoDTO {
     
     private String endereco;
 
+    private String cpf;
+
+    private String localTrabalho;
+
+    public String getCpf() {
+        return cpf;
+    }
+
+    public void setCpf(String cpf) {
+        this.cpf = cpf;
+    }
+
+    public String getLocalTrabalho() {
+        return localTrabalho;
+    }
+
+    public void setLocalTrabalho(String localTrabalho) {
+        this.localTrabalho = localTrabalho;
+    }
+
     public String getNomeCompleto() {
         return nomeCompleto;
     }

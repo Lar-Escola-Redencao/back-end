@@ -4,13 +4,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarParceiroDTO;
 import br.org.larescolaredencao.dto.CriarParceiroDTO;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.repository.ParceiroRepository;
+import br.org.larescolaredencao.repository.EventoRepository;
 
+@Transactional
 @Service
 public class ParceiroService {
 
@@ -18,10 +21,13 @@ public class ParceiroService {
 
 	private ParceiroRepository parceiroRepository;
 	private ArquivoService arquivoService;
+	private final EventoRepository eventoRepository;
 
-	public ParceiroService(ParceiroRepository parceiroRepository, ArquivoService arquivoService) {
+	public ParceiroService(ParceiroRepository parceiroRepository, ArquivoService arquivoService,
+			EventoRepository eventoRepository) {
 		this.parceiroRepository = parceiroRepository;
 		this.arquivoService = arquivoService;
+		this.eventoRepository = eventoRepository;
 	}
 
 	public Page<Parceiro> getAllParceiros(Pageable pageable) {
@@ -71,6 +77,10 @@ public class ParceiroService {
 	public void deletarParceiro(Long id) {
 		Parceiro p = getParceiroById(id);
 		arquivoService.deletarArquivo(p.getLogo());
+		for (var evento : eventoRepository.findByParceirosId(id)) {
+			evento.getParceiros().removeIf(parceiro -> parceiro.getId().equals(id));
+		}
+		eventoRepository.flush();
 		parceiroRepository.delete(p);
 	}
 }

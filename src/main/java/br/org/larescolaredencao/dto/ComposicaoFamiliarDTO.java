@@ -8,6 +8,8 @@ import java.math.BigDecimal;
 
 public class ComposicaoFamiliarDTO {
 
+    private Integer id;
+
     @NotBlank
     private String nomeCompleto;
 
@@ -22,6 +24,14 @@ public class ComposicaoFamiliarDTO {
     private BigDecimal renda;
 
     private BigDecimal beneficios;
+
+    public Integer getId() {
+        return id;
+    }
+
+    public void setId(Integer id) {
+        this.id = id;
+    }
 
     public String getNomeCompleto() {
         return nomeCompleto;

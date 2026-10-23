@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.model;
 
 import java.time.LocalTime;
+import org.hibernate.envers.Audited;
 
 import br.org.larescolaredencao.model.enums.Periodo;
 import jakarta.persistence.Column;
@@ -15,6 +16,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
+@Audited
 @Table(name = "turma")
 public class Turma {
 
