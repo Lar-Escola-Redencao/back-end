@@ -56,14 +56,23 @@ public class AtividadeHistoricoRepository {
         parametros.put("limite", pageable.getPageSize());
         parametros.put("offset", pageable.getOffset());
         String sql = grupos + """
-                , pagina as (
-                    select grupo, max(revtstmp) as instante, max(id) as ultimo
+                , agrupados as (
+                    select grupo, max(revtstmp) as instante, max(id) as ultimo, min(id) as primeiro,
+                           max(nome_responsavel) as responsavel,
+                           group_concat(distinct case tipo_alteracao
+                               when 'CADASTRO' then 'Cadastro'
+                               when 'EDICAO' then 'Edição'
+                               when 'EXCLUSAO' then 'Exclusão'
+                           end order by tipo_alteracao separator ' / ') as acao
                     from selecionados group by grupo
-                    order by instante desc, ultimo desc limit :limite offset :offset
+                ), pagina as (
+                    select agrupados.*, %s as registro
+                    from agrupados join selecionados on selecionados.id = agrupados.primeiro
+                    order by %s limit :limite offset :offset
                 )
                 select selecionados.* from selecionados join pagina using (grupo)
-                order by pagina.instante desc, pagina.ultimo desc, selecionados.id
-                """;
+                order by %s, selecionados.id
+                """.formatted(identificacaoRegistro(), ordenar(pageable, ""), ordenar(pageable, "pagina."));
 
         Map<String, List<Linha>> eventos = new java.util.LinkedHashMap<>();
         jdbcTemplate.query(sql, parametros, resultado -> {
@@ -72,6 +81,76 @@ public class AtividadeHistoricoRepository {
                     .add(historicoRepository.mapearEvento(resultado, 0));
         });
         return new PageImpl<>(List.copyOf(eventos.values()), pageable, total == null ? 0 : total);
+    }
+
+    private String ordenar(Pageable pageable, String prefixo) {
+        if (pageable.getSort().isUnsorted()) {
+            return prefixo + "instante desc, " + prefixo + "ultimo desc";
+        }
+        List<String> campos = new java.util.ArrayList<>();
+        for (var ordem : pageable.getSort()) {
+            String campo = switch (ordem.getProperty()) {
+                case "dataHora" -> "instante";
+                case "identificacaoRegistro" -> "registro";
+                case "nomeResponsavel" -> "responsavel";
+                case "tipoAlteracao" -> "acao";
+                default -> throw new IllegalArgumentException("Campo de ordenação inválido.");
+            };
+            campos.add(prefixo + campo + (ordem.isAscending() ? " asc" : " desc"));
+        }
+        campos.add(prefixo + "ultimo desc");
+        return String.join(", ", campos);
+    }
+
+    /** Identificação do primeiro evento do grupo, com os mesmos nomes exibidos no histórico. */
+    private String identificacaoRegistro() {
+        String dados = "coalesce(selecionados.novo, selecionados.anterior)";
+        String contexto = "case when selecionados.novo is null then selecionados.contexto_anterior else selecionados.contexto_novo end";
+        String nome = valor(dados, "nomeCompleto", valor(contexto, "nomeCompleto", "'Registro'"));
+        String usuario = nomeReferencia(contexto, "usuario", nome);
+        String periodo = periodo(dados);
+        String turma = periodo("json_extract(" + contexto + ", '$.turma')");
+        String grupo = valor(dados, "grupo", "''");
+        String titulo = valor(dados, "titulo", valor(dados, "nome",
+                valor(contexto, "pagina.titulo", valor(contexto, "pagina.nome", "'Página'"))));
+        String data = "coalesce(date_format(" + valor(dados, "dataRegistro", "null") + ", '%d/%m/%Y'), '')";
+        return "case selecionados.categoria"
+                + " when 'UNIDADES' then " + valor(dados, "nome", "'Unidade'")
+                + " when 'TURMAS' then concat(" + periodo + ", ', ', "
+                    + valor(contexto, "unidade.titulo", valor(contexto, "unidade.nome", "'Unidade'")) + ")"
+                + " when 'EVENTOS' then " + valor(dados, "titulo", valor(contexto, "titulo",
+                    valor(contexto, "evento.titulo", valor(contexto, "evento.nome", "'Evento'"))))
+                + " when 'DIRETORIA' then " + valor(dados, "nome", "'Registro'")
+                + " when 'PARCEIROS' then " + valor(dados, "nome", "'Registro'")
+                + " when 'REDES_SOCIAIS' then " + valor(dados, "nome", "'Registro'")
+                + " when 'PIX' then 'Doações via Pix'"
+                + " when 'GRAFICA' then case when " + grupo + " = 'telefone' then 'Contato da gráfica' else " + titulo + " end"
+                + " when 'CONHECA_OSC' then case " + grupo
+                    + " when 'historia' then concat('Nossa história, ', " + valor(dados, "titulo", "'null'") + ")"
+                    + " when 'carrossel' then 'Imagem do carrossel' when 'texto-sobre' then 'Texto sobre a OSC'"
+                    + " else " + valor(dados, "titulo", valor(dados, "nome", "'Conheça a OSC'")) + " end"
+                + " when 'TRANSPARENCIA' then " + titulo
+                + " when 'USUARIOS' then " + usuario
+                + " when 'OCORRENCIAS' then " + usuario
+                + " when 'PRESENCAS' then concat(" + turma + ", "
+                    + "case when " + valor(contexto, "turma.unidade", "''") + " = '' then '' else concat(' (', "
+                    + valor(contexto, "turma.unidade", "''") + ", ')') end, ', ', " + data + ")"
+                + " when 'VINCULOS_CONTATOS' then concat(" + nomeReferencia(contexto, "contato", "'Contato'")
+                    + ", ' (contato de ', " + nomeReferencia(contexto, "usuario", "'Usuário'") + ", ')')"
+                + " else " + nome + " end";
+    }
+
+    private String valor(String fonte, String campo, String padrao) {
+        return "coalesce(nullif(json_unquote(json_extract(" + fonte + ", '$." + campo + "')), 'null'), " + padrao + ")";
+    }
+
+    private String nomeReferencia(String contexto, String campo, String padrao) {
+        return valor(contexto, campo + ".nomeCompleto", valor(contexto, campo + ".nome_completo", padrao));
+    }
+
+    private String periodo(String fonte) {
+        String periodo = valor(fonte, "periodo", "'Turma'");
+        return "case " + periodo + " when 'MANHA' then 'Manhã' when 'TARDE' then 'Tarde' else " + periodo + " end";
     }
 
     public List<ResponsavelHistoricoDTO> listarResponsaveis() {

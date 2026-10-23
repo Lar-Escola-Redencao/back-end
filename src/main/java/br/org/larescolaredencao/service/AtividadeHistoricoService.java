@@ -40,8 +40,14 @@ public class AtividadeHistoricoService {
 
     public Page<AtividadeHistoricoDTO> listar(ConsultaAtividadesDTO filtro, Pageable pageable) {
         validar(filtro);
-        if (pageable.getSort().isSorted() || pageable.getPageSize() > 50) {
-            throw parametroInvalido("Utilize até 50 atividades por página, na ordem mais recente.");
+        if (pageable.getPageSize() > 50) {
+            throw parametroInvalido("Utilize até 50 atividades por página.");
+        }
+        for (var ordem : pageable.getSort()) {
+            if (!List.of("dataHora", "identificacaoRegistro", "nomeResponsavel", "tipoAlteracao")
+                    .contains(ordem.getProperty())) {
+                throw parametroInvalido("Campo de ordenação inválido para o histórico.");
+            }
         }
         return atividadeHistoricoRepository.listar(filtro, pageable).map(this::agrupar);
     }

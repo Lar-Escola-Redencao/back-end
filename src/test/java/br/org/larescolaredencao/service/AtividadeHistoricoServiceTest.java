@@ -9,6 +9,8 @@ import br.org.larescolaredencao.repository.HistoricoRepository;
 import br.org.larescolaredencao.repository.HistoricoRepository.Linha;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -104,6 +106,44 @@ class AtividadeHistoricoServiceTest {
                 null, null, null, null, null, PeriodoHistorico.TODOS);
         assertThatThrownBy(() -> service.listar(filtro, PageRequest.of(0, 10)))
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Informe a área");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void encaminhaOrdenacaoEPaginaSemDesagruparAtividades() {
+        var filtro = consulta(PeriodoHistorico.TODOS);
+        for (String campo : List.of("dataHora", "identificacaoRegistro", "nomeResponsavel", "tipoAlteracao")) {
+            for (Sort.Direction direcao : Sort.Direction.values()) {
+                var pagina = PageRequest.of(2, 5, Sort.by(direcao, campo));
+                when(repository.listar(filtro, pagina)).thenReturn(new PageImpl<>(
+                        List.of(List.of(presenca(1, 10, "CADASTRO"), presenca(2, 11, "CADASTRO"))), pagina, 30));
+
+                var resultado = service.listar(filtro, pagina);
+
+                assertThat(resultado.getNumber()).isEqualTo(2);
+                assertThat(resultado.getTotalElements()).isEqualTo(30);
+                assertThat(resultado.getContent()).singleElement().satisfies(atividade ->
+                        assertThat(atividade.registros()).hasSize(2));
+                verify(repository).listar(filtro, pagina);
+            }
+        }
+    }
+
+    @Test
+    void rejeitaOrdenacaoDesconhecidaAntesDeAcessarBanco() {
+        var filtro = consulta(PeriodoHistorico.TODOS);
+        var pagina = PageRequest.of(0, 10, Sort.by("id; drop table revinfo"));
+
+        assertThatThrownBy(() -> service.listar(filtro, pagina))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("Campo de ordenação inválido");
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void preservaLimiteDeAtividadesMesmoComOrdenacao() {
+        assertThatThrownBy(() -> service.listar(consulta(PeriodoHistorico.TODOS),
+                PageRequest.of(0, 51, Sort.by("dataHora"))))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("até 50 atividades");
         verifyNoInteractions(repository);
     }
 
