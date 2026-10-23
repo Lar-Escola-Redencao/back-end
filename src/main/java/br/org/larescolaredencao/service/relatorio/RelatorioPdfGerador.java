@@ -4,6 +4,7 @@ import com.lowagie.text.Chunk;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
+import com.lowagie.text.Image;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
 import com.lowagie.text.Phrase;
@@ -15,10 +16,17 @@ import com.lowagie.text.pdf.PdfPCellEvent;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfPageEventHelper;
 import com.lowagie.text.pdf.PdfWriter;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import javax.imageio.ImageIO;
+
 import java.awt.Color;
+import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -39,7 +47,10 @@ public class RelatorioPdfGerador {
 
     private static final Color CINZA_BORDA = new Color(150, 150, 150);
     private static final Color CINZA_CABECALHO = new Color(225, 225, 225);
-    private static final Color CINZA_FALTA = new Color(205, 205, 205);
+    private static final Color VERDE_PRESENCA = new Color(27, 94, 32);
+    private static final Color FUNDO_PRESENCA = new Color(220, 237, 200);
+    private static final Color VERMELHO_FALTA = new Color(183, 28, 28);
+    private static final Color FUNDO_FALTA = new Color(255, 205, 210);
     private static final Color CINZA_TEXTO = new Color(80, 80, 80);
     private static final Color FAIXA_ALTA = new Color(46, 125, 50);
     private static final Color FAIXA_MEDIA = new Color(240, 170, 30);
@@ -51,19 +62,28 @@ public class RelatorioPdfGerador {
     private static final Font CABECALHO = new Font(Font.HELVETICA, 9, Font.BOLD);
     private static final Font TEXTO = new Font(Font.HELVETICA, 9, Font.NORMAL);
     private static final Font INDICADOR = new Font(Font.HELVETICA, 10, Font.BOLD);
+    private static final Font INDICADOR_PRESENCA = new Font(Font.HELVETICA, 10, Font.BOLD, VERDE_PRESENCA);
+    private static final Font INDICADOR_FALTA = new Font(Font.HELVETICA, 10, Font.BOLD, VERMELHO_FALTA);
+    private static final Font TEXTO_PRESENCA = new Font(Font.HELVETICA, 9, Font.BOLD, VERDE_PRESENCA);
+    private static final Font TEXTO_FALTA = new Font(Font.HELVETICA, 9, Font.BOLD, VERMELHO_FALTA);
     private static final Font INDICADOR_SECUNDARIO = new Font(Font.HELVETICA, 8, Font.NORMAL, CINZA_TEXTO);
     private static final Font RODAPE = new Font(Font.HELVETICA, 7.5f, Font.NORMAL, CINZA_TEXTO);
     private static final Font DESTAQUE = new Font(Font.HELVETICA, 9, Font.ITALIC, CINZA_TEXTO);
+
+    private static final String CAMINHO_LOGO = "static/images/logo.png";
+    private static final float ALTURA_LOGO = 30;
+
+    private final BufferedImage logo = logoEmTonsDeCinza();
 
     record BlocoDatas(String rotulo, List<LocalDate> datas) {}
 
     public byte[] presencas(DadosRelatorio.Presencas dados) {
         ByteArrayOutputStream saida = new ByteArrayOutputStream();
-        Document documento = new Document(PageSize.A4.rotate(), 28, 28, 58, 44);
+        Document documento = new Document(PageSize.A4.rotate(), 28, 28, 62, 44);
         PdfWriter writer = PdfWriter.getInstance(documento, saida);
         String legenda = "Legenda: P = presente  ·  F = ausente  ·  — = frequência não registrada  ·  N/A = não matriculado na data"
                 + (dados.possuiRegistroForaDaMatricula() ? "  ·  * = registro fora da vigência da matrícula, mantido como salvo" : "");
-        writer.setPageEvent(new CabecalhoRodape("Presenças detalhadas por período",
+        writer.setPageEvent(new CabecalhoRodape(imagemLogo(), "Presenças detalhadas por período",
                 infoTurma(dados.turma(), dados.inicio(), dados.fim(), dados.geradoEm()), legenda));
         documento.open();
 
@@ -86,7 +106,7 @@ public class RelatorioPdfGerador {
         ByteArrayOutputStream saida = new ByteArrayOutputStream();
         Document documento = new Document(PageSize.A4, 36, 36, 76, 52);
         PdfWriter writer = PdfWriter.getInstance(documento, saida);
-        CabecalhoRodape cabecalho = new CabecalhoRodape("Resumo de frequência por período", "",
+        CabecalhoRodape cabecalho = new CabecalhoRodape(imagemLogo(), "Resumo de frequência por período", "",
                 DadosRelatorio.OBSERVACAO_PERCENTUAL);
         writer.setPageEvent(cabecalho);
         documento.open();
@@ -175,10 +195,11 @@ public class RelatorioPdfGerador {
             tabela.addCell(celula(aluno.aluno().nomeExibicao(), TEXTO, Element.ALIGN_LEFT));
             for (LocalDate data : bloco.datas()) {
                 Indicador indicador = aluno.indicadores().get(data);
-                boolean principal = indicador.isPresenca() || indicador.isFalta();
-                PdfPCell celula = celula(indicador.getSigla(), principal ? INDICADOR : INDICADOR_SECUNDARIO,
-                        Element.ALIGN_CENTER);
-                if (indicador.isFalta()) celula.setBackgroundColor(CINZA_FALTA);
+                Font fonte = indicador.isPresenca() ? INDICADOR_PRESENCA
+                        : indicador.isFalta() ? INDICADOR_FALTA : INDICADOR_SECUNDARIO;
+                PdfPCell celula = celula(indicador.getSigla(), fonte, Element.ALIGN_CENTER);
+                if (indicador.isPresenca()) celula.setBackgroundColor(FUNDO_PRESENCA);
+                if (indicador.isFalta()) celula.setBackgroundColor(FUNDO_FALTA);
                 tabela.addCell(celula);
             }
         }
@@ -236,8 +257,8 @@ public class RelatorioPdfGerador {
         for (DadosRelatorio.AlunoResumo aluno : turma.alunos()) {
             String nome = aluno.aluno().nomeExibicao() + (aluno.possuiRegistroForaDaMatricula() ? " *" : "");
             tabela.addCell(celula(nome, TEXTO, Element.ALIGN_LEFT));
-            tabela.addCell(celula(String.valueOf(aluno.presencas()), TEXTO, Element.ALIGN_CENTER));
-            tabela.addCell(celula(String.valueOf(aluno.faltas()), TEXTO, Element.ALIGN_CENTER));
+            tabela.addCell(celula(String.valueOf(aluno.presencas()), TEXTO_PRESENCA, Element.ALIGN_CENTER));
+            tabela.addCell(celula(String.valueOf(aluno.faltas()), TEXTO_FALTA, Element.ALIGN_CENTER));
             tabela.addCell(celula(String.valueOf(aluno.diasRegistrados()), TEXTO, Element.ALIGN_CENTER));
 
             BigDecimal percentual = aluno.percentualArredondado();
@@ -278,6 +299,35 @@ public class RelatorioPdfGerador {
         if (percentual >= 0.75) return FAIXA_ALTA;
         if (percentual >= 0.5) return FAIXA_MEDIA;
         return FAIXA_BAIXA;
+    }
+
+    /** A logo é colorida; no relatório vai em tons de cinza, preservando a transparência. */
+    private static BufferedImage logoEmTonsDeCinza() {
+        try (InputStream entrada = new ClassPathResource(CAMINHO_LOGO).getInputStream()) {
+            BufferedImage original = ImageIO.read(entrada);
+            BufferedImage cinza = new BufferedImage(original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < original.getHeight(); y++) {
+                for (int x = 0; x < original.getWidth(); x++) {
+                    int argb = original.getRGB(x, y);
+                    int r = (argb >> 16) & 0xff, g = (argb >> 8) & 0xff, b = argb & 0xff;
+                    int luminancia = (int) Math.round(0.299 * r + 0.587 * g + 0.114 * b);
+                    cinza.setRGB(x, y, (argb & 0xff000000) | (luminancia << 16) | (luminancia << 8) | luminancia);
+                }
+            }
+            return cinza;
+        } catch (IOException e) {
+            throw new UncheckedIOException("Não foi possível carregar a logo dos relatórios", e);
+        }
+    }
+
+    private Image imagemLogo() {
+        try {
+            Image imagem = Image.getInstance(logo, null);
+            imagem.scaleToFit(ALTURA_LOGO * logo.getWidth() / logo.getHeight(), ALTURA_LOGO);
+            return imagem;
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private static String infoTurma(DadosRelatorio.Turma turma, LocalDate inicio, LocalDate fim,
@@ -337,11 +387,13 @@ public class RelatorioPdfGerador {
     }
 
     private static final class CabecalhoRodape extends PdfPageEventHelper {
+        private final Image logo;
         private final String relatorio;
         private final String rodape;
         private String info;
 
-        CabecalhoRodape(String relatorio, String info, String rodape) {
+        CabecalhoRodape(Image logo, String relatorio, String info, String rodape) {
+            this.logo = logo;
             this.relatorio = relatorio;
             this.info = info;
             this.rodape = rodape;
@@ -351,10 +403,13 @@ public class RelatorioPdfGerador {
         public void onEndPage(PdfWriter writer, Document documento) {
             PdfContentByte canvas = writer.getDirectContent();
             float topo = documento.getPageSize().getTop() - 24;
+            logo.setAbsolutePosition(documento.left(), topo - ALTURA_LOGO + 12);
+            canvas.addImage(logo);
+            float esquerdaTexto = documento.left() + logo.getScaledWidth() + 12;
             ColumnText.showTextAligned(canvas, Element.ALIGN_LEFT,
-                    new Phrase(DadosRelatorio.INSTITUICAO + " — " + relatorio, TITULO), documento.left(), topo, 0);
+                    new Phrase(DadosRelatorio.INSTITUICAO + " — " + relatorio, TITULO), esquerdaTexto, topo, 0);
             ColumnText informacoes = new ColumnText(canvas);
-            informacoes.setSimpleColumn(documento.left(), topo - 30, documento.right(), topo - 4);
+            informacoes.setSimpleColumn(esquerdaTexto, topo - 30, documento.right(), topo - 4);
             informacoes.setLeading(10.5f);
             informacoes.addText(new Phrase(info, INFO));
             informacoes.go();
