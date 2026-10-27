@@ -107,7 +107,7 @@ public class AtividadeHistoricoService {
         TipoAlteracaoHistorico acao = mesmaAcao ? primeiro.tipoAlteracao() : TipoAlteracaoHistorico.EDICAO;
         boolean presencas = primeiro.tipoRegistro() == TipoRegistroHistorico.PRESENCAS;
         String identificacao = presencas ? identificarChamada(linhas.getFirst()) : primeiro.identificacaoRegistro();
-        String informacao = presencas ? "Chamada" : primeiro.informacaoAlterada();
+        String informacao = presencas ? "Presença" : primeiro.informacaoAlterada();
         HistoricoEventoDTO evento = new HistoricoEventoDTO(
                 primeiro.id(), primeiro.revisao(), primeiro.dataHora(), primeiro.idResponsavel(),
                 primeiro.nomeResponsavel(), primeiro.tipoRegistro(), informacao, primeiro.idRegistro(),

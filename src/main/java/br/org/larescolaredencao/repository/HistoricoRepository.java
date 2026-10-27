@@ -141,6 +141,13 @@ public class HistoricoRepository {
 
         condicoes.append(" and (evento.pesquisa like :search escape '!'");
         parametros.put("search", TermoBusca.like(HistoricoHibernateListener.normalizarPesquisa(termo)));
+        condicoes.append("""
+                 or lower(revisao.nome_responsavel) like :nomeResponsavelBusca escape '!'
+                 or exists (select 1 from membro responsavelBusca
+                            where responsavelBusca.id = revisao.id_membro
+                              and lower(responsavelBusca.nome_completo) like :nomeResponsavelBusca escape '!')
+                """);
+        parametros.put("nomeResponsavelBusca", TermoBusca.like(termo));
 
         String digitos = TermoBusca.digitosLike(termo);
         if (digitos != null) {

@@ -46,8 +46,8 @@ public class AtividadeHistoricoController {
 
     @GetMapping("/responsaveis/sugestoes")
     public PagedModel<ResponsavelHistoricoDTO> buscarResponsaveis(
-            @RequestParam(required = false) String search,
-            @RequestParam(required = false) Integer id,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "id", required = false) Integer id,
             @PageableDefault(size = 5) Pageable pageable) {
         return new PagedModel<>(atividadeHistoricoService.buscarResponsaveis(search, id, pageable));
     }

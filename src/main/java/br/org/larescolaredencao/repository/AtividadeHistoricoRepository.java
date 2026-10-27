@@ -194,10 +194,11 @@ public class AtividadeHistoricoRepository {
                 parametros, Long.class);
         parametros.put("limite", pageable.getPageSize());
         parametros.put("offset", pageable.getOffset());
-        var responsaveis = jdbcTemplate.query(base + " order by revisao.revtstmp desc, revisao.rev desc limit :limite offset :offset",
+        List<ResponsavelHistoricoDTO> responsaveis = jdbcTemplate.query(base + " order by revisao.revtstmp desc, revisao.rev desc limit :limite offset :offset",
                 parametros, (resultado, numero) -> new ResponsavelHistoricoDTO(
                         resultado.getInt("id_membro"), resultado.getString("nome")));
-        return new PageImpl<>(responsaveis, pageable, total == null ? 0L : total);
+        long totalElementos = total == null ? 0L : total.longValue();
+        return new PageImpl<ResponsavelHistoricoDTO>(responsaveis, pageable, totalElementos);
     }
 
     public EstadoLeituraHistoricoDTO consultarLeitura(ConsultaAtividadesDTO filtro, int administrador) {
@@ -280,6 +281,13 @@ public class AtividadeHistoricoRepository {
         if (filtro.search() != null && !filtro.search().isBlank()) {
             sql.append(" and (evento.pesquisa like :busca escape '!'");
             parametros.put("busca", TermoBusca.like(HistoricoHibernateListener.normalizarPesquisa(filtro.search())));
+            sql.append("""
+                     or lower(revisao.nome_responsavel) like :nomeResponsavelBusca escape '!'
+                     or exists (select 1 from membro responsavelBusca
+                                where responsavelBusca.id = revisao.id_membro
+                                  and lower(responsavelBusca.nome_completo) like :nomeResponsavelBusca escape '!')
+                    """);
+            parametros.put("nomeResponsavelBusca", TermoBusca.like(filtro.search()));
             String digitos = TermoBusca.digitosLike(filtro.search());
             if (digitos != null) {
                 sql.append(" or evento.pesquisa like :digitos escape '!'");

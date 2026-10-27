@@ -150,6 +150,7 @@ class AtividadeHistoricoServiceTest {
 
         assertThat(atividade.resumo()).isEqualTo("Ana registrou a chamada de 2 alunos.");
         assertThat(atividade.registros()).hasSize(2);
+        assertThat(atividade.evento().informacaoAlterada()).isEqualTo("Presença");
         assertThat(atividade.evento().identificacaoRegistro()).isEqualTo("Manhã (Sede), 21/10/2026");
         assertThat(atividade.evento().identificacaoRegistro()).doesNotContain("ID");
     }
