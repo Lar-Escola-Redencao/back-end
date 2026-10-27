@@ -97,7 +97,7 @@ public class AtividadeHistoricoService {
         TipoAlteracaoHistorico acao = mesmaAcao ? primeiro.tipoAlteracao() : TipoAlteracaoHistorico.EDICAO;
         boolean presencas = primeiro.tipoRegistro() == TipoRegistroHistorico.PRESENCAS;
         String identificacao = presencas ? identificarChamada(linhas.getFirst()) : primeiro.identificacaoRegistro();
-        String informacao = presencas ? "Chamada" : primeiro.informacaoAlterada();
+        String informacao = presencas ? "Frequências" : primeiro.informacaoAlterada();
         HistoricoEventoDTO evento = new HistoricoEventoDTO(
                 primeiro.id(), primeiro.revisao(), primeiro.dataHora(), primeiro.idResponsavel(),
                 primeiro.nomeResponsavel(), primeiro.tipoRegistro(), informacao, primeiro.idRegistro(),
@@ -105,7 +105,7 @@ public class AtividadeHistoricoService {
 
         String resumo = presencas
                 ? resumirChamada(linhas, primeiro.nomeResponsavel(), acao, historicoDoUsuario)
-                : resumirRegistro(linhas, registros, primeiro.nomeResponsavel(), acao);
+                : resumirRegistro(linhas, registros, primeiro.nomeResponsavel(), acao, historicoDoUsuario);
         return new AtividadeHistoricoDTO(evento, resumo, registros);
     }
 
@@ -120,9 +120,9 @@ public class AtividadeHistoricoService {
             return responsavel + " " + verbo + " a frequência deste aluno.";
         }
         String verbo = switch (acao) {
-            case CADASTRO -> "registrou a chamada";
-            case EDICAO -> "corrigiu a chamada";
-            case EXCLUSAO -> "excluiu registros da chamada";
+            case CADASTRO -> "registrou as frequências";
+            case EDICAO -> "corrigiu as frequências";
+            case EXCLUSAO -> "excluiu registros de frequência";
         };
         long alunos = linhas.stream().map(linha -> contexto(linha).get("idUsuario"))
                 .filter(Objects::nonNull).distinct().count();
@@ -130,7 +130,7 @@ public class AtividadeHistoricoService {
     }
 
     private String resumirRegistro(List<Linha> linhas, List<HistoricoEventoDTO> registros,
-                                  String responsavel, TipoAlteracaoHistorico acao) {
+                                  String responsavel, TipoAlteracaoHistorico acao, boolean historicoDoUsuario) {
         String verbo = switch (acao) {
             case CADASTRO -> "cadastrou";
             case EDICAO -> "alterou";
@@ -152,6 +152,18 @@ public class AtividadeHistoricoService {
                 if (campos.size() > 3) {
                     assuntos += " e mais " + (campos.size() - 3) + " campos";
                 }
+            }
+        }
+        if (historicoDoUsuario) {
+            String alvos = registros.stream().map(registro -> switch (registro.tipoRegistro()) {
+                case USUARIOS -> "o usuário " + registro.identificacaoRegistro();
+                case CONTATOS -> "o contato " + registro.identificacaoRegistro();
+                case VINCULOS_CONTATOS -> "o vínculo " + registro.identificacaoRegistro();
+                default -> null;
+            }).filter(Objects::nonNull).distinct().collect(java.util.stream.Collectors.joining(", "));
+            if (!alvos.isEmpty()) {
+                return responsavel + " " + verbo + " " + alvos
+                        + (acao == TipoAlteracaoHistorico.EDICAO ? ": " + assuntos : "") + ".";
             }
         }
         return responsavel + " " + verbo + " " + assuntos + ".";

@@ -289,7 +289,34 @@ public class MembroService {
     public MembroResponseDTO atualizarPerfil(Integer idMembroLogado, AtualizarPerfilDTO dto) {
         Membro membro = membroRepository.findById(idMembroLogado)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
- 
+
+        String email = dto.getEmail() == null ? membro.getEmail() : dto.getEmail().trim();
+        String cpf = Membro.somenteDigitos(dto.getCpf() == null ? membro.getCpf() : dto.getCpf());
+        boolean alteraEmail = email != null && !email.equalsIgnoreCase(membro.getEmail() == null ? null : membro.getEmail().trim());
+        boolean alteraCpf = !java.util.Objects.equals(cpf, Membro.somenteDigitos(membro.getCpf()));
+        if ((alteraEmail || alteraCpf) && !"ADMINISTRADOR".equals(membro.getPapel().getNomePapel())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Somente administradores podem alterar CPF e e-mail pelo Meu perfil.");
+        }
+        if (alteraEmail) {
+            if (email.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um e-mail válido.");
+            }
+            membroRepository.findByEmail(email).filter(outro -> !outro.getId().equals(membro.getId()))
+                    .ifPresent(outro -> { throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Este e-mail já está em uso por outro usuário."); });
+        }
+        if (alteraCpf) {
+            if (cpf.length() != 11) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um CPF com 11 dígitos.");
+            }
+            membroRepository.buscarPorCpf(cpf).filter(outro -> !outro.getId().equals(membro.getId()))
+                    .ifPresent(outro -> { throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Este CPF já está em uso por outro usuário."); });
+        }
+
+        if (alteraEmail) membro.setEmail(email);
+        if (alteraCpf) membro.setCpf(cpf);
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());

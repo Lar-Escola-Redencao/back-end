@@ -3,6 +3,7 @@ package br.org.larescolaredencao.service;
 import br.org.larescolaredencao.dto.AlterarSenhaDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.AtualizarMembroDTO;
+import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.model.Unidade;
@@ -24,6 +25,83 @@ import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class MembroCorrecoesTest {
+
+    @Test
+    void emailEquivalenteECpfComMascaraNaoConsultamDuplicidadeNemAlteramIdentificadores() {
+        var admin = new Membro(1, "Administrador", "admin@exemplo.com", "hash", "52998224725", "Rua A", "11999999999",
+                new Papel(1, "ADMINISTRADOR", "Administrador"));
+        when(membros.findById(1)).thenReturn(Optional.of(admin));
+        when(membros.save(admin)).thenReturn(admin);
+        var dto = new AtualizarPerfilDTO();
+        dto.setNomeCompleto("Administrador"); dto.setEndereco("Rua A"); dto.setTelefone("11999999999");
+        dto.setEmail(" ADMIN@EXEMPLO.COM "); dto.setCpf("529.982.247-25");
+        service.atualizarPerfil(1, dto);
+        assertThat(admin.getEmail()).isEqualTo("admin@exemplo.com");
+        assertThat(admin.getCpf()).isEqualTo("52998224725");
+        verify(membros, never()).findByEmail(any());
+        verify(membros, never()).buscarPorCpf(any());
+    }
+
+    @Test
+    void administradorEditaIdentificadoresSemAlterarPapelOuUnidades() {
+        var admin = new Membro(1, "Administrador", "admin@exemplo.com", "hash", "52998224725", "Rua A", "11999999999",
+                new Papel(1, "ADMINISTRADOR", "Administrador"));
+        admin.setUnidades(List.of(new Unidade()));
+        var vinculos = admin.getUnidades();
+        when(membros.findById(1)).thenReturn(Optional.of(admin));
+        when(membros.save(admin)).thenReturn(admin);
+        var dto = new AtualizarPerfilDTO();
+        dto.setNomeCompleto("Administrador");
+        dto.setEndereco("Rua A");
+        dto.setTelefone("11999999999");
+        dto.setEmail("novo@exemplo.com");
+        dto.setCpf("111.444.777-35");
+        service.atualizarPerfil(1, dto);
+        assertThat(admin.getEmail()).isEqualTo("novo@exemplo.com");
+        assertThat(admin.getCpf()).isEqualTo("11144477735");
+        assertThat(admin.getPapel().getNomePapel()).isEqualTo("ADMINISTRADOR");
+        assertThat(admin.getUnidades()).isSameAs(vinculos);
+        verifyNoInteractions(papeis, unidades);
+    }
+
+    @Test
+    void coordenadorNaoAlteraCpfOuEmailPeloProprioPerfil() {
+        coordenador.setEmail("coord@exemplo.com");
+        coordenador.setCpf("52998224725");
+        when(membros.findById(20)).thenReturn(Optional.of(coordenador));
+        for (boolean alterarEmail : new boolean[] { true, false }) {
+            var dto = new AtualizarPerfilDTO();
+            dto.setNomeCompleto("Coordenador");
+            if (alterarEmail) dto.setEmail("novo@exemplo.com");
+            else dto.setCpf("11144477735");
+            assertThatThrownBy(() -> service.atualizarPerfil(20, dto))
+                    .isInstanceOfSatisfying(ResponseStatusException.class,
+                            erro -> assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        }
+        verify(membros, never()).save(any());
+        assertThat(coordenador.getEmail()).isEqualTo("coord@exemplo.com");
+    }
+
+    @Test
+    void rejeitaEmailOuCpfDuplicadoAntesDeAlterarOPerfil() {
+        var admin = new Membro(1, "Administrador", "admin@exemplo.com", "hash", "52998224725", "Rua A", "11999999999",
+                new Papel(1, "ADMINISTRADOR", "Administrador"));
+        when(membros.findById(1)).thenReturn(Optional.of(admin));
+        var outro = new Membro(); outro.setId(2);
+        var dto = new AtualizarPerfilDTO(); dto.setNomeCompleto("Novo nome");
+        dto.setEmail("ocupado@exemplo.com");
+        when(membros.findByEmail(dto.getEmail())).thenReturn(Optional.of(outro));
+        assertThatThrownBy(() -> service.atualizarPerfil(1, dto))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        erro -> assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        dto.setEmail(null); dto.setCpf("11144477735");
+        when(membros.buscarPorCpf(dto.getCpf())).thenReturn(Optional.of(outro));
+        assertThatThrownBy(() -> service.atualizarPerfil(1, dto))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        erro -> assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(admin.getNomeCompleto()).isEqualTo("Administrador");
+        verify(membros, never()).save(any());
+    }
     @Mock
     private MembroRepository membros;
     @Mock

@@ -35,7 +35,7 @@ public enum EntidadeAuditada {
     ARQUIVO(ArquivoSaude.class, "arquivo_saude", USUARIOS, "Arquivo de saúde", "id"),
     CONTATO(Contato.class, "contato", CONTATOS, "Contato", "id"),
     VINCULO(ContatoUsuario.class, "contato_usuario", VINCULOS_CONTATOS, "Vínculo de contato", "id_usuario", "id_contato"),
-    FREQUENCIA(Frequencia.class, "frequencia", PRESENCAS, "Presença", "id"),
+    FREQUENCIA(Frequencia.class, "frequencia", PRESENCAS, "Frequência", "id"),
     OCORRENCIA(Ocorrencia.class, "ocorrencia", OCORRENCIAS, "Ocorrência", "id"),
     UNIDADE(Unidade.class, "unidade", UNIDADES, "Unidade", "id"),
     TURMA(Turma.class, "turma", TURMAS, "Turma", "id"),

@@ -112,11 +112,11 @@ public class HistoricoService {
 
         boolean presencas = filtro.tipoRegistro() == TipoRegistroHistorico.PRESENCAS;
         if (presencas && filtro.idRegistro() != null) {
-            throw parametroInvalido("Presenças não permitem filtro pelo ID da frequência.");
+            throw parametroInvalido("Frequências não permitem filtro pelo ID da frequência.");
         }
 
         if (!presencas && filtro.dataAula() != null) {
-            throw parametroInvalido("Data da aula está disponível somente para Presenças.");
+            throw parametroInvalido("Data da aula está disponível somente para Frequências.");
         }
     }
 
@@ -241,7 +241,7 @@ public class HistoricoService {
         if (categoria == TipoRegistroHistorico.VINCULOS_CONTATOS) {
             String nomeContato = obterNome(contexto.get("contato"), "Contato");
             String nomeUsuario = obterNome(contexto.get("usuario"), "Usuário");
-            identificacao = nomeContato + " (contato de " + nomeUsuario + ")";
+            identificacao = nomeContato + ", contato de " + nomeUsuario;
         }
 
         if (categoria == TipoRegistroHistorico.PRESENCAS) {
@@ -332,7 +332,7 @@ public class HistoricoService {
         nomes.put("dataOcorrencia", "Data e hora do fato");
         nomes.put("dataIngresso", "Data de ingresso");
         nomes.put("dataDesligamento", "Data de desligamento");
-        nomes.put("presente", "Presença");
+        nomes.put("presente", "Frequência");
         nomes.put("descricao", "Descrição");
         nomes.put("tipoOcorrencia", "Tipo de ocorrência");
         nomes.put("caminhoArquivo", "Referência do arquivo");

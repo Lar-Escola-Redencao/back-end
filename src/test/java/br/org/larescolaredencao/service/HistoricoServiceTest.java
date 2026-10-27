@@ -19,6 +19,18 @@ import br.org.larescolaredencao.repository.HistoricoRepository.Linha;
 
 class HistoricoServiceTest {
 
+    @Test
+    void identificaContatoEVinculoComVirgulaPreservandoApelido() {
+        String contexto = """
+                {"contato":{"nomeCompleto":"João Batista (Seu João)"},"usuario":{"nomeCompleto":"Arthur Silva Gomes"}}
+                """;
+        var linha = new Linha(40, 2, 0L, 9, "Ana", "VINCULOS_CONTATOS", "contato_usuario", "7", 7,
+                "EDICAO", "{}", "{}", contexto, contexto);
+        var service = new HistoricoService(mock(HistoricoRepository.class));
+        assertThat(service.montarResumo(linha).identificacaoRegistro())
+                .isEqualTo("João Batista (Seu João), contato de Arthur Silva Gomes");
+    }
+
     private final HistoricoRepository historicoRepository = mock(HistoricoRepository.class);
     private final HistoricoService historicoService = new HistoricoService(historicoRepository);
 
@@ -37,7 +49,7 @@ class HistoricoServiceTest {
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("data final");
         assertThatThrownBy(() -> HistoricoService.validar(filtro(TipoRegistroHistorico.CONTATOS, null,
                 null, null, LocalDate.of(2026, 9, 1))))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("somente para Presenças");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("somente para Frequências");
     }
 
     @Test

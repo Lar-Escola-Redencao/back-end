@@ -127,6 +127,7 @@ public class FrequenciaService {
 
     @Transactional
     public void salvarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
 
@@ -137,10 +138,17 @@ public class FrequenciaService {
 
     @Transactional
     public void atualizarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         validarAcessoUnidade(membroLogado, turma.getUnidade());
         registrarEmLote(dto, membroLogado, turma, true);
+    }
+
+    private void validarDeclaracao(Boolean declaracaoAceita) {
+        if (!Boolean.TRUE.equals(declaracaoAceita)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme o preenchimento das frequências.");
+        }
     }
 
     private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
@@ -202,6 +210,7 @@ public class FrequenciaService {
 
     @Transactional
     public FrequenciaUsuarioResponseDTO atualizarFrequencia(Integer id, AtualizarFrequenciaDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Frequencia frequencia = frequenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado."));
         

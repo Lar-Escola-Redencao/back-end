@@ -80,7 +80,9 @@ public class AtividadeHistoricoRepository {
             eventos.computeIfAbsent(grupo, chave -> new java.util.ArrayList<>())
                     .add(historicoRepository.mapearEvento(resultado, 0));
         });
-        return new PageImpl<>(List.copyOf(eventos.values()), pageable, total == null ? 0 : total);
+        List<List<Linha>> conteudo = List.copyOf(eventos.values());
+        long totalElementos = total == null ? 0L : total.longValue();
+        return new PageImpl<List<Linha>>(conteudo, pageable, totalElementos);
     }
 
     private String ordenar(Pageable pageable, String prefixo) {
@@ -136,7 +138,7 @@ public class AtividadeHistoricoRepository {
                     + "case when " + valor(contexto, "turma.unidade", "''") + " = '' then '' else concat(' (', "
                     + valor(contexto, "turma.unidade", "''") + ", ')') end, ', ', " + data + ")"
                 + " when 'VINCULOS_CONTATOS' then concat(" + nomeReferencia(contexto, "contato", "'Contato'")
-                    + ", ' (contato de ', " + nomeReferencia(contexto, "usuario", "'Usuário'") + ", ')')"
+                    + ", ', contato de ', " + nomeReferencia(contexto, "usuario", "'Usuário'") + ")"
                 + " else " + nome + " end";
     }
 

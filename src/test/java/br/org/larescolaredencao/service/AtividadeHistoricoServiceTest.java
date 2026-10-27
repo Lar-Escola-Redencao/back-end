@@ -56,6 +56,42 @@ class AtividadeHistoricoServiceTest {
     }
 
     @Test
+    void historicoDoUsuarioIdentificaSeEdicaoFoiNoUsuarioContatoOuVinculo() {
+        var filtro = new ConsultaAtividadesDTO(null, null, null, null, null, null,
+                null, null, 10, null, null, PeriodoHistorico.TODOS, null);
+        var pagina = PageRequest.of(0, 10);
+        var contexto = """
+                {"usuario":{"nomeCompleto":"Arthur"},"contato":{"nomeCompleto":"João"}}
+                """;
+        for (var cenario : List.of(
+                new String[] { "USUARIOS", "usuario", "Arthur", "o usuário Arthur" },
+                new String[] { "CONTATOS", "contato", "João", "o contato João" },
+                new String[] { "VINCULOS_CONTATOS", "contato_usuario", "", "o vínculo João, contato de Arthur" })) {
+            var linha = new Linha(110, 9, 0, 7, "Ana", cenario[0], cenario[1], "12", 12,
+                    "EDICAO", "{\"nomeCompleto\":\"" + cenario[2] + "\",\"telefone\":\"11999999999\"}",
+                    "{\"nomeCompleto\":\"" + cenario[2] + "\",\"telefone\":\"11888888888\"}", contexto, contexto);
+            when(repository.listar(filtro, pagina)).thenReturn(new PageImpl<>(List.of(List.of(linha)), pagina, 1));
+            assertThat(service.listar(filtro, pagina).getContent().getFirst().resumo())
+                    .isEqualTo("Ana alterou " + cenario[3] + ": telefone.");
+        }
+    }
+
+    @Test
+    void historicoDoUsuarioIdentificaContatoCadastradoOuExcluido() {
+        var filtro = new ConsultaAtividadesDTO(null, null, null, null, null, null,
+                null, null, 10, null, null, PeriodoHistorico.TODOS, null);
+        var pagina = PageRequest.of(0, 10);
+        for (var cenario : List.of(new String[] { "CADASTRO", "cadastrou" }, new String[] { "EXCLUSAO", "excluiu" })) {
+            var linha = new Linha(111, 9, 0, 7, "Ana", "CONTATOS", "contato", "12", 12,
+                    cenario[0], "EXCLUSAO".equals(cenario[0]) ? "{\"nomeCompleto\":\"João\"}" : null,
+                    "CADASTRO".equals(cenario[0]) ? "{\"nomeCompleto\":\"João\"}" : null, "{}", "{}");
+            when(repository.listar(filtro, pagina)).thenReturn(new PageImpl<>(List.of(List.of(linha)), pagina, 1));
+            assertThat(service.listar(filtro, pagina).getContent().getFirst().resumo())
+                    .isEqualTo("Ana " + cenario[1] + " o contato João.");
+        }
+    }
+
+    @Test
     void incluiColaboradorSemAlteracoesMesmoQuandoHistoricoEstaVazio() {
         when(repository.listarResponsaveis()).thenReturn(List.of());
         when(membros.listarResponsaveisHistorico())
@@ -95,7 +131,7 @@ class AtividadeHistoricoServiceTest {
     void apresentaCadastroDaChamadaUmaVezSemPerderAlunos() {
         var atividade = service.agrupar(List.of(presenca(1, 10, "CADASTRO"), presenca(2, 11, "CADASTRO")));
 
-        assertThat(atividade.resumo()).isEqualTo("Ana registrou a chamada de 2 alunos.");
+        assertThat(atividade.resumo()).isEqualTo("Ana registrou as frequências de 2 alunos.");
         assertThat(atividade.registros()).hasSize(2);
         assertThat(atividade.evento().identificacaoRegistro()).isEqualTo("Manhã (Sede), 21/10/2026");
         assertThat(atividade.evento().identificacaoRegistro()).doesNotContain("ID");
@@ -105,7 +141,7 @@ class AtividadeHistoricoServiceTest {
     void correcaoIdentificaSomenteAsPresencasQueMudaram() {
         var atividade = service.agrupar(List.of(presenca(3, 10, "EDICAO")));
 
-        assertThat(atividade.resumo()).isEqualTo("Ana corrigiu a chamada de 1 aluno.");
+        assertThat(atividade.resumo()).isEqualTo("Ana corrigiu as frequências de 1 aluno.");
         assertThat(atividade.registros()).extracting(evento -> evento.identificacaoRegistro())
                 .allSatisfy(nome -> assertThat(nome).contains("Aluno 10"));
     }
