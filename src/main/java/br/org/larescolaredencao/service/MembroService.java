@@ -251,14 +251,16 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
-        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
+        List<Unidade> unidades = dto.getIdsUnidades() == null
+                ? membro.getUnidades()
+                : dto.getIdsUnidades().isEmpty()
+                    ? List.of()
+                    : unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+
+        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && unidades.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
         }
 
-        List<Unidade> unidades = dto.getIdsUnidades() != null && !dto.getIdsUnidades().isEmpty() 
-            ? unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades()) 
-            : List.of();
-        
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
         membro.setCpf(dto.getCpf());

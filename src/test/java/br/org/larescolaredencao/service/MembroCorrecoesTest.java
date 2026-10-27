@@ -154,4 +154,70 @@ class MembroCorrecoesTest {
         assertThat(monitor.getNomeCompleto()).isEqualTo("Monitor atualizado");
         assertThat(monitor.getUnidades()).isSameAs(vinculosOriginais).containsExactlyElementsOf(coordenador.getUnidades());
     }
+    @Test
+    void omitirUnidadesPreservaVinculosDoAdministrador() {
+        Membro administrador = prepararEdicaoComUnidade("ADMINISTRADOR", 1);
+        var vinculos = administrador.getUnidades();
+
+        service.atualizarMembro(10, edicao(administrador, null));
+
+        assertThat(administrador.getUnidades()).isSameAs(vinculos).hasSize(1);
+        assertThat(administrador.getUnidades().getFirst().getId()).isEqualTo(1);
+        verifyNoInteractions(unidades);
+    }
+
+    @Test
+    void coordenadorPodeEditarNomeDoMonitorSemReenviarUnidades() {
+        Membro monitor = prepararEdicaoComUnidade("MONITOR", 3);
+
+        service.atualizarMembro(10, edicao(monitor, null), coordenador);
+
+        assertThat(monitor.getNomeCompleto()).isEqualTo("Nome atualizado");
+        assertThat(monitor.getUnidades()).hasSize(1);
+        verifyNoInteractions(unidades);
+    }
+
+    @Test
+    void listaVaziaExplicitaRemoveUnidadesDoAdministrador() {
+        Membro administrador = prepararEdicaoComUnidade("ADMINISTRADOR", 1);
+
+        service.atualizarMembro(10, edicao(administrador, List.of()));
+
+        assertThat(administrador.getUnidades()).isEmpty();
+    }
+
+    @Test
+    void listaVaziaExplicitaNaoPodeRemoverTodasUnidadesDoMonitor() {
+        Membro monitor = prepararEdicaoComUnidade("MONITOR", 3);
+
+        assertThatThrownBy(() -> service.atualizarMembro(10, edicao(monitor, List.of())))
+                .isInstanceOfSatisfying(ResponseStatusException.class,
+                        erro -> assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+
+        assertThat(monitor.getUnidades()).hasSize(1);
+        verify(membros, never()).save(any());
+    }
+
+    private Membro prepararEdicaoComUnidade(String nomePapel, int idPapel) {
+        Membro membro = new Membro(10, "Nome original", "pessoa@exemplo.com", "hash",
+                "12345678900", "Rua A", "11999999999", new Papel(idPapel, nomePapel, nomePapel));
+        membro.setUnidades(coordenador.getUnidades());
+        when(membros.findById(10)).thenReturn(Optional.of(membro));
+        when(papeis.findById(idPapel)).thenReturn(Optional.of(membro.getPapel()));
+        lenient().when(membros.save(membro)).thenReturn(membro);
+        return membro;
+    }
+
+    private AtualizarMembroDTO edicao(Membro membro, List<Integer> idsUnidades) {
+        AtualizarMembroDTO dto = new AtualizarMembroDTO();
+        dto.setNomeCompleto("Nome atualizado");
+        dto.setEmail(membro.getEmail());
+        dto.setCpf(membro.getCpf());
+        dto.setEndereco(membro.getEndereco());
+        dto.setTelefone(membro.getTelefone());
+        dto.setIdPapel(membro.getPapel().getId());
+        dto.setIdsUnidades(idsUnidades);
+        return dto;
+    }
+
 }

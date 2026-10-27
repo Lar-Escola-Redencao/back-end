@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.service;
 
 import br.org.larescolaredencao.audit.EntidadeAuditada;
+import br.org.larescolaredencao.audit.ComparadorAuditoria;
 import br.org.larescolaredencao.dto.FiltroHistoricoDTO;
 import br.org.larescolaredencao.dto.HistoricoDetalheDTO;
 import br.org.larescolaredencao.dto.HistoricoDetalheDTO.CampoAlteradoDTO;
@@ -19,7 +20,6 @@ import org.springframework.web.server.ResponseStatusException;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 
-import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
@@ -145,7 +145,7 @@ public class HistoricoService {
         for (String campo : nomesCampos) {
             Object valorAnterior = valoresAnteriores.get(campo);
             Object valorNovo = valoresNovos.get(campo);
-            if (edicao && referenciaAnteriorDisponivel && valoresEquivalentes(valorAnterior, valorNovo)) {
+            if (edicao && referenciaAnteriorDisponivel && ComparadorAuditoria.equivalentes(valorAnterior, valorNovo)) {
                 continue;
             }
 
@@ -155,24 +155,6 @@ public class HistoricoService {
         }
 
         return camposAlterados;
-    }
-
-    private boolean valoresEquivalentes(Object valorAnterior, Object valorNovo) {
-        if (valorVazio(valorAnterior) && valorVazio(valorNovo)) {
-            return true;
-        }
-
-        if (valorAnterior instanceof Number numeroAnterior && valorNovo instanceof Number numeroNovo) {
-            BigDecimal anterior = new BigDecimal(numeroAnterior.toString());
-            BigDecimal novo = new BigDecimal(numeroNovo.toString());
-            return anterior.compareTo(novo) == 0;
-        }
-
-        return Objects.equals(valorAnterior, valorNovo);
-    }
-
-    private boolean valorVazio(Object valor) {
-        return valor == null || valor instanceof String texto && texto.isBlank();
     }
 
     HistoricoEventoDTO montarResumo(Linha evento) {

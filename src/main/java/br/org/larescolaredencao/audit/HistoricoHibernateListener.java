@@ -149,7 +149,7 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
             Map<String, Object> valoresAnteriores,
             Map<String, Object> valoresNovos) {
 
-        if (Objects.equals(valoresAnteriores, valoresNovos)) {
+        if (ComparadorAuditoria.equivalentes(valoresAnteriores, valoresNovos)) {
             return;
         }
 
@@ -333,7 +333,7 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         valoresAnteriores = primeiraAlteracao.anterior();
         contextoAnterior = primeiraAlteracao.contextoAnterior();
 
-        if (Objects.equals(valoresAnteriores, valoresNovos)) {
+        if (ComparadorAuditoria.equivalentes(valoresAnteriores, valoresNovos)) {
             removerEventoSemAlteracao(conexao, operacao.id, tabela, chave);
             return;
         }

@@ -48,6 +48,45 @@ class HistoricoHibernateListenerTest {
     }
 
     @Test
+    void valoresVaziosENumerosEquivalentesNaoCriamEvento() {
+        verificarAtualizacaoEquivalente("cep", null, "");
+        verificarAtualizacaoEquivalente("cep", "", "   ");
+        verificarAtualizacaoEquivalente("renda", new java.math.BigDecimal("100.00"),
+                new java.math.BigDecimal("100.0"));
+    }
+
+    private void verificarAtualizacaoEquivalente(String campo, Object anterior, Object novo) {
+        var persister = mock(EntityPersister.class);
+        var sessao = mock(EventSource.class);
+        var tipo = mock(Type.class);
+        doReturn(br.org.larescolaredencao.model.Usuario.class).when(persister).getMappedClass();
+        when(persister.getPropertyNames()).thenReturn(new String[]{campo});
+        when(persister.getPropertyTypes()).thenReturn(new Type[]{tipo});
+        var evento = new PostUpdateEvent(new br.org.larescolaredencao.model.Usuario(), 1,
+                new Object[]{novo}, new Object[]{anterior}, new int[]{0}, persister, sessao);
+
+        new HistoricoHibernateListener().onPostUpdate(evento);
+
+        verifyNoInteractions(sessao);
+    }
+
+    @Test
+    void remocaoRealDeValorContinuaRegistrandoEvento() {
+        var persister = mock(EntityPersister.class);
+        var sessao = mock(EventSource.class);
+        var tipo = mock(Type.class);
+        doReturn(br.org.larescolaredencao.model.Contato.class).when(persister).getMappedClass();
+        when(persister.getPropertyNames()).thenReturn(new String[]{"localTrabalho"});
+        when(persister.getPropertyTypes()).thenReturn(new Type[]{tipo});
+        var evento = new PostUpdateEvent(new br.org.larescolaredencao.model.Contato(), 1,
+                new Object[]{""}, new Object[]{"Escola"}, new int[]{0}, persister, sessao);
+
+        new HistoricoHibernateListener().onPostUpdate(evento);
+
+        org.mockito.Mockito.verify(sessao).doWork(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
     void pesquisaGuardaValoresAnterioresSemIncluirNomesDeCampos() {
         String texto = HistoricoHibernateListener.textoPesquisavel(Map.of(
                 "campoInterno", "João", "cpf", "123.456.789-00", "aula", "2026-09-01"));
