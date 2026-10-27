@@ -112,11 +112,11 @@ public class HistoricoService {
 
         boolean presencas = filtro.tipoRegistro() == TipoRegistroHistorico.PRESENCAS;
         if (presencas && filtro.idRegistro() != null) {
-            throw parametroInvalido("Frequências não permitem filtro pelo ID da frequência.");
+            throw parametroInvalido("Presenças não permitem filtro pelo ID da frequência.");
         }
 
         if (!presencas && filtro.dataAula() != null) {
-            throw parametroInvalido("Data da aula está disponível somente para Frequências.");
+            throw parametroInvalido("Data da aula está disponível somente para Presenças.");
         }
     }
 
@@ -332,7 +332,7 @@ public class HistoricoService {
         nomes.put("dataOcorrencia", "Data e hora do fato");
         nomes.put("dataIngresso", "Data de ingresso");
         nomes.put("dataDesligamento", "Data de desligamento");
-        nomes.put("presente", "Frequência");
+        nomes.put("presente", "Presença");
         nomes.put("descricao", "Descrição");
         nomes.put("tipoOcorrencia", "Tipo de ocorrência");
         nomes.put("caminhoArquivo", "Referência do arquivo");

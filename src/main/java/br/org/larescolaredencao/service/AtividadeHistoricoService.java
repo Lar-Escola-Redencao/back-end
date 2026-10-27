@@ -107,7 +107,7 @@ public class AtividadeHistoricoService {
         TipoAlteracaoHistorico acao = mesmaAcao ? primeiro.tipoAlteracao() : TipoAlteracaoHistorico.EDICAO;
         boolean presencas = primeiro.tipoRegistro() == TipoRegistroHistorico.PRESENCAS;
         String identificacao = presencas ? identificarChamada(linhas.getFirst()) : primeiro.identificacaoRegistro();
-        String informacao = presencas ? "Frequências" : primeiro.informacaoAlterada();
+        String informacao = presencas ? "Chamada" : primeiro.informacaoAlterada();
         HistoricoEventoDTO evento = new HistoricoEventoDTO(
                 primeiro.id(), primeiro.revisao(), primeiro.dataHora(), primeiro.idResponsavel(),
                 primeiro.nomeResponsavel(), primeiro.tipoRegistro(), informacao, primeiro.idRegistro(),
@@ -127,12 +127,12 @@ public class AtividadeHistoricoService {
                 case EDICAO -> "corrigiu";
                 case EXCLUSAO -> "excluiu";
             };
-            return responsavel + " " + verbo + " a frequência deste aluno.";
+            return responsavel + " " + verbo + " a presença deste aluno.";
         }
         String verbo = switch (acao) {
-            case CADASTRO -> "registrou as frequências";
-            case EDICAO -> "corrigiu as frequências";
-            case EXCLUSAO -> "excluiu registros de frequência";
+            case CADASTRO -> "registrou a chamada";
+            case EDICAO -> "corrigiu a chamada";
+            case EXCLUSAO -> "excluiu registros da chamada";
         };
         long alunos = linhas.stream().map(linha -> contexto(linha).get("idUsuario"))
                 .filter(Objects::nonNull).distinct().count();

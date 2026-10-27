@@ -49,7 +49,7 @@ class HistoricoServiceTest {
                 .isInstanceOf(ResponseStatusException.class).hasMessageContaining("data final");
         assertThatThrownBy(() -> HistoricoService.validar(filtro(TipoRegistroHistorico.CONTATOS, null,
                 null, null, LocalDate.of(2026, 9, 1))))
-                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("somente para Frequências");
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("somente para Presenças");
     }
 
     @Test

@@ -40,7 +40,7 @@ class AtividadeHistoricoServiceTest {
                     List.of(List.of(presenca(1, 10, acao.getKey()))), pagina, 1));
 
             assertThat(service.listar(filtro, pagina).getContent()).singleElement().satisfies(atividade ->
-                    assertThat(atividade.resumo()).isEqualTo("Ana " + acao.getValue() + " a frequência deste aluno."));
+                    assertThat(atividade.resumo()).isEqualTo("Ana " + acao.getValue() + " a presença deste aluno."));
         }
     }
 
@@ -148,7 +148,7 @@ class AtividadeHistoricoServiceTest {
     void apresentaCadastroDaChamadaUmaVezSemPerderAlunos() {
         var atividade = service.agrupar(List.of(presenca(1, 10, "CADASTRO"), presenca(2, 11, "CADASTRO")));
 
-        assertThat(atividade.resumo()).isEqualTo("Ana registrou as frequências de 2 alunos.");
+        assertThat(atividade.resumo()).isEqualTo("Ana registrou a chamada de 2 alunos.");
         assertThat(atividade.registros()).hasSize(2);
         assertThat(atividade.evento().identificacaoRegistro()).isEqualTo("Manhã (Sede), 21/10/2026");
         assertThat(atividade.evento().identificacaoRegistro()).doesNotContain("ID");
@@ -158,7 +158,7 @@ class AtividadeHistoricoServiceTest {
     void correcaoIdentificaSomenteAsPresencasQueMudaram() {
         var atividade = service.agrupar(List.of(presenca(3, 10, "EDICAO")));
 
-        assertThat(atividade.resumo()).isEqualTo("Ana corrigiu as frequências de 1 aluno.");
+        assertThat(atividade.resumo()).isEqualTo("Ana corrigiu a chamada de 1 aluno.");
         assertThat(atividade.registros()).extracting(evento -> evento.identificacaoRegistro())
                 .allSatisfy(nome -> assertThat(nome).contains("Aluno 10"));
     }
