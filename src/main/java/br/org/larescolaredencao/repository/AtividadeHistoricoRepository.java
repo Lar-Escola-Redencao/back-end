@@ -157,7 +157,8 @@ public class AtividadeHistoricoRepository {
         return jdbcTemplate.query("""
                 select id_membro, nome_responsavel from revinfo
                 where referencia_implantacao = false and id_membro is not null
-                  and rev in (select max(rev) from revinfo where id_membro is not null group by id_membro)
+                  and rev in (select max(rev) from revinfo
+                              where referencia_implantacao = false and id_membro is not null group by id_membro)
                 order by nome_responsavel
                 """, Map.of(), (resultado, numero) -> new ResponsavelHistoricoDTO(
                 resultado.getInt("id_membro"), resultado.getString("nome_responsavel")));
@@ -193,6 +194,10 @@ public class AtividadeHistoricoRepository {
     private Consulta consultar(ConsultaAtividadesDTO filtro) {
         StringBuilder sql = new StringBuilder(BASE);
         Map<String, Object> parametros = new HashMap<>();
+        if (filtro.areaSistema() != null) {
+            sql.append(" and evento.categoria in (:categoriasArea)\n");
+            parametros.put("categoriasArea", filtro.areaSistema().tipos().stream().map(Enum::name).toList());
+        }
         if (filtro.tipoRegistro() != null) {
             sql.append(" and evento.categoria = :categoria\n");
             parametros.put("categoria", filtro.tipoRegistro().name());
