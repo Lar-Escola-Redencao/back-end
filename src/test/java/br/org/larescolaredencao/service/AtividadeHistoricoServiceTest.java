@@ -102,6 +102,23 @@ class AtividadeHistoricoServiceTest {
     }
 
     @Test
+    void buscaResponsaveisPreservaOrdenacaoRecenteEPaginacaoDoRepositorio() {
+        var pagina = PageRequest.of(1, 5);
+        var resultado = new PageImpl<>(List.of(new ResponsavelHistoricoDTO(8, "Ana removida")), pagina, 6);
+        when(repository.buscarResponsaveis("Ana", null, pagina)).thenReturn(resultado);
+
+        assertThat(service.buscarResponsaveis("Ana", null, pagina)).isSameAs(resultado);
+        verify(repository).buscarResponsaveis("Ana", null, pagina);
+    }
+
+    @Test
+    void rejeitaBuscaDeResponsaveisSemLimiteSeguro() {
+        assertThatThrownBy(() -> service.buscarResponsaveis(null, null, PageRequest.of(0, 51)))
+                .isInstanceOf(ResponseStatusException.class);
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void preservaAutorExcluidoEUsaNomeAtualSemDuplicarColaborador() {
         when(repository.listarResponsaveis()).thenReturn(List.of(
                 new ResponsavelHistoricoDTO(1, "Nome antigo"),

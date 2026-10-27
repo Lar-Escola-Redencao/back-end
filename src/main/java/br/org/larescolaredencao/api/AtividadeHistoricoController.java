@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -41,6 +42,14 @@ public class AtividadeHistoricoController {
     @GetMapping("/responsaveis")
     public List<ResponsavelHistoricoDTO> listarResponsaveis() {
         return atividadeHistoricoService.listarResponsaveis();
+    }
+
+    @GetMapping("/responsaveis/sugestoes")
+    public PagedModel<ResponsavelHistoricoDTO> buscarResponsaveis(
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) Integer id,
+            @PageableDefault(size = 5) Pageable pageable) {
+        return new PagedModel<>(atividadeHistoricoService.buscarResponsaveis(search, id, pageable));
     }
 
     @GetMapping("/leitura")

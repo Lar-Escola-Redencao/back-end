@@ -166,6 +166,40 @@ public class AtividadeHistoricoRepository {
                 resultado.getInt("id_membro"), resultado.getString("nome_responsavel")));
     }
 
+    public Page<ResponsavelHistoricoDTO> buscarResponsaveis(String busca, Integer id, Pageable pageable) {
+        String base = """
+                with ultimas_revisoes as (
+                    select id_membro, max(rev) as rev from revinfo revisao
+                    where referencia_implantacao = false and id_membro is not null
+                      and exists (select 1 from historico_evento evento where evento.operacao = revisao.operacao)
+                    group by id_membro
+                )
+                select revisao.id_membro, coalesce(membro.nome_completo, revisao.nome_responsavel) as nome,
+                       revisao.revtstmp, revisao.rev
+                from ultimas_revisoes ultima join revinfo revisao on revisao.rev = ultima.rev
+                left join membro on membro.id = revisao.id_membro
+                where 1 = 1
+                """;
+        Map<String, Object> parametros = new HashMap<>();
+        String termo = TermoBusca.like(busca);
+        if (termo != null) {
+            base += " and lower(coalesce(membro.nome_completo, revisao.nome_responsavel)) like :busca escape '!'";
+            parametros.put("busca", termo);
+        }
+        if (id != null) {
+            base += " and revisao.id_membro = :id";
+            parametros.put("id", id);
+        }
+        Long total = jdbcTemplate.queryForObject("select count(*) from (" + base + ") responsaveis",
+                parametros, Long.class);
+        parametros.put("limite", pageable.getPageSize());
+        parametros.put("offset", pageable.getOffset());
+        var responsaveis = jdbcTemplate.query(base + " order by revisao.revtstmp desc, revisao.rev desc limit :limite offset :offset",
+                parametros, (resultado, numero) -> new ResponsavelHistoricoDTO(
+                        resultado.getInt("id_membro"), resultado.getString("nome")));
+        return new PageImpl<>(responsaveis, pageable, total == null ? 0L : total);
+    }
+
     public EstadoLeituraHistoricoDTO consultarLeitura(ConsultaAtividadesDTO filtro, int administrador) {
         Consulta consulta = consultar(filtro);
         Map<String, Object> parametros = new HashMap<>(consulta.parametros());

@@ -74,6 +74,16 @@ public class AtividadeHistoricoService {
         atividadeHistoricoRepository.registrarLeitura(filtro.contextoLeitura(), administrador, ultimoEvento);
     }
 
+    public Page<ResponsavelHistoricoDTO> buscarResponsaveis(String busca, Integer id, Pageable pageable) {
+        if (pageable.getPageSize() > 50) {
+            throw parametroInvalido("Utilize até 50 responsáveis por página.");
+        }
+        if (id != null && id <= 0) {
+            throw parametroInvalido("Informe um responsável válido.");
+        }
+        return atividadeHistoricoRepository.buscarResponsaveis(busca, id, pageable);
+    }
+
     public List<ResponsavelHistoricoDTO> listarResponsaveis() {
         Map<Integer, ResponsavelHistoricoDTO> responsaveis = new HashMap<>();
         atividadeHistoricoRepository.listarResponsaveis()
