@@ -2,6 +2,7 @@ package br.org.larescolaredencao.repository;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -13,6 +14,8 @@ import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.enums.TipoEvento;
 
 public interface EventoRepository extends JpaRepository<Evento, Integer> {
+
+    List<Evento> findByParceirosId(Long idParceiro);
 	boolean existsByTituloAndDataEvento(String titulo, LocalDateTime dataEvento);
 	Page<Evento> findByTipoEvento(TipoEvento tipoEvento, Pageable pageable);
 

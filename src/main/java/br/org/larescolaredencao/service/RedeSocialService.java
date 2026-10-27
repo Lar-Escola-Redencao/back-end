@@ -6,13 +6,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarRedeSocialDTO;
 import br.org.larescolaredencao.dto.CriarRedeSocialDTO;
 import br.org.larescolaredencao.model.RedeSocial;
 import br.org.larescolaredencao.repository.RedeSocialRepository;
+import br.org.larescolaredencao.repository.EventoRedeSocialRepository;
 
+@Transactional
 @Service
 public class RedeSocialService {
 
@@ -20,10 +23,13 @@ public class RedeSocialService {
 
 	private RedeSocialRepository redeSocialRepository;
 	private ArquivoService arquivoService;
+	private final EventoRedeSocialRepository vinculoRepository;
 
-	public RedeSocialService(RedeSocialRepository redeSocialRepository, ArquivoService arquivoService) {
+	public RedeSocialService(RedeSocialRepository redeSocialRepository, ArquivoService arquivoService,
+			EventoRedeSocialRepository vinculoRepository) {
 		this.redeSocialRepository = redeSocialRepository;
 		this.arquivoService = arquivoService;
+		this.vinculoRepository = vinculoRepository;
 	}
 
 	public List<RedeSocial> getAllRedesSociais() {
@@ -74,6 +80,8 @@ public class RedeSocialService {
 	public void deletarRedeSocial(Long id) {
 		RedeSocial r = getRedeSocialById(id);
 		arquivoService.deletarArquivo(r.getIcone());
+		vinculoRepository.deleteAll(vinculoRepository.findByRedeSocialId(id));
+		vinculoRepository.flush();
 		redeSocialRepository.delete(r);
 	}
 }

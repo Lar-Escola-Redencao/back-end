@@ -229,6 +229,7 @@ public class PaginaService {
         return persistirSecao(secao, novaImagem, imagemAnterior);
     }
 
+    @Transactional
     public void deletarSecao(Long id) {
         Secao secao = buscarSecaoPorId(id);
         arquivoService.deletarArquivo(secao.getImagem());
@@ -238,6 +239,7 @@ public class PaginaService {
         secaoRepository.delete(secao);
     }
 
+    @Transactional
     public Documento adicionarDocumento(Long secaoId, String titulo, MultipartFile arquivo) {
         String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
         if (tituloSanitizado == null || tituloSanitizado.isEmpty()) {
@@ -262,6 +264,7 @@ public class PaginaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento não encontrado."));
     }
 
+    @Transactional
     public Documento atualizarDocumento(Long id, Long secaoId, String titulo, MultipartFile arquivo) {
         Documento documento = buscarDocumentoPorId(id);
 
@@ -287,6 +290,7 @@ public class PaginaService {
         return documentoRepository.save(documento);
     }
 
+    @Transactional
     public void deletarDocumento(Long id) {
         Documento documento = buscarDocumentoPorId(id);
         arquivoService.deletarArquivo(documento.getArquivo());

@@ -1,5 +1,10 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
+import org.hibernate.envers.NotAudited;
+import org.hibernate.envers.AuditJoinTable;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
@@ -20,6 +25,7 @@ import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+@Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
 @Entity
 @Table(name = "membro")
 public class Membro implements UserDetails {
@@ -36,6 +42,7 @@ public class Membro implements UserDetails {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
+    @NotAudited
     @Column(nullable = false, length = 255)
     private String senha;
 
@@ -52,6 +59,7 @@ public class Membro implements UserDetails {
     @JoinColumn(name = "id_papel", nullable = false)
     private Papel papel;
     
+    @AuditJoinTable(name = "membro_unidade_aud")
     @ManyToMany
     @JoinTable(
          name = "membro_unidade",
