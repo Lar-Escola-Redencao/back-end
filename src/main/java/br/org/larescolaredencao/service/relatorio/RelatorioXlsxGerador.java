@@ -60,7 +60,7 @@ public class RelatorioXlsxGerador {
             for (Map.Entry<YearMonth, List<LocalDate>> mes : meses.entrySet()) {
                 Sheet aba = workbook.createSheet(mes.getKey().toString());
                 Row cabecalho = aba.createRow(0);
-                texto(cabecalho, 0, "Aluno", estilos.cabecalho);
+                texto(cabecalho, 0, "Usuário", estilos.cabecalho);
                 int coluna = 1;
                 for (LocalDate data : mes.getValue()) {
                     texto(cabecalho, coluna, data.format(DIA_MES) + "\n"
@@ -119,7 +119,7 @@ public class RelatorioXlsxGerador {
             }
             abaInformacoes(workbook, estilos, informacoes);
 
-            String[] colunas = {"Aluno", "Presenças", "Faltas", "Dias com frequência registrada",
+            String[] colunas = {"Usuário", "Presenças", "Faltas", "Total de dias",
                     "Percentual de presença", "Observação"};
             for (int t = 0; t < dados.turmas().size(); t++) {
                 DadosRelatorio.TurmaResumo turma = dados.turmas().get(t);
@@ -134,13 +134,14 @@ public class RelatorioXlsxGerador {
                     texto(row, 0, aluno.aluno().nomeExibicao(), estilos.textoComBorda);
                     numero(row, 1, aluno.presencas(), estilos.inteiro);
                     numero(row, 2, aluno.faltas(), estilos.inteiro);
-                    numero(row, 3, aluno.diasRegistrados(), estilos.inteiro);
+                    int numeroLinha = row.getRowNum() + 1;
+                    Cell total = row.createCell(3);
+                    total.setCellStyle(estilos.inteiro);
+                    total.setCellFormula("SUM(B" + numeroLinha + ":C" + numeroLinha + ")");
                     Cell percentual = row.createCell(4);
                     percentual.setCellStyle(estilos.percentual);
-                    if (aluno.percentual() != null) {
-                        // Valor arredondado igual ao PDF, gravado como fração com formatação percentual.
-                        percentual.setCellValue(aluno.percentualArredondado().movePointLeft(2).doubleValue());
-                    }
+                    // Mantém uma casa decimal no percentual, como no PDF, e evita divisão por zero.
+                    percentual.setCellFormula("IF(D" + numeroLinha + "=0,\"\",ROUND(B" + numeroLinha + "/D" + numeroLinha + ",3))");
                     texto(row, 5, aluno.observacao(), estilos.textoComBorda);
                 }
                 if (turma.alunos().isEmpty()) {
@@ -156,13 +157,15 @@ public class RelatorioXlsxGerador {
                 aba.createFreezePane(0, 1);
                 aba.setAutoFilter(new CellRangeAddress(0, Math.max(0, turma.alunos().size()), 0, colunas.length - 1));
             }
+            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            workbook.setForceFormulaRecalculation(true);
             return escrever(workbook);
         }
     }
 
     private void abaOcorrencias(Workbook workbook, Estilos estilos, List<DadosRelatorio.Ocorrencia> ocorrencias) {
         Sheet aba = workbook.createSheet("Ocorrências");
-        String[] colunas = {"Data e hora", "Aluno", "Tipo", "Descrição", "Autor"};
+        String[] colunas = {"Data e hora", "Usuário", "Tipo", "Descrição", "Autor"};
         Row cabecalho = aba.createRow(0);
         for (int c = 0; c < colunas.length; c++) {
             texto(cabecalho, c, colunas[c], estilos.cabecalho);

@@ -86,7 +86,7 @@ public class RelatorioFrequenciaService {
                 dto.isIncluirOcorrencias(), agora());
 
         String nome = "presencas-detalhadas_" + slug(turma.getUnidade().getNome()) + "_"
-                + slug(descricaoCurta(turma)) + "_" + dto.getDataInicio() + "_a_" + dto.getDataFim();
+                + slug(periodo(turma.getPeriodo())) + "_" + dto.getDataInicio() + "_a_" + dto.getDataFim();
         return gerarArquivo(nome, dto.getFormato(),
                 () -> pdfGerador.presencas(dados), () -> xlsxGerador.presencas(dados));
     }
@@ -116,7 +116,7 @@ public class RelatorioFrequenciaService {
         Set<Integer> unidades = new HashSet<>();
         turmas.forEach(t -> unidades.add(t.getUnidade().getId()));
         String escopo = turmas.size() == 1
-                ? slug(turmas.get(0).getUnidade().getNome()) + "_" + slug(descricaoCurta(turmas.get(0)))
+                ? slug(turmas.get(0).getUnidade().getNome()) + "_" + slug(periodo(turmas.get(0).getPeriodo()))
                 : unidades.size() == 1 ? slug(turmas.get(0).getUnidade().getNome()) + "_" + turmas.size() + "-turmas"
                 : "varias-unidades_" + turmas.size() + "-turmas";
         String nome = "resumo-frequencia_" + escopo + "_" + dto.getDataInicio() + "_a_" + dto.getDataFim();
@@ -320,11 +320,7 @@ public class RelatorioFrequenciaService {
     static DadosRelatorio.Turma descricao(Turma turma) {
         return new DadosRelatorio.Turma(turma.getUnidade().getNome(),
                 periodo(turma.getPeriodo()) + " (" + turma.getHoraInicio().format(HORA) + " – "
-                        + turma.getHoraFim().format(HORA) + ")", descricaoCurta(turma));
-    }
-
-    private static String descricaoCurta(Turma turma) {
-        return periodo(turma.getPeriodo()) + " " + turma.getHoraInicio().format(DateTimeFormatter.ofPattern("HH'h'mm"));
+                        + turma.getHoraFim().format(HORA) + ")", periodo(turma.getPeriodo()));
     }
 
     private static String periodo(Periodo periodo) {

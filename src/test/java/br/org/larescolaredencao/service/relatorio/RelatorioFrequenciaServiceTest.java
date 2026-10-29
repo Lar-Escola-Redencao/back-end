@@ -266,7 +266,7 @@ class RelatorioFrequenciaServiceTest {
 
         ArquivoRelatorio arquivo = service.gerarPresencas(dto, coordenador);
 
-        assertThat(arquivo.nome()).isEqualTo("presencas-detalhadas_unidade-centro_manha-07h00_2026-03-01_a_2026-03-31.pdf");
+        assertThat(arquivo.nome()).isEqualTo("presencas-detalhadas_unidade-centro_manha_2026-03-01_a_2026-03-31.pdf");
         PdfReader reader = new PdfReader(arquivo.conteudo());
         PdfTextExtractor extrator = new PdfTextExtractor(reader);
         int paginas = reader.getNumberOfPages();
@@ -314,7 +314,7 @@ class RelatorioFrequenciaServiceTest {
     }
 
     @Test
-    void xlsxResumoGravaNumerosEPercentualVazioSemRegistro() throws Exception {
+    void xlsxResumoCalculaPercentuaisPorFormulaEDeixaVazioSemRegistro() throws Exception {
         Matricula ana = matricula("Ana", LocalDate.of(2026, 1, 1), null, StatusMatricula.ATIVO);
         matricula("Bruno", LocalDate.of(2026, 1, 1), null, StatusMatricula.ATIVO);
         frequencia(ana, LocalDate.of(2026, 3, 2), true);
@@ -326,14 +326,25 @@ class RelatorioFrequenciaServiceTest {
 
         try (XSSFWorkbook workbook = new XSSFWorkbook(new ByteArrayInputStream(arquivo.conteudo()))) {
             Sheet aba = workbook.getSheetAt(1);
-            assertThat(aba.getSheetName()).isEqualTo("Unidade Centro - Manhã 07h00");
+            assertThat(aba.getSheetName()).isEqualTo("Unidade Centro - Manhã");
             assertThat(aba.getRow(1).getCell(1).getNumericCellValue()).isEqualTo(2);
+            assertThat(aba.getRow(1).getCell(3).getCellFormula()).isEqualTo("SUM(B2:C2)");
             assertThat(aba.getRow(1).getCell(3).getNumericCellValue()).isEqualTo(3);
+            assertThat(aba.getRow(1).getCell(4).getCellFormula()).isEqualTo("IF(D2=0,\"\",ROUND(B2/D2,3))");
             assertThat(aba.getRow(1).getCell(4).getNumericCellValue()).isEqualTo(0.667);
             assertThat(aba.getRow(1).getCell(4).getCellStyle().getDataFormatString()).isEqualTo("0.0%");
-            assertThat(aba.getRow(2).getCell(4).getCellType()).isEqualTo(CellType.BLANK);
+            assertThat(aba.getRow(2).getCell(4).getCellType()).isEqualTo(CellType.FORMULA);
+            assertThat(aba.getRow(2).getCell(4).getStringCellValue()).isEmpty();
             assertThat(aba.getRow(2).getCell(5).getStringCellValue()).isEqualTo(DadosRelatorio.SEM_FREQUENCIA);
             assertThat(aba.getPaneInformation().getHorizontalSplitPosition()).isEqualTo((short) 1);
+            aba.getRow(1).getCell(1).setCellValue(5);
+            aba.getRow(1).getCell(2).setCellValue(0);
+            aba.getRow(2).getCell(1).setCellValue(1);
+            aba.getRow(2).getCell(2).setCellValue(1);
+            workbook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            assertThat(aba.getRow(1).getCell(3).getNumericCellValue()).isEqualTo(5);
+            assertThat(aba.getRow(1).getCell(4).getNumericCellValue()).isEqualTo(1);
+            assertThat(aba.getRow(2).getCell(4).getNumericCellValue()).isEqualTo(0.5);
         }
     }
 
