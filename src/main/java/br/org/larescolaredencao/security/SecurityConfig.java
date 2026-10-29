@@ -79,6 +79,9 @@ public class SecurityConfig {
                             "/paginas/documentos/{id:\\d+}/download").permitAll();
 
                     req.requestMatchers("/historico-alteracoes/**").hasRole("ADMINISTRADOR");
+                    req.requestMatchers("/acompanhamento/usuarios/*/entrevistas", "/acompanhamento/usuarios/*/entrevistas/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/acompanhamento/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
 
                     req.requestMatchers(HttpMethod.GET, "/turmas/**")

@@ -22,6 +22,8 @@ import java.util.Optional;
 public class HistoricoRepository {
 
     public static final ZoneId FUSO = ZoneId.of("America/Sao_Paulo");
+    // Entrevistas anteriores à categoria própria continuam pesquisáveis sem regravar o histórico.
+    static final String CATEGORIA = "(case when evento.entidade = 'entrevista_social' then 'ENTREVISTAS' else evento.categoria end)";
 
     private static final String TABELAS = """
             from historico_evento evento
@@ -58,8 +60,8 @@ public class HistoricoRepository {
     public Page<Linha> listar(FiltroHistoricoDTO filtro, Pageable pageable) {
         StringBuilder condicoes = new StringBuilder("""
                 where revisao.referencia_implantacao = false
-                  and evento.categoria = :categoria
-                """);
+                  and %s = :categoria
+                """.formatted(CATEGORIA));
         Map<String, Object> parametros = new HashMap<>();
         parametros.put("categoria", filtro.tipoRegistro().name());
 

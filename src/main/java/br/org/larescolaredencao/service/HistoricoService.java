@@ -150,6 +150,9 @@ public class HistoricoService {
             }
 
             String nome = NOMES_CAMPOS.getOrDefault(campo, formatarNomeCampo(campo));
+            if ("entrevista_social".equals(evento.entidade()) && "dataRegistro".equals(campo)) {
+                nome = "Data do cadastro";
+            }
             camposAlterados.add(new CampoAlteradoDTO(
                     campo, nome, valorAnterior, valorNovo, referenciaAnteriorDisponivel));
         }
@@ -158,7 +161,8 @@ public class HistoricoService {
     }
 
     HistoricoEventoDTO montarResumo(Linha evento) {
-        TipoRegistroHistorico categoria = TipoRegistroHistorico.valueOf(evento.categoria());
+        TipoRegistroHistorico categoria = "entrevista_social".equals(evento.entidade())
+                ? TipoRegistroHistorico.ENTREVISTAS : TipoRegistroHistorico.valueOf(evento.categoria());
         TipoAlteracaoHistorico tipoAlteracao = TipoAlteracaoHistorico.valueOf(evento.tipoAlteracao());
         Map<String, Object> valores = lerValores(evento.novo() != null ? evento.novo() : evento.anterior());
         Map<String, Object> contexto = lerValores(
@@ -233,6 +237,7 @@ public class HistoricoService {
         String identificacao = Objects.toString(valores.get("nomeCompleto"), nomeContexto);
 
         if (categoria == TipoRegistroHistorico.USUARIOS
+                || categoria == TipoRegistroHistorico.ENTREVISTAS
                 || categoria == TipoRegistroHistorico.PRESENCAS
                 || categoria == TipoRegistroHistorico.OCORRENCIAS) {
             identificacao = obterNome(contexto.get("usuario"), identificacao);
@@ -330,6 +335,9 @@ public class HistoricoService {
         nomes.put("dataRegistro", "Data da aula");
         nomes.put("dataCriacao", "Data de criação");
         nomes.put("dataOcorrencia", "Data e hora do fato");
+        nomes.put("dataEntrevista", "Data e hora da entrevista");
+        nomes.put("relato", "Descrição da entrevista");
+        nomes.put("idMembro", "Autor do registro");
         nomes.put("dataIngresso", "Data de ingresso");
         nomes.put("dataDesligamento", "Data de desligamento");
         nomes.put("presente", "Presença");

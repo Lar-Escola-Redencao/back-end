@@ -9,6 +9,21 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface OcorrenciaRepository extends JpaRepository<Ocorrencia, Integer> {
+    @Query("""
+            select o from Ocorrencia o
+            where o.matricula.usuario.id = :usuario
+              and (:admin = true or o.matricula.turma.unidade.id in :unidades)
+              and (:search is null or lower(o.descricao) like :search escape '!'
+                or lower(o.membro.nomeCompleto) like :search escape '!'
+                or lower(o.matricula.turma.unidade.nome) like :search escape '!'
+                or lower(cast(o.tipoOcorrencia as string)) like :search escape '!'
+                or cast(o.dataOcorrencia as string) like :search escape '!')
+            """)
+    org.springframework.data.domain.Page<Ocorrencia> listarAcompanhamento(
+            @Param("usuario") Integer usuario, @Param("admin") boolean admin,
+            @Param("unidades") List<Integer> unidades, @Param("search") String search,
+            org.springframework.data.domain.Pageable pageable);
+
     @Query("select o from Ocorrencia o where o.matricula.turma.id = :turmaId and cast(o.dataOcorrencia as LocalDate) = :dataOcorrencia")
     List<Ocorrencia> findByMatriculaTurmaIdAndDataOcorrencia(
             @Param("turmaId") Integer turmaId,

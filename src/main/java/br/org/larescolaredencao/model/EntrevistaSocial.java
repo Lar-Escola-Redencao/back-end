@@ -7,10 +7,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
+@org.hibernate.envers.Audited
 @Table(name = "entrevista_social")
 public class EntrevistaSocial {
 
@@ -25,7 +25,7 @@ public class EntrevistaSocial {
     private Integer idMembro;
 
     @Column(name = "data_entrevista", nullable = false)
-    private LocalDate dataEntrevista;
+    private LocalDateTime dataEntrevista;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String relato;
@@ -57,11 +57,11 @@ public class EntrevistaSocial {
         this.idMembro = idMembro;
     }
 
-    public LocalDate getDataEntrevista() {
+    public LocalDateTime getDataEntrevista() {
         return dataEntrevista;
     }
 
-    public void setDataEntrevista(LocalDate dataEntrevista) {
+    public void setDataEntrevista(LocalDateTime dataEntrevista) {
         this.dataEntrevista = dataEntrevista;
     }
 

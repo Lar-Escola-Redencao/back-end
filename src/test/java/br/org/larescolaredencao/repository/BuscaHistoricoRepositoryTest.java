@@ -17,6 +17,34 @@ import static org.mockito.Mockito.*;
 
 class BuscaHistoricoRepositoryTest {
 
+    @Test
+    void contatosFicamForaDoGrupoMasPermanecemNoHistoricoDoPerfil() {
+        var area = br.org.larescolaredencao.model.enums.AreaSistemaHistorico.USUARIOS_E_ACOMPANHAMENTO;
+        assertThat(area.tiposNoContexto(null)).doesNotContain(TipoRegistroHistorico.CONTATOS)
+                .contains(TipoRegistroHistorico.VINCULOS_CONTATOS);
+        assertThat(area.tiposNoContexto(12)).contains(TipoRegistroHistorico.CONTATOS);
+    }
+
+    @Test
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    void filtroDeEntrevistasIncluiLegadoEMantemContextoDoUsuario() {
+        var jdbcLocal = mock(NamedParameterJdbcTemplate.class);
+        when(jdbcLocal.queryForObject(anyString(), anyMap(), eq(Long.class))).thenReturn(0L);
+        var filtro = new ConsultaAtividadesDTO(TipoRegistroHistorico.ENTREVISTAS, null, null, null,
+                null, null, null, null, 12, null, null, PeriodoHistorico.TODOS,
+                br.org.larescolaredencao.model.enums.AreaSistemaHistorico.USUARIOS_E_ACOMPANHAMENTO);
+        new AtividadeHistoricoRepository(jdbcLocal, new HistoricoRepository(jdbcLocal))
+                .listar(filtro, PageRequest.of(0, 10));
+        var sql = ArgumentCaptor.forClass(String.class);
+        var parametros = ArgumentCaptor.forClass(Map.class);
+        verify(jdbcLocal).queryForObject(sql.capture(), parametros.capture(), eq(Long.class));
+        assertThat(sql.getValue()).contains("case when evento.entidade = 'entrevista_social' then 'ENTREVISTAS'",
+                "= :categoria", "json_extract(evento.contexto_novo, '$.idUsuario') = :idUsuario");
+        assertThat(parametros.getValue()).containsEntry("categoria", "ENTREVISTAS").containsEntry("idUsuario", 12);
+        assertThat((java.util.List<String>) parametros.getValue().get("categoriasArea"))
+                .containsExactlyInAnyOrder("USUARIOS", "CONTATOS", "VINCULOS_CONTATOS", "PRESENCAS", "OCORRENCIAS", "ENTREVISTAS");
+    }
+
     private final NamedParameterJdbcTemplate jdbc = mock(NamedParameterJdbcTemplate.class);
 
     @Test

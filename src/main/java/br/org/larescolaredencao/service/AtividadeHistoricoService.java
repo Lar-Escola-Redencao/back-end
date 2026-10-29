@@ -167,6 +167,7 @@ public class AtividadeHistoricoService {
         if (historicoDoUsuario) {
             String alvos = registros.stream().map(registro -> switch (registro.tipoRegistro()) {
                 case USUARIOS -> "o usuário " + registro.identificacaoRegistro();
+                case ENTREVISTAS -> "a entrevista de " + registro.identificacaoRegistro();
                 case CONTATOS -> "o contato " + registro.identificacaoRegistro();
                 case VINCULOS_CONTATOS -> "o vínculo " + registro.identificacaoRegistro();
                 default -> null;
@@ -207,7 +208,7 @@ public class AtividadeHistoricoService {
 
     private void validar(ConsultaAtividadesDTO filtro) {
         if (filtro.areaSistema() != null && filtro.tipoRegistro() != null
-                && !filtro.areaSistema().tipos().contains(filtro.tipoRegistro())) {
+                && !filtro.areaSistema().tiposNoContexto(filtro.idUsuario()).contains(filtro.tipoRegistro())) {
             throw parametroInvalido("O tipo de registro não pertence à área do sistema selecionada.");
         }
         TipoRegistroHistorico categoria = filtro.tipoRegistro() == null
