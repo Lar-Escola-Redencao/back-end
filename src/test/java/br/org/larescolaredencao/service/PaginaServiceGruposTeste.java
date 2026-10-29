@@ -12,6 +12,8 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -23,6 +25,8 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
+
+import javax.imageio.ImageIO;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,7 +84,7 @@ class PaginaServiceGruposTeste {
 
     @BeforeEach
     void setUp() {
-        arquivoService = spy(new ArquivoService());
+        arquivoService = spy(new ArquivoService(new CompressorImagem()));
         ReflectionTestUtils.setField(arquivoService, "uploadDir", diretorioUploads.toString() + "/");
         paginaService = new PaginaService(paginaRepository, secaoRepository, documentoRepository, arquivoService);
 
@@ -550,6 +554,19 @@ class PaginaServiceGruposTeste {
     }
 
     private static MultipartFile imagem(String nome) {
-        return new MockMultipartFile("imagem", nome, "image/png", ("png-" + nome).getBytes());
+        return new MockMultipartFile("imagem", nome, "image/png", PNG_VALIDO);
+    }
+
+    // O ArquivoService real decodifica a imagem, então o conteúdo precisa ser um PNG de verdade.
+    private static final byte[] PNG_VALIDO = pngValido();
+
+    private static byte[] pngValido() {
+        try {
+            ByteArrayOutputStream saida = new ByteArrayOutputStream();
+            ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "png", saida);
+            return saida.toByteArray();
+        } catch (IOException e) {
+            throw new IllegalStateException(e);
+        }
     }
 }

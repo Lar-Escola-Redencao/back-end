@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 import org.slf4j.Logger;
@@ -24,9 +25,17 @@ public class ArquivoService {
 
     private static final Logger logger = LoggerFactory.getLogger(ArquivoService.class);
 
+    private static final Set<String> EXTENSOES_IMAGEM = Set.of("jpg", "jpeg", "png", "webp");
+
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
-    
+
+    private final CompressorImagem compressorImagem;
+
+    public ArquivoService(CompressorImagem compressorImagem) {
+        this.compressorImagem = compressorImagem;
+    }
+
     public String salvarArquivo(MultipartFile arquivo, String subPasta) {
         return salvarArquivo(arquivo, subPasta, TipoArquivo.FOTO);
     }
@@ -45,6 +54,11 @@ public class ArquivoService {
             }
 
             String nomeBase = Paths.get(obterNomeOriginalSeguro(arquivo)).getFileName().toString();
+            CompressorImagem.ImagemComprimida imagem = null;
+            if (tipo.comprimeImagens() && EXTENSOES_IMAGEM.contains(extrairExtensao(nomeBase))) {
+                imagem = compressorImagem.comprimir(arquivo.getBytes(), tipo);
+                nomeBase = trocarExtensao(nomeBase, imagem.extensao());
+            }
             String nomeArquivoUnico = UUID.randomUUID().toString() + "_" + nomeBase;
 
             Path caminhoArquivo = diretorioPath.resolve(nomeArquivoUnico).normalize();
@@ -52,7 +66,11 @@ public class ArquivoService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nome de arquivo inválido.");
             }
 
-            Files.copy(arquivo.getInputStream(), caminhoArquivo, StandardCopyOption.REPLACE_EXISTING);
+            if (imagem != null) {
+                Files.write(caminhoArquivo, imagem.conteudo());
+            } else {
+                Files.copy(arquivo.getInputStream(), caminhoArquivo, StandardCopyOption.REPLACE_EXISTING);
+            }
 
             return "/uploads/" + subPasta + nomeArquivoUnico;
         } catch (IOException e) {
@@ -130,6 +148,12 @@ public class ArquivoService {
             return null;
         }
         return texto.replaceAll("[\\r\\n\"\\\\]", "").trim();
+    }
+
+    private String trocarExtensao(String nomeArquivo, String novaExtensao) {
+        int posicaoPonto = nomeArquivo.lastIndexOf('.');
+        String semExtensao = posicaoPonto == -1 ? nomeArquivo : nomeArquivo.substring(0, posicaoPonto);
+        return semExtensao + "." + novaExtensao;
     }
 
     private String obterNomeOriginalSeguro(MultipartFile arquivo) {
