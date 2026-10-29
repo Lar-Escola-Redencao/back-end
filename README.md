@@ -47,6 +47,15 @@ cd back-end
 ```
 
 Para executar, consulte o arquivo de build e configure o banco MySQL e o perfil de desenvolvimento. 
+
+No `application.properties` local, inclua também os limites de upload usados no `docker-compose.yml` (o padrão do Spring é 1MB por arquivo):
+
+```properties
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=50MB
+```
+
+As imagens enviadas são compactadas antes de serem gravadas (`CompressorImagem.java`): o lado maior fica em até 1920 px (2560 px em documentos de saúde) e fotos JPEG perdem os metadados EXIF, como a localização GPS. PNG e WebP que não diminuiriam com a recompressão são gravados como foram enviados. Os limites ficam em `TipoArquivo.java`.
 ## Segurança e privacidade
 
 O sistema foi projetado para lidar com registros que podem incluir informações pessoais e socioeconômicas de crianças e famílias. Controle de acesso por perfil, rastreabilidade de alterações e proteção de informações são requisitos centrais do trabalho.

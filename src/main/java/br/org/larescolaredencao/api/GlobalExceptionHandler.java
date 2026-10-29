@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
@@ -41,6 +42,14 @@ public class GlobalExceptionHandler {
         erro.put("sort", "Campo de ordenação inválido: " + exception.getPropertyName());
         erro.put("message", "Campo de ordenação inválido: " + exception.getPropertyName());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleArquivoMuitoGrande(MaxUploadSizeExceededException exception) {
+        Map<String, String> erro = new LinkedHashMap<>();
+        erro.put("message", "O arquivo excede o tamanho máximo permitido de 10MB.");
+        erro.put("status", HttpStatus.CONTENT_TOO_LARGE.toString());
+        return ResponseEntity.status(HttpStatus.CONTENT_TOO_LARGE).body(erro);
     }
 
     @ExceptionHandler(ResponseStatusException.class)

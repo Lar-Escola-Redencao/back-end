@@ -39,6 +39,10 @@ services:
       APP_CORS_ALLOWEDORIGINS: ${CORS_ALLOWED_ORIGINS}
       # sem isso o Hibernate nao cria as tabelas (nao ha schema/migration no repo ainda)
       SPRING_JPA_HIBERNATE_DDLAUTO: ${JPA_DDL_AUTO:-update}
+      # o padrao do Spring e 1MB por arquivo; 10MB acompanha o limite do front (imagens sao compactadas depois, no CompressorImagem.java)
+      SPRING_SERVLET_MULTIPART_MAXFILESIZE: 10MB
+      # cadastro completo de usuario envia a foto + ate 4 arquivos de saude na mesma requisicao
+      SPRING_SERVLET_MULTIPART_MAXREQUESTSIZE: 50MB
     ports:
       - "8080:8080"
     volumes:
