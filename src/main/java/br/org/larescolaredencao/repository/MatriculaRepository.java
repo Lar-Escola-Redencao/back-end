@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
@@ -29,6 +30,16 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
      List<Matricula> findHistoricoAtivasPorTurmaEData(@Param("turmaId") Integer turmaId, 
                                                       @Param("dataFimDia") LocalDateTime dataFimDia, 
                                                       @Param("data") LocalDate data);
+
+    @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario WHERE m.turma.id = :turmaId " +
+           "AND m.dataIngresso < :fimExclusivo " +
+           "AND (m.dataDesligamento IS NULL OR m.dataDesligamento >= :inicio)")
+    List<Matricula> findVigentesPorTurmaNoPeriodo(@Param("turmaId") Integer turmaId,
+                                                  @Param("fimExclusivo") LocalDateTime fimExclusivo,
+                                                  @Param("inicio") LocalDate inicio);
+
+    @Query("SELECT DISTINCT m.usuario.id FROM Matricula m WHERE m.status = 'EXCLUIDO' AND m.usuario.id IN :ids")
+    List<Integer> findIdsUsuariosExcluidos(@Param("ids") Collection<Integer> ids);
 
     @Query("SELECT COUNT(DISTINCT m.usuario.id) FROM Matricula m WHERE m.status = :status")
     long contarMeninosPorStatus(@Param("status") StatusMatricula status);
