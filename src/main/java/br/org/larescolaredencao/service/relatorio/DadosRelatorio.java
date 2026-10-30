@@ -16,7 +16,7 @@ public final class DadosRelatorio {
             + "Dias sem registro não são contabilizados como faltas.";
     public static final String SEM_FREQUENCIA = "Sem frequência registrada";
     public static final String SEM_OCORRENCIAS = "Nenhuma ocorrência registrada no período.";
-    public static final String SEM_ALUNOS = "Nenhum aluno matriculado na turma no período.";
+    public static final String SEM_ALUNOS = "Nenhum usuário matriculado na turma no período.";
     public static final String OBSERVACAO_FORA_DA_MATRICULA = "Registro salvo em data fora da vigência da matrícula. "
             + "Exibido como consta no sistema, sem alteração.";
 
