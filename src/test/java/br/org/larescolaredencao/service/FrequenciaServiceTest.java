@@ -128,16 +128,15 @@ class FrequenciaServiceTest {
     }
 
     @Test
-    void deveBloquearMonitorAntesDoInicioEPermitirCoordenador() {
+    void deveBloquearDataFuturaParaTodosOsPerfis() {
         data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().plusDays(1);
-        assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
-        membro.getPapel().setNomePapel("COORDENADOR");
-        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
-        when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());
-        service.salvarFrequenciaEmLote(lote(), membro);
-        verify(frequencias).saveAllAndFlush(any());
+        for (String perfil : List.of("MONITOR", "ADMINISTRADOR", "COORDENADOR")) {
+            membro.getPapel().setNomePapel(perfil);
+            assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
+                    .isInstanceOfSatisfying(ResponseStatusException.class,
+                            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        }
+        verify(frequencias, never()).saveAllAndFlush(any());
     }
 
     @Test
