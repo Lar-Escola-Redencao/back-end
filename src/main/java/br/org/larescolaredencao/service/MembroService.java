@@ -160,6 +160,7 @@ public class MembroService {
 
     @Transactional
     public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto, Membro membroLogado) {
+        validarGestaoDaPropriaConta(id, membroLogado);
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         validarGestaoMembro(membroLogado, membro.getPapel(),
@@ -172,11 +173,19 @@ public class MembroService {
 
     @Transactional
     public void deletarMembro(Integer id, Membro membroLogado) {
+        validarGestaoDaPropriaConta(id, membroLogado);
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
         validarGestaoMembro(membroLogado, membro.getPapel(),
                 membro.getUnidades().stream().map(Unidade::getId).toList());
         deletarMembro(id);
+    }
+
+    private void validarGestaoDaPropriaConta(Integer id, Membro membroLogado) {
+        if (id.equals(membroLogado.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Não é permitido editar ou excluir a própria conta por aqui. Para alterar seus dados, acesse Meu perfil.");
+        }
     }
 
     private void validarGestaoMembro(Membro membroLogado, Papel papel, List<Integer> idsUnidades) {
@@ -242,21 +251,28 @@ public class MembroService {
         Papel papel = papelRepository.findById(dto.getIdPapel())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
         
-        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
+        List<Unidade> unidades = dto.getIdsUnidades() == null
+                ? membro.getUnidades()
+                : dto.getIdsUnidades().isEmpty()
+                    ? List.of()
+                    : unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades());
+
+        if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && unidades.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
         }
 
-        List<Unidade> unidades = dto.getIdsUnidades() != null && !dto.getIdsUnidades().isEmpty() 
-            ? unidadeService.buscarUnidadesPorIds(dto.getIdsUnidades()) 
-            : List.of();
-        
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEmail(dto.getEmail());
         membro.setCpf(dto.getCpf());
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
         membro.setPapel(papel);
-        membro.setUnidades(unidades);
+        var idsAtuais = membro.getUnidades().stream().map(Unidade::getId).collect(Collectors.toSet());
+        var idsNovos = unidades.stream().map(Unidade::getId).collect(Collectors.toSet());
+        if (!idsAtuais.equals(idsNovos)) {
+            membro.getUnidades().clear();
+            membro.getUnidades().addAll(unidades);
+        }
 
         Membro salvo = membroRepository.save(membro);
         return new MembroResponseDTO(salvo);
@@ -269,10 +285,38 @@ public class MembroService {
         return new MembroResponseDTO(membro);
     }
  
+    @Transactional
     public MembroResponseDTO atualizarPerfil(Integer idMembroLogado, AtualizarPerfilDTO dto) {
         Membro membro = membroRepository.findById(idMembroLogado)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
- 
+
+        String email = dto.getEmail() == null ? membro.getEmail() : dto.getEmail().trim();
+        String cpf = Membro.somenteDigitos(dto.getCpf() == null ? membro.getCpf() : dto.getCpf());
+        boolean alteraEmail = email != null && !email.equalsIgnoreCase(membro.getEmail() == null ? null : membro.getEmail().trim());
+        boolean alteraCpf = !java.util.Objects.equals(cpf, Membro.somenteDigitos(membro.getCpf()));
+        if ((alteraEmail || alteraCpf) && !"ADMINISTRADOR".equals(membro.getPapel().getNomePapel())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Somente administradores podem alterar CPF e e-mail pelo Meu perfil.");
+        }
+        if (alteraEmail) {
+            if (email.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um e-mail válido.");
+            }
+            membroRepository.findByEmail(email).filter(outro -> !outro.getId().equals(membro.getId()))
+                    .ifPresent(outro -> { throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Este e-mail já está em uso por outro usuário."); });
+        }
+        if (alteraCpf) {
+            if (cpf.length() != 11) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um CPF com 11 dígitos.");
+            }
+            membroRepository.buscarPorCpf(cpf).filter(outro -> !outro.getId().equals(membro.getId()))
+                    .ifPresent(outro -> { throw new ResponseStatusException(HttpStatus.CONFLICT,
+                            "Este CPF já está em uso por outro usuário."); });
+        }
+
+        if (alteraEmail) membro.setEmail(email);
+        if (alteraCpf) membro.setCpf(cpf);
         membro.setNomeCompleto(dto.getNomeCompleto());
         membro.setEndereco(dto.getEndereco());
         membro.setTelefone(dto.getTelefone());
@@ -281,6 +325,7 @@ public class MembroService {
         return new MembroResponseDTO(salvo);
     }
 
+    @Transactional
     public void deletarMembro(Integer id) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));

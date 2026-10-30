@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+
 import com.fasterxml.jackson.annotation.JsonBackReference;
 
 import jakarta.persistence.Entity;
@@ -15,6 +17,7 @@ import jakarta.validation.constraints.NotBlank;
  * Componente filho do conceito de blocos e componentes: um documento individual
  * pertencente a uma seção, visualizável e baixável.
  */
+@Audited
 @Entity
 @Table(name = "documento")
 public class Documento {

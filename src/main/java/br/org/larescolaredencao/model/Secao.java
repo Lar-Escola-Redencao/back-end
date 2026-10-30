@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +25,7 @@ import jakarta.validation.constraints.Size;
  * Bloco pai do conceito de blocos e componentes (ex.: "Estatuto Social e Atas",
  * "Relatórios Financeiros"). Agrupa os documentos filhos exibidos na página.
  */
+@Audited
 @Entity
 @Table(name = "secao")
 public class Secao {
