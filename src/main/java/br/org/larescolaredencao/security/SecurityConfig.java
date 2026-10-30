@@ -44,6 +44,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers("/error").permitAll();
+                    req.requestMatchers(HttpMethod.GET, "/pix").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/pix/codigo").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/pix/codigo/*/agradecimento").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
