@@ -27,6 +27,75 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
+    public void enviarAgradecimentoPix(String destinatario, java.math.BigDecimal valor) {
+        try {
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            helper.setFrom(remetente);
+            helper.setTo(destinatario);
+            helper.setSubject("Obrigado pelo apoio — Lar Escola Redenção");
+            String valorFormatado = java.text.NumberFormat.getCurrencyInstance(
+                    java.util.Locale.forLanguageTag("pt-BR")).format(valor);
+            String texto = "Olá!\n\nObrigado por apoiar o Lar Escola Redenção. Você informou no site que realizou "
+                    + "uma doação via Pix no valor de " + valorFormatado + ".\n\n"
+                    + "Este e-mail é um agradecimento pela contribuição informada. Não confirma o recebimento "
+                    + "do pagamento e não substitui o comprovante emitido pelo seu banco.\n\n"
+                    + "Lar Escola Redenção";
+            ClassPathResource logo = new ClassPathResource("static/images/logo.png");
+            String marca = logo.exists()
+                    ? "<img src=\"cid:logoImage\" alt=\"Lar Escola Redenção\" width=\"96\" style=\"display:block;margin:0 auto;background:#ffffff;padding:6px;border-radius:8px;\">"
+                    : "<span style=\"color:#ffffff;font-size:20px;font-weight:600;\">Lar Escola Redenção</span>";
+            String htmlContent = """
+                    <!DOCTYPE html>
+                    <html lang="pt-BR">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Obrigado pelo apoio — Lar Escola Redenção</title>
+                    </head>
+                    <body style="margin:0;padding:0;background-color:#eef1f6;font-family:'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background-color:#eef1f6;">
+                            <tr><td align="center" style="padding:32px 16px;">
+                                <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:480px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(9,46,94,0.08);">
+                                    <tr><td align="center" style="padding:28px 24px;background-color:#2A4FCC;border-radius:16px 16px 0 0;">
+                                        %s
+                                    </td></tr>
+                                    <tr><td align="center" style="padding:32px 24px 24px;color:#33373d;">
+                                        <h1 style="margin:0 0 16px;font-size:24px;line-height:1.3;font-weight:600;color:#14213d;">Obrigado pela sua doação!</h1>
+                                        <p style="margin:0;font-size:15px;line-height:1.7;color:#5c6270;">Olá! Obrigado por apoiar o trabalho do<br>Lar Escola Redenção.</p>
+                                        <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="margin-top:24px;background-color:#eef4fd;border:1px solid #c6d8f7;border-radius:10px;">
+                                            <tr><td align="center" style="padding:20px 16px;">
+                                                <p style="margin:0 0 8px;font-size:12px;line-height:1.5;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#5c6270;">Contribuição informada via Pix</p>
+                                                <p style="margin:0;font-size:30px;line-height:1.3;font-weight:700;color:#2A4FCC;">%s</p>
+                                            </td></tr>
+                                        </table>
+                                        <p style="margin:24px 0 0;font-size:15px;line-height:1.7;color:#5c6270;">Agradecemos por fazer parte dessa história.</p>
+                                        <p style="margin:16px 0 0;font-size:14px;line-height:1.6;font-weight:600;color:#14213d;">Equipe Lar Escola Redenção</p>
+                                    </td></tr>
+                                    <tr><td style="padding:0 24px;"><div style="border-top:1px solid #eef0f3;"></div></td></tr>
+                                    <tr><td align="center" style="padding:20px 24px 28px;">
+                                        <p style="margin:0;font-size:12px;line-height:1.6;color:#707887;">Este agradecimento se refere à doação informada no site. Ele não confirma o recebimento e não substitui o comprovante do banco.</p>
+                                        <p style="margin:12px 0 0;font-size:12px;line-height:1.6;color:#8891a5;">Este é um e-mail automático — não responda.</p>
+                                    </td></tr>
+                                </table>
+                            </td></tr>
+                        </table>
+                    </body>
+                    </html>
+                    """.formatted(marca, valorFormatado);
+            helper.setText(texto, htmlContent);
+            if (logo.exists()) {
+                helper.addInline("logoImage", logo);
+            }
+            mailSender.send(message);
+        } catch (MessagingException | MailException e) {
+            logger.error("Falha ao enviar agradecimento Pix", e);
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Não foi possível enviar o agradecimento. Tente novamente.");
+        }
+    }
+
     @Async
     public void enviarEmailRecuperacao(String destinatario, String codigo) {
         try {
