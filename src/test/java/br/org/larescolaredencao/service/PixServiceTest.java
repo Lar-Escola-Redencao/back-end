@@ -73,6 +73,33 @@ class PixServiceTest {
     }
 
     @Test
+    void usaRecebedorDoCmsNaExibicaoENormalizaSomenteNoPayload() {
+        Secao secao = new Secao();
+        secao.setGrupo("pix");
+        secao.setAtivo(true);
+        secao.setTitulo("Instituto Esperança");
+        secao.setConteudo("doacoes@example.org");
+        when(secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(4L)).thenReturn(List.of(secao));
+        assertThat(service.obterConfiguracao().nomeRecebedor()).isEqualTo("Instituto Esperança");
+        var codigo = service.gerarCodigo(new GerarCodigoPixDTO(BigDecimal.TEN));
+        assertThat(codigo.nomeRecebedor()).isEqualTo("Instituto Esperança");
+        assertThat(codigo.copiaECola()).contains("INSTITUTO ESPERANCA").doesNotContain("LAR ESCOLA REDENCAO");
+    }
+
+    @Test
+    void omiteRecebedorNaExibicaoQuandoSecaoNaoPossuiTitulo() {
+        Secao secao = new Secao();
+        secao.setGrupo("pix");
+        secao.setAtivo(true);
+        secao.setConteudo("doacoes@example.org");
+        when(secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(4L)).thenReturn(List.of(secao));
+        assertThat(service.obterConfiguracao().nomeRecebedor()).isNull();
+        var codigo = service.gerarCodigo(new GerarCodigoPixDTO(BigDecimal.TEN));
+        assertThat(codigo.nomeRecebedor()).isNull();
+        assertThat(codigo.copiaECola()).contains("LAR ESCOLA REDENCAO");
+    }
+
+    @Test
     void paginaInativaNaoDeveGerarCodigo() {
         pagina.setAtivo(false);
         assertThatThrownBy(() -> service.gerarCodigo(new GerarCodigoPixDTO(BigDecimal.TEN)))

@@ -42,7 +42,7 @@ public class PixController {
     }
 
     @PostMapping("/codigo/{identificador}/agradecimento")
-    public ResponseEntity<Void> agradecer(@PathVariable String identificador,
+    public ResponseEntity<Void> agradecer(@PathVariable("identificador") String identificador,
             @Valid @RequestBody AgradecimentoPixDTO dto) {
         agradecimentoPixService.agradecer(identificador, dto.email());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();

@@ -193,19 +193,19 @@ class PaginaServiceGruposTeste {
 
     @Test
     void pixDeveAtualizarRegistroUnicoComChaveEQrCodeERemoverArquivoAntigoAposCommit() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "título ignorado", "11.222.333/0001-81", imagem("qr-antigo.png")));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "11.222.333/0001-81", imagem("qr-antigo.png")));
         String qrAntigo = pix.getImagem();
-        assertThat(pix.getTitulo()).isNull();
+        assertThat(pix.getTitulo()).isEqualTo("Lar Escola Redenção");
         assertThat(arquivoNoDisco(qrAntigo)).exists();
 
         Secao atualizado = emTransacao(true, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
-                atualizar("pix", "título ignorado", "email@larredencao.org.br", imagem("qr-novo.png"))));
+                atualizar("pix", "Lar Escola Redenção", "email@larredencao.org.br", imagem("qr-novo.png"))));
 
         assertThat(secoesGravadas).hasSize(1);
         assertThat(atualizado.getId()).isEqualTo(pix.getId());
         assertThat(atualizado.getPagina().getId()).isEqualTo(PAGINA_PIX);
         assertThat(atualizado.getGrupo()).isEqualTo("pix");
-        assertThat(atualizado.getTitulo()).isNull();
+        assertThat(atualizado.getTitulo()).isEqualTo("Lar Escola Redenção");
         assertThat(atualizado.getConteudo()).isEqualTo("email@larredencao.org.br");
         assertThat(atualizado.getImagem()).isNotEqualTo(qrAntigo).endsWith("_qr-novo.png");
         assertThat(arquivoNoDisco(atualizado.getImagem())).exists();
@@ -214,11 +214,11 @@ class PaginaServiceGruposTeste {
 
     @Test
     void segundoPostDePixTambemEhUpsertETrocaOQrCode() {
-        Secao primeiro = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave-antiga@example.org", imagem("qr-1.png")));
+        Secao primeiro = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave-antiga@example.org", imagem("qr-1.png")));
         String qrAntigo = primeiro.getImagem();
 
         Secao segundo = emTransacao(true, () -> paginaService.criarSecao(PAGINA_PIX,
-                criar("pix", null, "chave-nova@example.org", imagem("qr-2.png"))));
+                criar("pix", "Lar Escola Redenção", "chave-nova@example.org", imagem("qr-2.png"))));
 
         assertThat(secoesGravadas).hasSize(1);
         assertThat(segundo.getId()).isEqualTo(primeiro.getId());
@@ -229,10 +229,10 @@ class PaginaServiceGruposTeste {
 
     @Test
     void segundoPostDePixSemArquivoMantemQrCodeAtual() {
-        Secao primeiro = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave-antiga@example.org", imagem("qr-1.png")));
+        Secao primeiro = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave-antiga@example.org", imagem("qr-1.png")));
         String qrAtual = primeiro.getImagem();
 
-        Secao segundo = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave-nova@example.org", null));
+        Secao segundo = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave-nova@example.org", null));
 
         assertThat(segundo.getImagem()).isEqualTo(qrAtual);
         assertThat(arquivoNoDisco(qrAtual)).exists();
@@ -264,7 +264,7 @@ class PaginaServiceGruposTeste {
     void deveRetornar400QuandoGrupoNaoPertenceAPaginaDaRota() {
         assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("telefone", "16999999999", null, null)),
                 HttpStatus.BAD_REQUEST, "O grupo 'telefone' não é permitido na página 4.");
-        assertStatus(() -> paginaService.criarSecao(PAGINA_TRANSPARENCIA, criar("pix", null, "chave@example.org", imagem("qr.png"))),
+        assertStatus(() -> paginaService.criarSecao(PAGINA_TRANSPARENCIA, criar("pix", "Lar Escola Redenção", "chave@example.org", imagem("qr.png"))),
                 HttpStatus.BAD_REQUEST, "O grupo 'pix' não é permitido na página 1.");
         assertThat(secoesGravadas).isEmpty();
     }
@@ -277,7 +277,7 @@ class PaginaServiceGruposTeste {
                 HttpStatus.BAD_REQUEST, "O campo 'titulo' é obrigatório para o grupo 'produtos'.");
         assertStatus(() -> paginaService.criarSecao(PAGINA_GRAFICA, criar("produtos", "Folder A3", null, null)),
                 HttpStatus.BAD_REQUEST, "O campo 'imagem' é obrigatório para o grupo 'produtos'.");
-        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", null, null, imagem("qr.png"))),
+        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", null, imagem("qr.png"))),
                 HttpStatus.BAD_REQUEST, "O campo 'conteudo' é obrigatório para o grupo 'pix'.");
 
         assertThat(secoesGravadas).isEmpty();
@@ -285,8 +285,17 @@ class PaginaServiceGruposTeste {
     }
 
     @Test
+    void pixExigeNomeDoRecebedorCompativelComQrCode() {
+        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave@example.org", null)),
+                HttpStatus.BAD_REQUEST, "O campo 'titulo' é obrigatório para o grupo 'pix'.");
+        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", "A".repeat(26), "chave@example.org", null)),
+                HttpStatus.BAD_REQUEST, "Informe um nome de recebedor válido, com até 25 caracteres.");
+        assertThat(secoesGravadas).isEmpty();
+    }
+
+    @Test
     void pixDevePermitirCadastroSemUploadDeQrCode() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "DOACOES@example.org", null));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "DOACOES@example.org", null));
         assertThat(pix.getConteudo()).isEqualTo("doacoes@example.org");
         assertThat(pix.getImagem()).isNull();
         assertThat(arquivosNoStorage()).isEmpty();
@@ -321,21 +330,18 @@ class PaginaServiceGruposTeste {
     // ---------------------------------------------------------------- título por grupo
 
     @Test
-    void pixIgnoraTituloVazioOuCurtoNoPostENoPut() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "", "chave@example.org", imagem("qr.png")));
-        String qrAtual = pix.getImagem();
-        assertThat(pix.getTitulo()).isNull();
-
-        Secao comTituloCurto = paginaService.criarSecao(PAGINA_PIX, criar("pix", "ab", "chave-2@example.org", null));
-        assertThat(comTituloCurto.getTitulo()).isNull();
-
-        Secao atualizado = emTransacao(true, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
-                atualizar("pix", "", "email@larredencao.org.br", null)));
-
-        assertThat(atualizado.getTitulo()).isNull();
-        assertThat(atualizado.getConteudo()).isEqualTo("email@larredencao.org.br");
-        assertThat(atualizado.getImagem()).isEqualTo(qrAtual);
-        assertThat(arquivoNoDisco(qrAtual)).exists();
+    void pixValidaTituloNoPostENoPut() {
+        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", "", "chave@example.org", null)),
+                HttpStatus.BAD_REQUEST, "O campo 'titulo' é obrigatório para o grupo 'pix'.");
+        assertStatus(() -> paginaService.criarSecao(PAGINA_PIX, criar("pix", "ab", "chave@example.org", null)),
+                HttpStatus.BAD_REQUEST, "O campo 'titulo' deve ter entre 3 e 150 caracteres.");
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave@example.org", null));
+        assertStatus(() -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
+                atualizar("pix", "", "outra@example.org", null)),
+                HttpStatus.BAD_REQUEST, "O campo 'titulo' é obrigatório para o grupo 'pix'.");
+        Secao atualizado = paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
+                atualizar("pix", "Instituto Esperança", "outra@example.org", null));
+        assertThat(atualizado.getTitulo()).isEqualTo("Instituto Esperança");
     }
 
     @Test
@@ -369,10 +375,10 @@ class PaginaServiceGruposTeste {
 
     @Test
     void escritasDeSecaoCarregamASecaoComLock() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave@example.org", imagem("qr-1.png")));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave@example.org", imagem("qr-1.png")));
 
-        paginaService.atualizarSecao(PAGINA_PIX, pix.getId(), atualizar("pix", null, "chave-2@example.org", imagem("qr-2.png")));
-        paginaService.atualizarSecao(pix.getId(), atualizar("pix", null, "chave-3@example.org", imagem("qr-3.png")));
+        paginaService.atualizarSecao(PAGINA_PIX, pix.getId(), atualizar("pix", "Lar Escola Redenção", "chave-2@example.org", imagem("qr-2.png")));
+        paginaService.atualizarSecao(pix.getId(), atualizar("pix", "Lar Escola Redenção", "chave-3@example.org", imagem("qr-3.png")));
         paginaService.atualizarImagemSecao(pix.getId(), imagem("qr-4.png"));
 
         // PUT por página e rota antiga: findByIdAndPaginaId (FOR UPDATE). A rota antiga só
@@ -447,11 +453,11 @@ class PaginaServiceGruposTeste {
 
     @Test
     void putComRollbackRemoveOArquivoNovoEMantemOAntigo() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave@example.org", imagem("qr-antigo.png")));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave@example.org", imagem("qr-antigo.png")));
         String qrAntigo = pix.getImagem();
 
         Secao atualizado = emTransacao(false, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
-                atualizar("pix", null, "outra-chave@example.org", imagem("qr-novo.png"))));
+                atualizar("pix", "Lar Escola Redenção", "outra-chave@example.org", imagem("qr-novo.png"))));
 
         assertThat(arquivoNoDisco(atualizado.getImagem())).doesNotExist();
         assertThat(arquivoNoDisco(qrAntigo)).exists();
@@ -459,12 +465,12 @@ class PaginaServiceGruposTeste {
 
     @Test
     void putComFalhaNaPersistenciaRemoveOArquivoNovoEPropagaOErro() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave@example.org", imagem("qr-antigo.png")));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave@example.org", imagem("qr-antigo.png")));
         String qrAntigo = pix.getImagem();
         doThrow(new DataIntegrityViolationException("falha simulada")).when(secaoRepository).save(any(Secao.class));
 
         assertThatThrownBy(() -> emTransacao(true, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
-                atualizar("pix", null, "outra-chave@example.org", imagem("qr-novo.png")))))
+                atualizar("pix", "Lar Escola Redenção", "outra-chave@example.org", imagem("qr-novo.png")))))
                 .isInstanceOf(DataIntegrityViolationException.class);
 
         assertThat(arquivosNoStorage()).containsExactly(arquivoNoDisco(qrAntigo));
@@ -472,12 +478,12 @@ class PaginaServiceGruposTeste {
 
     @Test
     void falhaAoApagarArquivoAntigoNaoQuebraARequisicao() {
-        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", null, "chave@example.org", imagem("qr-antigo.png")));
+        Secao pix = paginaService.criarSecao(PAGINA_PIX, criar("pix", "Lar Escola Redenção", "chave@example.org", imagem("qr-antigo.png")));
         String qrAntigo = pix.getImagem();
         doThrow(new IllegalStateException("storage indisponível")).when(arquivoService).deletarArquivo(qrAntigo);
 
         Secao atualizado = emTransacao(true, () -> paginaService.atualizarSecao(PAGINA_PIX, pix.getId(),
-                atualizar("pix", null, "outra-chave@example.org", imagem("qr-novo.png"))));
+                atualizar("pix", "Lar Escola Redenção", "outra-chave@example.org", imagem("qr-novo.png"))));
 
         assertThat(atualizado.getConteudo()).isEqualTo("outra-chave@example.org");
         assertThat(arquivoNoDisco(atualizado.getImagem())).exists();

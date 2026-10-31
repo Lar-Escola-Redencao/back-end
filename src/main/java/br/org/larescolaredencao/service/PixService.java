@@ -47,14 +47,19 @@ public class PixService {
             @Value("${app.pix.cidade-recebedor:Araraquara}") String cidadeRecebedor) {
         this.paginaRepository = paginaRepository;
         this.secaoRepository = secaoRepository;
-        this.nomeRecebedor = CodigoPix.normalizarNome(nomeRecebedor, 25);
+        CodigoPix.normalizarNome(nomeRecebedor, 25);
+        this.nomeRecebedor = nomeRecebedor.trim();
         this.cidadeRecebedor = CodigoPix.normalizarNome(cidadeRecebedor, 15);
     }
 
     @Transactional(readOnly = true)
     public ConfiguracaoPixResponseDTO obterConfiguracao() {
-        String chave = CodigoPix.normalizarChave(buscarPixAtivo().getConteudo());
-        return new ConfiguracaoPixResponseDTO(chave, nomeRecebedor, cidadeRecebedor,
+        Secao secao = buscarPixAtivo();
+        String chave = CodigoPix.normalizarChave(secao.getConteudo());
+        // A exibição pública deve refletir somente o nome cadastrado no CMS.
+        String recebedor = secao.getTitulo() == null || secao.getTitulo().isBlank()
+                ? null : secao.getTitulo().trim();
+        return new ConfiguracaoPixResponseDTO(chave, recebedor, cidadeRecebedor,
                 List.of(new BigDecimal("10.00"), new BigDecimal("25.00"), new BigDecimal("50.00"), new BigDecimal("100.00")));
     }
 
@@ -62,9 +67,11 @@ public class PixService {
     public CodigoPixResponseDTO gerarCodigo(GerarCodigoPixDTO dto) {
         ConfiguracaoPixResponseDTO configuracao = obterConfiguracao();
         String identificador = "LER" + UUID.randomUUID().toString().replace("-", "").substring(0, 22);
-        String payload = CodigoPix.gerar(configuracao.chave(), dto.valor(), nomeRecebedor, cidadeRecebedor, identificador);
+        // O BR Code exige nome; a configuração mantém compatibilidade com registros antigos.
+        String nomeNoCodigo = configuracao.nomeRecebedor() == null ? nomeRecebedor : configuracao.nomeRecebedor();
+        String payload = CodigoPix.gerar(configuracao.chave(), dto.valor(), nomeNoCodigo, cidadeRecebedor, identificador);
         OffsetDateTime geradoEm = OffsetDateTime.now(ZoneOffset.UTC);
-        return new CodigoPixResponseDTO(identificador, dto.valor().setScale(2), configuracao.chave(), nomeRecebedor,
+        return new CodigoPixResponseDTO(identificador, dto.valor().setScale(2), configuracao.chave(), configuracao.nomeRecebedor(),
                 cidadeRecebedor, payload, gerarImagem(payload), geradoEm, geradoEm.plusMinutes(15));
     }
 
