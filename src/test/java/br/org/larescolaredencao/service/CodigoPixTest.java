@@ -42,6 +42,21 @@ class CodigoPixTest {
     }
 
     @Test
+    void deveRecusarCnpjNumericoEAlfanumericoComDigitoInvalido() {
+        assertThatThrownBy(() -> CodigoPix.normalizarChave("11.222.333/0001-82"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("400");
+        assertThatThrownBy(() -> CodigoPix.normalizarChave("12.ABC.345/01DE-36"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("400");
+    }
+
+    @Test
+    void deveAceitarValorMaximoSemArredondamento() {
+        String payload = CodigoPix.gerar("doacoes@example.org", new BigDecimal("999999.990"),
+                "Lar Escola Redencao", "Araraquara", "LER123");
+        assertThat(payload).contains("5409999999.99");
+    }
+
+    @Test
     void deveRecusarValoresInvalidosSemArredondar() {
         for (String valor : new String[] { "0", "-1", "1000000", "10.001" }) {
             assertThatThrownBy(() -> CodigoPix.gerar("doacoes@example.org", new BigDecimal(valor),
