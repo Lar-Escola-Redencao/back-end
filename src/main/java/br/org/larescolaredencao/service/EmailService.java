@@ -1,14 +1,20 @@
 package br.org.larescolaredencao.service;
 
+import java.math.BigDecimal;
+import java.text.NumberFormat;
+import java.util.Locale;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -27,25 +33,41 @@ public class EmailService {
         this.mailSender = mailSender;
     }
 
-    public void enviarAgradecimentoPix(String destinatario, java.math.BigDecimal valor) {
+    public void enviarAgradecimentoPix(String destinatario, BigDecimal valor) {
+        String valorFormatado = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(valor);
+        ClassPathResource logo = new ClassPathResource("static/images/logo.png");
+
         try {
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+            MimeMessage mensagem = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(mensagem, true, "UTF-8");
             helper.setFrom(remetente);
             helper.setTo(destinatario);
             helper.setSubject("Obrigado pelo apoio — Lar Escola Redenção");
-            String valorFormatado = java.text.NumberFormat.getCurrencyInstance(
-                    java.util.Locale.forLanguageTag("pt-BR")).format(valor);
-            String texto = "Olá!\n\nObrigado por apoiar o Lar Escola Redenção. Você informou no site que realizou "
-                    + "uma doação via Pix no valor de " + valorFormatado + ".\n\n"
-                    + "Este e-mail é um agradecimento pela contribuição informada. Não confirma o recebimento "
-                    + "do pagamento e não substitui o comprovante emitido pelo seu banco.\n\n"
-                    + "Lar Escola Redenção";
-            ClassPathResource logo = new ClassPathResource("static/images/logo.png");
-            String marca = logo.exists()
-                    ? "<img src=\"cid:logoImage\" alt=\"Lar Escola Redenção\" width=\"96\" style=\"display:block;margin:0 auto;background:#ffffff;padding:6px;border-radius:8px;\">"
-                    : "<span style=\"color:#ffffff;font-size:20px;font-weight:600;\">Lar Escola Redenção</span>";
-            String htmlContent = """
+            helper.setText(montarTextoAgradecimento(valorFormatado), montarHtmlAgradecimento(valorFormatado, logo));
+            if (logo.exists()) {
+                helper.addInline("logoImage", logo);
+            }
+            mailSender.send(mensagem);
+        } catch (MessagingException | MailException e) {
+            logger.error("Falha ao enviar agradecimento Pix", e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Não foi possível enviar o agradecimento. Tente novamente.");
+        }
+    }
+
+    private String montarTextoAgradecimento(String valorFormatado) {
+        return "Olá!\n\nObrigado por apoiar o Lar Escola Redenção. Você informou no site que realizou "
+                + "uma doação via Pix no valor de " + valorFormatado + ".\n\n"
+                + "Este e-mail é um agradecimento pela contribuição informada. Não confirma o recebimento "
+                + "do pagamento e não substitui o comprovante emitido pelo seu banco.\n\n"
+                + "Lar Escola Redenção";
+    }
+
+    private String montarHtmlAgradecimento(String valorFormatado, ClassPathResource logo) {
+        String marca = logo.exists()
+                ? "<img src=\"cid:logoImage\" alt=\"Lar Escola Redenção\" width=\"96\" style=\"display:block;margin:0 auto;background:#ffffff;padding:6px;border-radius:8px;\">"
+                : "<span style=\"color:#ffffff;font-size:20px;font-weight:600;\">Lar Escola Redenção</span>";
+        return """
                     <!DOCTYPE html>
                     <html lang="pt-BR">
                     <head>
@@ -83,17 +105,6 @@ public class EmailService {
                     </body>
                     </html>
                     """.formatted(marca, valorFormatado);
-            helper.setText(texto, htmlContent);
-            if (logo.exists()) {
-                helper.addInline("logoImage", logo);
-            }
-            mailSender.send(message);
-        } catch (MessagingException | MailException e) {
-            logger.error("Falha ao enviar agradecimento Pix", e);
-            throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
-                    "Não foi possível enviar o agradecimento. Tente novamente.");
-        }
     }
 
     @Async
