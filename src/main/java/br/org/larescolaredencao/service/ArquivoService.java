@@ -17,6 +17,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -29,6 +30,9 @@ public class ArquivoService {
 
     @Value("${app.upload.dir:uploads/}")
     private String uploadDir;
+
+    @Value("${spring.servlet.multipart.max-file-size:10MB}")
+    private DataSize tamanhoMaximoArquivo = DataSize.ofMegabytes(10);
 
     private final CompressorImagem compressorImagem;
 
@@ -117,6 +121,10 @@ public class ArquivoService {
     }
 
     public void validarTipoArquivo(MultipartFile arquivo, TipoArquivo tipo) {
+        if (arquivo.getSize() > tamanhoMaximoArquivo.toBytes()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Cada arquivo deve ter no máximo " + tamanhoMaximoArquivo.toMegabytes() + " MB.");
+        }
         String nomeOriginal = obterNomeOriginalSeguro(arquivo);
         String extensao = extrairExtensao(nomeOriginal);
         String mensagemErro = "Tipo de arquivo não permitido. Extensões aceitas: "

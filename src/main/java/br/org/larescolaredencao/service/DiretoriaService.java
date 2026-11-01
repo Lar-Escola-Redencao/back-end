@@ -1,7 +1,5 @@
 package br.org.larescolaredencao.service;
 
-import java.util.Map;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,13 +16,6 @@ import br.org.larescolaredencao.repository.DiretoriaRepository;
 public class DiretoriaService {
 
 	private static final String SUBPASTA_FOTOS = "diretoria/";
-
-	private static final long TAMANHO_MAXIMO_BYTES = 5L * 1024 * 1024;
-
-	private static final Map<String, String> TIPOS_PERMITIDOS = Map.of(
-			"image/jpeg", ".jpg",
-			"image/png", ".png",
-			"image/webp", ".webp");
 
 	private final DiretoriaRepository diretoriaRepository;
 	private final ArquivoService arquivoService;
@@ -88,15 +79,8 @@ public class DiretoriaService {
 
 	private void validarFoto(MultipartFile foto) {
 		if (foto == null || foto.isEmpty()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A foto é obrigatória");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione uma foto.");
 		}
-		if (foto.getSize() > TAMANHO_MAXIMO_BYTES) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A foto deve ter no máximo 5MB");
-		}
-		String contentType = foto.getContentType();
-		if (contentType == null || !TIPOS_PERMITIDOS.containsKey(contentType.toLowerCase())) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Formato de foto inválido. Envie um arquivo JPEG, PNG ou WEBP");
-		}
+		arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 	}
 }

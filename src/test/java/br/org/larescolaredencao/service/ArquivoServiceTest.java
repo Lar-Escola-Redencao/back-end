@@ -1,8 +1,14 @@
 package br.org.larescolaredencao.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -14,6 +20,18 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
 
 class ArquivoServiceTest {
+
+    @Test
+    void deveRejeitarArquivoAcimaDeDezMbAntesDeGravar() throws IOException {
+        MockMultipartFile documento = new MockMultipartFile("arquivo", "documento.pdf", "application/pdf",
+                new byte[10 * 1024 * 1024 + 1]);
+        assertThatThrownBy(() -> arquivoService.salvarArquivo(documento, "documentos/", TipoArquivo.DOCUMENTO))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("10 MB");
+        try (var arquivos = Files.list(pastaUploads)) {
+            assertThat(arquivos.count()).isZero();
+        }
+    }
 
     @TempDir
     Path pastaUploads;
@@ -70,6 +88,42 @@ class ArquivoServiceTest {
         String caminho = arquivoService.salvarArquivo(laudo, "usuarios/saude/", TipoArquivo.SAUDE);
 
         assertThat(Files.readAllBytes(arquivoGravado(caminho))).isEqualTo(pdf);
+    }
+
+    @Test
+    void deveGravarDocxSemAlteracao() throws IOException {
+        Map<String, String> partes = Map.of(
+                "[Content_Types].xml", """
+                    <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+                      <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+                      <Default Extension="xml" ContentType="application/xml"/>
+                      <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+                    </Types>
+                    """,
+                "_rels/.rels", """
+                    <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+                      <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+                    </Relationships>
+                    """,
+                "word/document.xml", """
+                    <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                      <w:body><w:p><w:r><w:t>Documento de teste: preservação de conteúdo e acentuação.</w:t></w:r></w:p></w:body>
+                    </w:document>
+                    """);
+        ByteArrayOutputStream saida = new ByteArrayOutputStream();
+        try (ZipOutputStream zip = new ZipOutputStream(saida)) {
+            for (var parte : partes.entrySet()) {
+                zip.putNextEntry(new ZipEntry(parte.getKey()));
+                zip.write(parte.getValue().getBytes(StandardCharsets.UTF_8));
+                zip.closeEntry();
+            }
+        }
+        byte[] docx = saida.toByteArray();
+        MockMultipartFile documento = new MockMultipartFile("arquivo", "documento.docx",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx);
+        String caminho = arquivoService.salvarArquivo(documento, "paginas/1/documentos/", TipoArquivo.DOCUMENTO);
+        assertThat(caminho).endsWith("_documento.docx");
+        assertThat(Files.readAllBytes(arquivoGravado(caminho))).isEqualTo(docx);
     }
 
     private Path arquivoGravado(String caminhoNoBanco) {

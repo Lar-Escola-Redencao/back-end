@@ -41,8 +41,8 @@ services:
       SPRING_JPA_HIBERNATE_DDLAUTO: ${JPA_DDL_AUTO:-update}
       # o padrao do Spring e 1MB por arquivo; 10MB acompanha o limite do front (imagens sao compactadas depois, no CompressorImagem.java)
       SPRING_SERVLET_MULTIPART_MAXFILESIZE: 10MB
-      # cadastro completo de usuario envia a foto + ate 4 arquivos de saude na mesma requisicao
-      SPRING_SERVLET_MULTIPART_MAXREQUESTSIZE: 50MB
+      # foto + ate 4 anexos de 10MB; inclui margem para os campos e cabecalhos do formulario
+      SPRING_SERVLET_MULTIPART_MAXREQUESTSIZE: 55MB
     ports:
       - "8080:8080"
     volumes:

@@ -23,6 +23,13 @@ import br.org.larescolaredencao.service.CompressorImagem.ImagemComprimida;
 
 class CompressorImagemTest {
 
+    @Test
+    void deveRespeitarResolucaoMesmoQuandoPngOriginalForMenor() throws IOException {
+        byte[] original = codificar(new BufferedImage(2000, 10, BufferedImage.TYPE_BYTE_BINARY), "png");
+        ImagemComprimida resultado = new CompressorImagem().comprimir(original, TipoArquivo.FOTO);
+        assertThat(ler(resultado.conteudo()).getWidth()).isEqualTo(1920);
+    }
+
     private final CompressorImagem compressor = new CompressorImagem();
 
     @Test

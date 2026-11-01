@@ -51,21 +51,36 @@ public class ParceiroService {
 
 	public Parceiro atualizarParceiro(Long id, AtualizarParceiroDTO atualizarParceiroDTO) {
 		Parceiro p = getParceiroById(id);
+		String logoAntiga = p.getLogo();
+		String novaLogo = null;
 
 		if (atualizarParceiroDTO.getNome() != null && !atualizarParceiroDTO.getNome().isBlank()) {
 			p.setNome(atualizarParceiroDTO.getNome());
 		}
 
 		if (atualizarParceiroDTO.getLogo() != null && !atualizarParceiroDTO.getLogo().isEmpty()) {
-			arquivoService.deletarArquivo(p.getLogo());
-			p.setLogo(arquivoService.salvarArquivo(atualizarParceiroDTO.getLogo(), PASTA_LOGOS));
+			novaLogo = arquivoService.salvarArquivo(atualizarParceiroDTO.getLogo(), PASTA_LOGOS);
+			p.setLogo(novaLogo);
 		}
 
 		if (atualizarParceiroDTO.getAtivo() != null) {
 			p.setAtivo(atualizarParceiroDTO.getAtivo());
 		}
 
-		return parceiroRepository.save(p);
+		Parceiro salvo;
+		try {
+			salvo = parceiroRepository.save(p);
+		} catch (RuntimeException e) {
+			if (novaLogo != null) {
+				p.setLogo(logoAntiga);
+				arquivoService.deletarArquivo(novaLogo);
+			}
+			throw e;
+		}
+		if (novaLogo != null) {
+			arquivoService.deletarArquivo(logoAntiga);
+		}
+		return salvo;
 	}
 
 	public void deletarParceiro(Long id) {

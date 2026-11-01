@@ -28,8 +28,8 @@ import net.coobird.thumbnailator.Thumbnails;
 /**
  * Reduz e recomprime imagens antes de gravá-las.
  *
- * A recodificação também descarta os metadados EXIF (GPS, modelo do aparelho)
- * e garante que o conteúdo é de fato uma imagem, não apenas o MIME declarado.
+ * A recodificação descarta EXIF; PNG/WebP pequenos podem ser preservados se já forem menores.
+ * A decodificação valida o conteúdo da imagem, além do MIME declarado.
  */
 @Component
 public class CompressorImagem {
@@ -51,7 +51,8 @@ public class CompressorImagem {
     public ImagemComprimida comprimir(byte[] original, TipoArquivo tipo) {
         Cabecalho cabecalho = lerCabecalho(original);
         if ((long) cabecalho.largura() * cabecalho.altura() > MAXIMO_PIXELS) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Resolução da imagem muito alta.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Resolução da imagem muito alta. Escolha uma imagem com até 50 megapixels.");
         }
 
         boolean redimensionar = Math.max(cabecalho.largura(), cabecalho.altura()) > tipo.getDimensaoMaxima();
@@ -72,9 +73,9 @@ public class CompressorImagem {
                 }
             }
 
-            // JPEG é sempre regravado para descartar o EXIF; PNG e WebP nunca ficam maiores que o enviado.
+            // Preservar os bytes originais não pode desfazer um redimensionamento obrigatório.
             boolean formatoAceitoComoEsta = "png".equals(cabecalho.formato()) || "webp".equals(cabecalho.formato());
-            if (formatoAceitoComoEsta && resultado.conteudo().length >= original.length) {
+            if (!redimensionar && formatoAceitoComoEsta && resultado.conteudo().length >= original.length) {
                 resultado = new ImagemComprimida(original, cabecalho.formato());
             }
 
