@@ -18,6 +18,8 @@ import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.model.RedeSocial;
 import br.org.larescolaredencao.repository.ParceiroRepository;
 import br.org.larescolaredencao.repository.RedeSocialRepository;
+import br.org.larescolaredencao.repository.EventoRepository;
+import br.org.larescolaredencao.repository.EventoRedeSocialRepository;
 
 class SubstituicaoImagemTest {
     @TempDir Path uploads;
@@ -40,7 +42,7 @@ class SubstituicaoImagemTest {
         String antiga = parceiro.getLogo();
         when(repo.findById(1L)).thenReturn(Optional.of(parceiro));
         var dto = new AtualizarParceiroDTO(); dto.setLogo(invalida);
-        assertThatThrownBy(() -> new ParceiroService(repo, arquivos).atualizarParceiro(1L, dto))
+        assertThatThrownBy(() -> new ParceiroService(repo, arquivos, mock(EventoRepository.class)).atualizarParceiro(1L, dto))
                 .isInstanceOf(ResponseStatusException.class);
         assertThat(uploads.resolve(antiga.substring(9))).exists();
         assertThat(parceiro.getLogo()).isEqualTo(antiga);
@@ -55,7 +57,7 @@ class SubstituicaoImagemTest {
         String antiga = rede.getIcone();
         when(repo.findById(1L)).thenReturn(Optional.of(rede));
         var dto = new AtualizarRedeSocialDTO(); dto.setIcone(invalida);
-        assertThatThrownBy(() -> new RedeSocialService(repo, arquivos).atualizarRedeSocial(1L, dto))
+        assertThatThrownBy(() -> new RedeSocialService(repo, arquivos, mock(EventoRedeSocialRepository.class)).atualizarRedeSocial(1L, dto))
                 .isInstanceOf(ResponseStatusException.class);
         assertThat(uploads.resolve(antiga.substring(9))).exists();
         assertThat(rede.getIcone()).isEqualTo(antiga);
@@ -75,7 +77,7 @@ class SubstituicaoImagemTest {
             return invocacao.getArgument(0);
         });
         var dto = new AtualizarParceiroDTO(); dto.setLogo(foto);
-        new ParceiroService(repo, arquivos).atualizarParceiro(1L, dto);
+        new ParceiroService(repo, arquivos, mock(EventoRepository.class)).atualizarParceiro(1L, dto);
         assertThat(uploads.resolve(antiga.substring(9))).doesNotExist();
         assertThat(uploads.resolve(parceiro.getLogo().substring(9))).exists();
     }
@@ -89,7 +91,7 @@ class SubstituicaoImagemTest {
         when(repo.findById(1L)).thenReturn(Optional.of(parceiro));
         when(repo.save(any())).thenThrow(new IllegalStateException("Banco indisponível"));
         var dto = new AtualizarParceiroDTO(); dto.setLogo(foto);
-        assertThatThrownBy(() -> new ParceiroService(repo, arquivos).atualizarParceiro(1L, dto))
+        assertThatThrownBy(() -> new ParceiroService(repo, arquivos, mock(EventoRepository.class)).atualizarParceiro(1L, dto))
                 .isInstanceOf(IllegalStateException.class);
         assertThat(parceiro.getLogo()).isEqualTo(antiga);
         assertThat(uploads.resolve(antiga.substring(9))).exists();
