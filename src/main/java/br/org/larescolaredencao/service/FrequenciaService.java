@@ -153,6 +153,7 @@ public class FrequenciaService {
 
     private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
         LocalDateTime agora = agora();
+        validarInicioTurma(dto.getData(), turma, agora);
         List<Frequencia> historico = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turma.getId(), dto.getData());
         boolean possuiHistorico = !historico.isEmpty();
         if (!possuiHistorico) {
@@ -162,11 +163,6 @@ public class FrequenciaService {
             }
         } else {
             validarEdicaoFrequencia(membroLogado, primeiraCriacao(historico), agora);
-        }
-        LocalDateTime inicio = LocalDateTime.of(dto.getData(), turma.getHoraInicio());
-        if (isMonitor(membroLogado) && agora.isBefore(inicio)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Não é possível registrar a chamada antes do horário de início da turma.");
         }
 
         Set<Integer> ids = new HashSet<>();
@@ -222,10 +218,8 @@ public class FrequenciaService {
         List<Frequencia> historico = frequenciaRepository.findByMatriculaTurmaIdAndDataRegistro(turma.getId(), frequencia.getDataRegistro());
         LocalDateTime primeiraCriacao = primeiraCriacao(historico);
         LocalDateTime agora = agora();
+        validarInicioTurma(frequencia.getDataRegistro(), turma, agora);
         validarEdicaoFrequencia(membroLogado, primeiraCriacao, agora);
-        if (isMonitor(membroLogado) && agora.isBefore(LocalDateTime.of(frequencia.getDataRegistro(), turma.getHoraInicio()))) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível corrigir presenças antes do início da aula.");
-        }
 
         if (!Objects.equals(frequencia.getPresente(), dto.getPresente())) {
             frequencia.setPresente(dto.getPresente());
@@ -271,6 +265,16 @@ public class FrequenciaService {
                         .filter(turma -> turma != null && turma.getUnidade() != null)
                         .map(turma -> turma.getUnidade().getId())
                         .anyMatch(unidadesPermitidas::contains);
+    }
+
+    private void validarInicioTurma(LocalDate data, Turma turma, LocalDateTime agora) {
+        if (data.isAfter(agora.toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Aguarde o horário de início das atividades para registrar a frequência.");
+        }
+        if (agora.isBefore(LocalDateTime.of(data, turma.getHoraInicio()))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Aguarde o horário de início das atividades para registrar a frequência.");
+        }
     }
 
     private LocalDateTime agora() {

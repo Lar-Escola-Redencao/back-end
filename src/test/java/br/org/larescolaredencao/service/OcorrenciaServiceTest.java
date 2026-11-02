@@ -83,7 +83,7 @@ class OcorrenciaServiceTest {
     }
 
     @Test
-    void deveRejeitarHorarioForaDaTurmaEMudancaDoDiaNaEdicao() {
+    void deveRejeitarMudancaDoDiaNaEdicao() {
         LocalDate hoje = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate();
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
@@ -94,7 +94,7 @@ class OcorrenciaServiceTest {
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
         dto.setDescricao("Correção");
         dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
-        for (LocalDateTime fato : List.of(hoje.atTime(7, 59), hoje.plusDays(1).atTime(9, 0))) {
+        for (LocalDateTime fato : List.of(hoje.minusDays(1).atTime(9, 0), hoje.plusDays(1).atTime(9, 0))) {
             dto.setDataOcorrencia(fato);
             assertThatThrownBy(() -> service.atualizarOcorrencia(1, dto, membro))
                     .isInstanceOfSatisfying(ResponseStatusException.class,

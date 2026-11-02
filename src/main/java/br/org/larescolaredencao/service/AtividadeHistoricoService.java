@@ -127,7 +127,7 @@ public class AtividadeHistoricoService {
                 case EDICAO -> "corrigiu";
                 case EXCLUSAO -> "excluiu";
             };
-            return responsavel + " " + verbo + " a presença deste aluno.";
+            return responsavel + " " + verbo + " a presença deste usuário.";
         }
         String verbo = switch (acao) {
             case CADASTRO -> "registrou a chamada";
@@ -136,7 +136,7 @@ public class AtividadeHistoricoService {
         };
         long alunos = linhas.stream().map(linha -> contexto(linha).get("idUsuario"))
                 .filter(Objects::nonNull).distinct().count();
-        return responsavel + " " + verbo + " de " + alunos + (alunos == 1 ? " aluno." : " alunos.");
+        return responsavel + " " + verbo + " de " + alunos + (alunos == 1 ? " usuário." : " usuários.");
     }
 
     private String resumirRegistro(List<Linha> linhas, List<HistoricoEventoDTO> registros,
