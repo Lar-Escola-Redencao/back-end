@@ -1,5 +1,8 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
+
 import br.org.larescolaredencao.model.enums.EscolaridadeFamiliar;
 import br.org.larescolaredencao.model.enums.Parentesco;
 import jakarta.persistence.Column;
@@ -13,6 +16,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 
+@Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
 @Entity
 @Table(name = "composicao_familiar")
 public class ComposicaoFamiliar {

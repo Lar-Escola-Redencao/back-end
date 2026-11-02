@@ -11,8 +11,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.dto.ResponsavelHistoricoDTO;
 
 public interface MembroRepository extends JpaRepository<Membro, Integer> {
+
+    @Query("SELECT new br.org.larescolaredencao.dto.ResponsavelHistoricoDTO(m.id, m.nomeCompleto) FROM Membro m")
+    List<ResponsavelHistoricoDTO> listarResponsaveisHistorico();
     
     @EntityGraph(attributePaths = {"unidades", "papel"})
     Optional<Membro> findByEmail(String email);

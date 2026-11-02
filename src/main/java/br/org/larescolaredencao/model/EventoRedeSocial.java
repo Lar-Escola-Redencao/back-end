@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
@@ -13,6 +15,7 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
 
 // Link de um evento em uma rede social. Não é um @ManyToMany simples porque a ligação tem dado próprio (url_link).
+@Audited
 @Entity
 @Table(name = "evento_rede_social")
 public class EventoRedeSocial {

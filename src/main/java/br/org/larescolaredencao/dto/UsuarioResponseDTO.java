@@ -101,6 +101,7 @@ public class UsuarioResponseDTO {
 
     private ComposicaoFamiliarDTO mapearComposicaoFamiliar(ComposicaoFamiliar composicao) {
         ComposicaoFamiliarDTO dto = new ComposicaoFamiliarDTO();
+        dto.setId(composicao.getId());
         dto.setNomeCompleto(composicao.getNomeCompleto());
         dto.setParentescoVinculo(composicao.getParentescoVinculo());
         dto.setIdade(composicao.getIdade());

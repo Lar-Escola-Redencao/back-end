@@ -78,6 +78,7 @@ public class TurmaService {
         return new TurmaResponseDTO(buscarTurmaOuFalhar(id));
     }
 
+    @Transactional
     public TurmaResponseDTO criarTurma(CriarTurmaDTO dto) {
         Unidade unidade = buscarUnidadeOuFalhar(dto.getUnidadeId());
         validarHorario(dto.getHoraInicio(), dto.getHoraFim());
@@ -92,6 +93,7 @@ public class TurmaService {
         return new TurmaResponseDTO(turmaRepository.save(turma));
     }
 
+    @Transactional
     public TurmaResponseDTO atualizarTurma(Integer id, AtualizarTurmaDTO dto) {
         Turma turma = buscarTurmaOuFalhar(id);
         validarDto(dto);

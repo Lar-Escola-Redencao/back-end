@@ -54,6 +54,7 @@ class AutenticacaoServiceTest {
         UserDetails resultado = autenticacaoService.loadUserByUsername("12345678900");
 
         assertThat(resultado).isEqualTo(membro);
+        verify(repository).buscarPorCpf("12345678900");
     }
 
     @Test

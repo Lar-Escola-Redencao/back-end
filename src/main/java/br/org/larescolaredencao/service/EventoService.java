@@ -96,6 +96,7 @@ public class EventoService {
                 gratuito, pageable).map(EventoResponseDTO::new);
     }
 
+    @Transactional
     public EventoResponseDTO criarEvento(CriarEventoDTO dto) {
     	if (eventoRepository.existsByTituloAndDataEvento(dto.getTitulo(), dto.getDataEvento())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Um evento com este título e data já existe.");
@@ -114,7 +115,8 @@ public class EventoService {
 
         if (dto.getParceirosIds() != null && !dto.getParceirosIds().isEmpty()) {
             List<Parceiro> parceiros = parceiroRepository.findAllById(dto.getParceirosIds());
-            evento.setParceiros(parceiros);
+            evento.getParceiros().clear();
+            evento.getParceiros().addAll(parceiros);
         }
         
         if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
@@ -127,6 +129,7 @@ public class EventoService {
         return new EventoResponseDTO(salvo);
     }
 
+    @Transactional
     public EventoResponseDTO atualizarEvento(Integer id, AtualizarEventoDTO dto) {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
@@ -140,7 +143,8 @@ public class EventoService {
 
         if (dto.getParceirosIds() != null && !dto.getParceirosIds().isEmpty()) {
             List<Parceiro> parceiros = parceiroRepository.findAllById(dto.getParceirosIds());
-            evento.setParceiros(parceiros);
+            evento.getParceiros().clear();
+            evento.getParceiros().addAll(parceiros);
         } else {
             evento.getParceiros().clear();
         }
@@ -159,10 +163,12 @@ public class EventoService {
         return new EventoResponseDTO(salvo);
     }
 
+    @Transactional
     public void deletarEvento(Integer id) {
         Evento evento = eventoRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evento não encontrado."));
         
+        eventoRedeSocialRepository.deleteAll(eventoRedeSocialRepository.findByEventoIdOrderByRedeSocialNomeAsc(id));
         eventoRepository.delete(evento);
 
         if (evento.getImagem() != null) {
@@ -202,6 +208,7 @@ public class EventoService {
         return new EventoRedeSocialResponseDTO(eventoRedeSocialRepository.save(vinculo));
     }
 
+    @Transactional
     public void desvincularRedeSocial(Integer idEvento, Long idRedeSocial) {
         EventoRedeSocialId id = new EventoRedeSocialId(idEvento, idRedeSocial);
         if (!eventoRedeSocialRepository.existsById(id)) {
