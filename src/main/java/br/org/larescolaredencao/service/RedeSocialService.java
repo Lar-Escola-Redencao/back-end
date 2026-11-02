@@ -56,6 +56,8 @@ public class RedeSocialService {
 
 	public RedeSocial atualizarRedeSocial(Long id, AtualizarRedeSocialDTO atualizarRedeSocialDTO) {
 		RedeSocial r = getRedeSocialById(id);
+		String iconeAntigo = r.getIcone();
+		String novoIcone = null;
 
 		if (atualizarRedeSocialDTO.getNome() != null && !atualizarRedeSocialDTO.getNome().isBlank()) {
 			r.setNome(atualizarRedeSocialDTO.getNome());
@@ -66,15 +68,28 @@ public class RedeSocialService {
 		}
 
 		if (atualizarRedeSocialDTO.getIcone() != null && !atualizarRedeSocialDTO.getIcone().isEmpty()) {
-			arquivoService.deletarArquivo(r.getIcone());
-			r.setIcone(arquivoService.salvarArquivo(atualizarRedeSocialDTO.getIcone(), PASTA_ICONES));
+			novoIcone = arquivoService.salvarArquivo(atualizarRedeSocialDTO.getIcone(), PASTA_ICONES);
+			r.setIcone(novoIcone);
 		}
 
 		if (atualizarRedeSocialDTO.getAtivo() != null) {
 			r.setAtivo(atualizarRedeSocialDTO.getAtivo());
 		}
 
-		return redeSocialRepository.save(r);
+		RedeSocial salva;
+		try {
+			salva = redeSocialRepository.save(r);
+		} catch (RuntimeException e) {
+			if (novoIcone != null) {
+				r.setIcone(iconeAntigo);
+				arquivoService.deletarArquivo(novoIcone);
+			}
+			throw e;
+		}
+		if (novoIcone != null) {
+			arquivoService.deletarArquivo(iconeAntigo);
+		}
+		return salva;
 	}
 
 	public void deletarRedeSocial(Long id) {
