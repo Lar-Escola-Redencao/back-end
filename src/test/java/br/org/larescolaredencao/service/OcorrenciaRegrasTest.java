@@ -75,6 +75,21 @@ class OcorrenciaRegrasTest {
         verify(ocorrencias, times(1)).save(any());
     }
 
+    @Test void perfisEstrategicosRegistramAntesDoMesAnteriorComAutoriaDoColaboradorLogado() {
+        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
+        when(ocorrencias.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            for (String papel : List.of("ADMINISTRADOR", "COORDENADOR")) {
+                var autor = colaborador(8, papel);
+                var resposta = service.criarOcorrencia(cadastro(LocalDateTime.of(2026, 8, 1, 7, 0)), autor);
+                assertThat(resposta.getIdMembro()).isEqualTo(autor.getId());
+                assertThat(resposta.getNomeMembro()).isEqualTo(autor.getNomeCompleto());
+            }
+        }
+        verify(ocorrencias, times(2)).save(any());
+    }
+
     @Test void todosOsPerfisPodemRegistrarChegadaMasNaoInstanteFuturo() {
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         when(ocorrencias.save(any())).thenAnswer(inv -> inv.getArgument(0));
