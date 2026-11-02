@@ -56,7 +56,10 @@ class TurmaServiceTest {
         when(matriculaRepository.existsByTurmaId(1)).thenReturn(true);
         assertThatThrownBy(() -> turmaService.deletarTurma(1))
                 .isInstanceOfSatisfying(ResponseStatusException.class,
-                        e -> assertThat(e.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.CONFLICT));
+                        e -> {
+                            assertThat(e.getStatusCode()).isEqualTo(org.springframework.http.HttpStatus.CONFLICT);
+                            assertThat(e.getReason()).contains("matrículas vinculadas", "transferidos ou desligados");
+                        });
         org.mockito.Mockito.verify(turmaRepository, org.mockito.Mockito.never()).delete(any());
     }
 

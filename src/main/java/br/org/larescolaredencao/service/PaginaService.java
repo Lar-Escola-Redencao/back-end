@@ -106,7 +106,14 @@ public class PaginaService {
     }
 
     public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search) {
+        return listarDocumentosPaginado(idPagina, pageable, search, null);
+    }
+
+    public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search, Long secaoId) {
         String termo = TermoBusca.like(search);
+        if (secaoId != null) {
+            return documentoRepository.buscarPorSecao(idPagina, secaoId, termo, pageable).map(DocumentoResponseDTO::new);
+        }
         if (termo != null) {
             return documentoRepository.buscar(idPagina, termo, pageable).map(DocumentoResponseDTO::new);
         }
@@ -232,10 +239,11 @@ public class PaginaService {
     @Transactional
     public void deletarSecao(Long id) {
         Secao secao = buscarSecaoPorId(id);
-        arquivoService.deletarArquivo(secao.getImagem());
-        for (Documento documento : secao.getDocumentos()) {
-            arquivoService.deletarArquivo(documento.getArquivo());
+        if (documentoRepository.existsBySecaoId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Exclua os documentos vinculados a esta seção antes de excluí-la.");
         }
+        arquivoService.deletarArquivo(secao.getImagem());
         secaoRepository.delete(secao);
     }
 

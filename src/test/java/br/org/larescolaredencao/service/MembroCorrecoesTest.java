@@ -15,6 +15,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
@@ -25,6 +26,26 @@ import static org.mockito.ArgumentMatchers.any;
 
 @ExtendWith(MockitoExtension.class)
 class MembroCorrecoesTest {
+
+    @Test
+    void explicaBloqueioDeExclusaoQuandoHaRegistrosVinculados() {
+        Membro membro = new Membro(); membro.setId(30);
+        when(membros.findById(30)).thenReturn(Optional.of(membro));
+        doThrow(new DataIntegrityViolationException("fk_ocorr_membro")).when(membros).flush();
+        assertThatThrownBy(() -> service.deletarMembro(30))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).contains("registros vinculados", "preservados");
+                });
+    }
+
+    @Test
+    void permiteExcluirColaboradorSemRegistrosVinculados() {
+        Membro membro = new Membro(); membro.setId(30);
+        when(membros.findById(30)).thenReturn(Optional.of(membro));
+        service.deletarMembro(30);
+        verify(membros).delete(membro); verify(membros).flush();
+    }
 
     @Test
     void emailEquivalenteECpfComMascaraNaoConsultamDuplicidadeNemAlteramIdentificadores() {

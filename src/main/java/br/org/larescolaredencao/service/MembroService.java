@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -329,6 +330,12 @@ public class MembroService {
     public void deletarMembro(Integer id) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
-        membroRepository.delete(membro);
+        try {
+            membroRepository.delete(membro);
+            membroRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir este colaborador porque existem registros vinculados a ele, como entrevistas, presenças ou ocorrências. Esses registros precisam ser preservados.");
+        }
     }
 }

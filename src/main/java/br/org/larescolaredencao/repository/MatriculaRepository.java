@@ -28,6 +28,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     boolean existsByUsuarioAndStatus(Usuario usuario, StatusMatricula status);
     boolean existsByTurmaId(Integer turmaId);
+    boolean existsByTurmaUnidadeId(Integer unidadeId);
 
     @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario u WHERE m.id IN (" +
             "  SELECT MAX(m2.id) FROM Matricula m2 WHERE m2.turma.id = :turmaId " +

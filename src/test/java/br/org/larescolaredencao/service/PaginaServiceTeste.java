@@ -217,6 +217,44 @@ class PaginaServiceTeste {
         return secao;
     }
 
+    @Test
+    void deveImpedirExclusaoDeSecaoComDocumentosSemApagarArquivos() {
+        Secao secao = secaoExistente("/uploads/capa.png");
+        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        when(documentoRepository.existsBySecaoId(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> paginaService.deletarSecao(10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).contains("documentos vinculados");
+                });
+        verify(secaoRepository, never()).delete(any(Secao.class));
+        org.mockito.Mockito.verifyNoInteractions(arquivoService);
+    }
+
+    @Test
+    void devePermitirExcluirSecaoSemDocumentos() {
+        Secao secao = secaoExistente(null);
+        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        paginaService.deletarSecao(10L);
+        verify(secaoRepository).delete(secao);
+    }
+
+    @Test
+    void deveCombinarFiltroDeSecaoComBuscaEPaginacao() {
+        when(documentoRepository.buscarPorSecao(1L, 3L, "%ata%", pageable)).thenReturn(Page.empty(pageable));
+        assertThat(paginaService.listarDocumentosPaginado(1L, pageable, "Ata", 3L).getTotalElements()).isZero();
+        verify(documentoRepository).buscarPorSecao(1L, 3L, "%ata%", pageable);
+        verify(documentoRepository, never()).buscar(any(), any(), any());
+    }
+
+    @Test
+    void deveFiltrarSecaoMesmoSemTermoDeBusca() {
+        when(documentoRepository.buscarPorSecao(1L, 3L, null, pageable)).thenReturn(Page.empty(pageable));
+        paginaService.listarDocumentosPaginado(1L, pageable, null, 3L);
+        verify(documentoRepository).buscarPorSecao(1L, 3L, null, pageable);
+    }
+
     private MultipartFile imagemFake() {
         return new MockMultipartFile("imagem", "foto.png", "image/png", "conteudo-binario".getBytes());
     }

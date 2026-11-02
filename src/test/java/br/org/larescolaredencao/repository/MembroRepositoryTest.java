@@ -119,6 +119,23 @@ class MembroRepositoryTest {
         return papel;
     }
 
+    @Test
+    void somenteAdministradoresNaoImpedemExcluirUnidade() {
+        Unidade soAdministradores = salvarUnidade("Unidade só com administradores");
+        salvarMembro("Administrador vinculado", administrador, soAdministradores);
+        entityManager.flush();
+        assertThat(membros.existsByUnidadesIdAndPapelNomePapelNot(soAdministradores.getId(), "ADMINISTRADOR")).isFalse();
+    }
+
+    @Test
+    void monitoresECoordenadoresImpedemExcluirSuasUnidades() {
+        assertThat(membros.existsByUnidadesIdAndPapelNomePapelNot(unidade.getId(), "ADMINISTRADOR")).isTrue();
+        Unidade soCoordenador = salvarUnidade("Unidade só com coordenador");
+        salvarMembro("Coordenador vinculado", papel("COORDENADOR"), soCoordenador);
+        entityManager.flush();
+        assertThat(membros.existsByUnidadesIdAndPapelNomePapelNot(soCoordenador.getId(), "ADMINISTRADOR")).isTrue();
+    }
+
     private Unidade salvarUnidade(String nome) {
         Unidade nova = new Unidade();
         nova.setNome(nome);
