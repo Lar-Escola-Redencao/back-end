@@ -258,4 +258,32 @@ class PaginaServiceTeste {
     private MultipartFile imagemFake() {
         return new MockMultipartFile("imagem", "foto.png", "image/png", "conteudo-binario".getBytes());
     }
+
+    @Test
+    void impedeCadastrarOutroMarcoNoMesmoAnoAntesDeSalvarImagem() {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        when(secaoRepository.buscarOutroMarcoDoAno(2L, "2026", null)).thenReturn(List.of(new Secao()));
+        CriarSecaoDTO dto = new CriarSecaoDTO(); dto.setGrupo("historia"); dto.setTitulo("2026"); dto.setImagem(imagemFake());
+        assertThatThrownBy(() -> paginaService.criarSecao(2L, dto))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).contains("2026", "registro existente");
+                });
+        verify(secaoRepository, never()).save(any());
+        org.mockito.Mockito.verifyNoInteractions(arquivoService);
+    }
+
+    @Test
+    void impedeEditarMarcoParaAnoJaUtilizado() {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        Secao secao = secaoExistente(null); secao.setGrupo("historia"); secao.setTitulo("2025");
+        when(secaoRepository.findByIdAndPaginaId(10L, 2L)).thenReturn(Optional.of(secao));
+        when(secaoRepository.buscarOutroMarcoDoAno(2L, "2026", 10L)).thenReturn(List.of(new Secao()));
+        var dto = new br.org.larescolaredencao.dto.AtualizarSecaoDTO(); dto.setTitulo("2026");
+        assertThatThrownBy(() -> paginaService.atualizarSecao(2L, 10L, dto)).isInstanceOf(ResponseStatusException.class);
+        assertThat(secao.getTitulo()).isEqualTo("2025");
+        verify(secaoRepository, never()).save(any());
+    }
 }
