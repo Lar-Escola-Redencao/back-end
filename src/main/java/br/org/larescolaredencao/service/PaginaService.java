@@ -412,10 +412,16 @@ public class PaginaService {
                 exigirImagem(grupo, possuiArquivo, imagemAnterior);
             }
             case GRUPO_PIX -> {
-                // Chave em conteudo e QR Code em imagem; titulo não é usado.
-                secao.setTitulo(null);
-                secao.setConteudo(textoObrigatorio(grupo, "conteudo", conteudo));
-                exigirImagem(grupo, possuiArquivo, imagemAnterior);
+                // O QR Code é gerado a partir da chave; imagens antigas continuam compatíveis.
+                String recebedor = validarTamanhoTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                try {
+                    CodigoPix.normalizarNome(recebedor, 25);
+                } catch (IllegalStateException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Informe um nome de recebedor válido, com até 25 caracteres.");
+                }
+                secao.setTitulo(recebedor);
+                secao.setConteudo(CodigoPix.normalizarChave(textoObrigatorio(grupo, "conteudo", conteudo)));
             }
             default -> throw new IllegalStateException("Grupo sem regra de gravação: " + grupo);
         }
