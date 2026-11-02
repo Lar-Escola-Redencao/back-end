@@ -30,6 +30,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -126,6 +127,7 @@ public class FrequenciaService {
 
     @Transactional
     public void salvarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
 
@@ -136,10 +138,17 @@ public class FrequenciaService {
 
     @Transactional
     public void atualizarFrequenciaEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Turma turma = turmaRepository.findByIdComBloqueio(dto.getIdTurma())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Turma não encontrada."));
         validarAcessoUnidade(membroLogado, turma.getUnidade());
         registrarEmLote(dto, membroLogado, turma, true);
+    }
+
+    private void validarDeclaracao(Boolean declaracaoAceita) {
+        if (!Boolean.TRUE.equals(declaracaoAceita)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Confirme o preenchimento das frequências.");
+        }
     }
 
     private void registrarEmLote(SalvarFrequenciaEmLoteDTO dto, Membro membroLogado, Turma turma, boolean apenasAtualizar) {
@@ -181,8 +190,10 @@ public class FrequenciaService {
                 frequencia.setDataRegistro(dto.getData());
                 frequencia.setDataCriacao(agora.withNano(0));
             }
-            frequencia.setPresente(fDto.getPresente());
-            frequencia.setMembro(membroLogado);
+            if (!Objects.equals(frequencia.getPresente(), fDto.getPresente())) {
+                frequencia.setPresente(fDto.getPresente());
+                frequencia.setMembro(membroLogado);
+            }
             registros.add(frequencia);
         }
         try {
@@ -195,6 +206,7 @@ public class FrequenciaService {
 
     @Transactional
     public FrequenciaUsuarioResponseDTO atualizarFrequencia(Integer id, AtualizarFrequenciaDTO dto, Membro membroLogado) {
+        validarDeclaracao(dto.getDeclaracaoAceita());
         Frequencia frequencia = frequenciaRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Registro de frequência não encontrado."));
         
@@ -209,8 +221,10 @@ public class FrequenciaService {
         validarInicioTurma(frequencia.getDataRegistro(), turma, agora);
         validarEdicaoFrequencia(membroLogado, primeiraCriacao, agora);
 
-        frequencia.setPresente(dto.getPresente());
-        frequencia.setMembro(membroLogado);
+        if (!Objects.equals(frequencia.getPresente(), dto.getPresente())) {
+            frequencia.setPresente(dto.getPresente());
+            frequencia.setMembro(membroLogado);
+        }
         frequencia = frequenciaRepository.save(frequencia);
 
         List<Ocorrencia> ocorrencias = ocorrenciaRepository.findByMatriculaIdAndDataOcorrencia(frequencia.getMatricula().getId(), frequencia.getDataRegistro());

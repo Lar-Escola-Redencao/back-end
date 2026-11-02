@@ -4,13 +4,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarParceiroDTO;
 import br.org.larescolaredencao.dto.CriarParceiroDTO;
 import br.org.larescolaredencao.model.Parceiro;
 import br.org.larescolaredencao.repository.ParceiroRepository;
+import br.org.larescolaredencao.repository.EventoRepository;
 
+@Transactional
 @Service
 public class ParceiroService {
 
@@ -18,10 +21,13 @@ public class ParceiroService {
 
 	private ParceiroRepository parceiroRepository;
 	private ArquivoService arquivoService;
+	private final EventoRepository eventoRepository;
 
-	public ParceiroService(ParceiroRepository parceiroRepository, ArquivoService arquivoService) {
+	public ParceiroService(ParceiroRepository parceiroRepository, ArquivoService arquivoService,
+			EventoRepository eventoRepository) {
 		this.parceiroRepository = parceiroRepository;
 		this.arquivoService = arquivoService;
+		this.eventoRepository = eventoRepository;
 	}
 
 	public Page<Parceiro> getAllParceiros(Pageable pageable) {
@@ -51,26 +57,45 @@ public class ParceiroService {
 
 	public Parceiro atualizarParceiro(Long id, AtualizarParceiroDTO atualizarParceiroDTO) {
 		Parceiro p = getParceiroById(id);
+		String logoAntiga = p.getLogo();
+		String novaLogo = null;
 
 		if (atualizarParceiroDTO.getNome() != null && !atualizarParceiroDTO.getNome().isBlank()) {
 			p.setNome(atualizarParceiroDTO.getNome());
 		}
 
 		if (atualizarParceiroDTO.getLogo() != null && !atualizarParceiroDTO.getLogo().isEmpty()) {
-			arquivoService.deletarArquivo(p.getLogo());
-			p.setLogo(arquivoService.salvarArquivo(atualizarParceiroDTO.getLogo(), PASTA_LOGOS));
+			novaLogo = arquivoService.salvarArquivo(atualizarParceiroDTO.getLogo(), PASTA_LOGOS);
+			p.setLogo(novaLogo);
 		}
 
 		if (atualizarParceiroDTO.getAtivo() != null) {
 			p.setAtivo(atualizarParceiroDTO.getAtivo());
 		}
 
-		return parceiroRepository.save(p);
+		Parceiro salvo;
+		try {
+			salvo = parceiroRepository.save(p);
+		} catch (RuntimeException e) {
+			if (novaLogo != null) {
+				p.setLogo(logoAntiga);
+				arquivoService.deletarArquivo(novaLogo);
+			}
+			throw e;
+		}
+		if (novaLogo != null) {
+			arquivoService.deletarArquivo(logoAntiga);
+		}
+		return salvo;
 	}
 
 	public void deletarParceiro(Long id) {
 		Parceiro p = getParceiroById(id);
 		arquivoService.deletarArquivo(p.getLogo());
+		for (var evento : eventoRepository.findByParceirosId(id)) {
+			evento.getParceiros().removeIf(parceiro -> parceiro.getId().equals(id));
+		}
+		eventoRepository.flush();
 		parceiroRepository.delete(p);
 	}
 }

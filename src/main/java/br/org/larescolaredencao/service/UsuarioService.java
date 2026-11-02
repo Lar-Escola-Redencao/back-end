@@ -531,18 +531,7 @@ public class UsuarioService {
         }
 
         if (dto.getComposicaoFamiliar() != null) {
-            composicaoFamiliarRepository.deleteByIdUsuario(usuario.getId());
-            for (ComposicaoFamiliarDTO cfDto : dto.getComposicaoFamiliar()) {
-                ComposicaoFamiliar cf = new ComposicaoFamiliar();
-                cf.setIdUsuario(usuario.getId());
-                cf.setNomeCompleto(cfDto.getNomeCompleto());
-                cf.setParentescoVinculo(cfDto.getParentescoVinculo());
-                cf.setIdade(cfDto.getIdade());
-                cf.setEscolaridade(cfDto.getEscolaridade());
-                if (cfDto.getRenda() != null) cf.setRenda(cfDto.getRenda());
-                if (cfDto.getBeneficios() != null) cf.setBeneficios(cfDto.getBeneficios());
-                composicaoFamiliarRepository.save(cf);
-            }
+            atualizarComposicaoFamiliar(usuario.getId(), dto.getComposicaoFamiliar());
         }
 
         Matricula matriculaAtiva = obterMatriculaAtiva(usuario);
@@ -562,6 +551,42 @@ public class UsuarioService {
 
         List<ContatoUsuario> contatosSalvos = contatoUsuarioRepository.findByUsuario(usuario);
         return montarRespostaCompleta(usuario, contatosSalvos, matriculaAtiva);
+    }
+
+    private void atualizarComposicaoFamiliar(Integer usuarioId, List<ComposicaoFamiliarDTO> familiaresDTO) {
+        List<ComposicaoFamiliar> familiaresAtuais =
+                composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(usuarioId);
+        Set<Integer> idsMantidos = new HashSet<>();
+
+        for (ComposicaoFamiliarDTO dto : familiaresDTO) {
+            ComposicaoFamiliar familiar;
+            if (dto.getId() == null) {
+                familiar = new ComposicaoFamiliar();
+                familiar.setIdUsuario(usuarioId);
+            } else {
+                if (!idsMantidos.add(dto.getId())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O mesmo familiar não pode ser informado mais de uma vez.");
+                }
+                familiar = familiaresAtuais.stream()
+                        .filter(atual -> atual.getId().equals(dto.getId()))
+                        .findFirst()
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Familiar não pertence ao usuário informado."));
+            }
+
+            familiar.setNomeCompleto(dto.getNomeCompleto());
+            familiar.setParentescoVinculo(dto.getParentescoVinculo());
+            familiar.setIdade(dto.getIdade());
+            familiar.setEscolaridade(dto.getEscolaridade());
+            if (dto.getRenda() != null) familiar.setRenda(dto.getRenda());
+            if (dto.getBeneficios() != null) familiar.setBeneficios(dto.getBeneficios());
+            composicaoFamiliarRepository.save(familiar);
+        }
+
+        for (ComposicaoFamiliar familiar : familiaresAtuais) {
+            if (!idsMantidos.contains(familiar.getId())) {
+                composicaoFamiliarRepository.delete(familiar);
+            }
+        }
     }
 
     private List<Contato> resolverContatosParaAtualizacao(List<ContatoDTO> contatosDTO) {

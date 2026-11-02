@@ -10,6 +10,8 @@ import br.org.larescolaredencao.model.EventoRedeSocialId;
 
 public interface EventoRedeSocialRepository extends JpaRepository<EventoRedeSocial, EventoRedeSocialId> {
 
+    List<EventoRedeSocial> findByRedeSocialId(Long idRedeSocial);
+
     // Traz a rede social junto para montar a resposta sem uma consulta extra por item.
     @EntityGraph(attributePaths = "redeSocial")
     List<EventoRedeSocial> findByEventoIdOrderByRedeSocialNomeAsc(Integer idEvento);

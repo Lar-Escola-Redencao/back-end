@@ -42,7 +42,7 @@ class FrequenciaRegrasTest {
 
     SalvarFrequenciaEmLoteDTO lote() {
         var item = new FrequenciaDTO(); item.setIdMatricula(10); item.setPresente(true);
-        var dto = new SalvarFrequenciaEmLoteDTO(); dto.setIdTurma(1); dto.setData(dia); dto.setFrequencias(List.of(item)); return dto;
+        var dto = new SalvarFrequenciaEmLoteDTO(); dto.setDeclaracaoAceita(true); dto.setIdTurma(1); dto.setData(dia); dto.setFrequencias(List.of(item)); return dto;
     }
 
     Frequencia existente(LocalDateTime dataCriacao) {
@@ -127,7 +127,7 @@ class FrequenciaRegrasTest {
         when(frequencias.findById(2)).thenReturn(Optional.of(recente));
         when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, dia)).thenReturn(List.of(recente, primeiro));
         when(frequencias.save(recente)).thenReturn(recente);
-        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO(); dto.setPresente(true);
+        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO(); dto.setDeclaracaoAceita(true); dto.setPresente(true);
         try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
             tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(criacao.plusHours(48));
             var resposta = service.atualizarFrequencia(2, dto, monitor);

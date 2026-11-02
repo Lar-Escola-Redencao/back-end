@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarUnidadeDTO;
@@ -46,6 +47,7 @@ public class UnidadeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unidade não encontrada."));
     }
 
+    @Transactional
     public Unidade criarUnidade(CriarUnidadeDTO dto) {
         validarFaixaEtaria(dto.getIdadeMin(), dto.getIdadeMax());
         validarHorarioFuncionamento(dto.getHorarioAbertura(), dto.getHorarioFechamento());
@@ -73,6 +75,7 @@ public class UnidadeService {
         return unidadeRepository.save(unidade);
     }
 
+    @Transactional
     public Unidade atualizarUnidade(Integer id, AtualizarUnidadeDTO dto) {
         Unidade unidade = getUnidadeById(id);
 
@@ -109,6 +112,7 @@ public class UnidadeService {
         return unidadeRepository.save(unidade);
     }
 
+    @Transactional
     public void deletarUnidade(Integer id) {
         Unidade unidade = getUnidadeById(id);
         unidadeRepository.delete(unidade);

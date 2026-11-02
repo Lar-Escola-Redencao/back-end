@@ -1,5 +1,9 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.RelationTargetAuditMode;
+import org.hibernate.envers.NotAudited;
+
 import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
@@ -17,6 +21,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
+@Audited(targetAuditMode = RelationTargetAuditMode.NOT_AUDITED)
 @Entity
 @Table(name = "usuario")
 public class Usuario {
@@ -70,6 +75,7 @@ public class Usuario {
     @Column(name = "imagem_perfil", length = 255)
     private String imagemPerfil;
 
+    @NotAudited
     @OneToMany(mappedBy = "usuario")
     private List<Matricula> matriculas = new ArrayList<>();
 
