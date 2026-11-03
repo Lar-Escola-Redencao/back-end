@@ -23,7 +23,7 @@ public class AtividadeHistoricoRepository {
 
     private static final String BASE = """
             select evento.*, revisao.rev, revisao.revtstmp, revisao.id_membro, revisao.nome_responsavel,
-                   concat(revisao.rev, ':', evento.categoria, ':',
+                   concat(revisao.rev, ':', %s, ':',
                        case when evento.categoria = 'PRESENCAS' then concat(
                            coalesce(json_unquote(json_extract(evento.contexto_novo, '$.idTurma')),
                                     json_unquote(json_extract(evento.contexto_anterior, '$.idTurma')), evento.chave),
@@ -33,7 +33,7 @@ public class AtividadeHistoricoRepository {
             from historico_evento evento
             join revinfo revisao on revisao.operacao = evento.operacao
             where revisao.referencia_implantacao = false
-            """;
+            """.formatted(HistoricoRepository.CATEGORIA);
 
     private final NamedParameterJdbcTemplate jdbcTemplate;
     private final HistoricoRepository historicoRepository;
@@ -133,6 +133,7 @@ public class AtividadeHistoricoRepository {
                     + " else " + valor(dados, "titulo", valor(dados, "nome", "'Conheça a OSC'")) + " end"
                 + " when 'TRANSPARENCIA' then " + titulo
                 + " when 'USUARIOS' then " + usuario
+                + " when 'ENTREVISTAS' then " + usuario
                 + " when 'OCORRENCIAS' then " + usuario
                 + " when 'PRESENCAS' then concat(" + turma + ", "
                     + "case when " + valor(contexto, "turma.unidade", "''") + " = '' then '' else concat(' (', "
@@ -232,11 +233,11 @@ public class AtividadeHistoricoRepository {
         StringBuilder sql = new StringBuilder(BASE);
         Map<String, Object> parametros = new HashMap<>();
         if (filtro.areaSistema() != null) {
-            sql.append(" and evento.categoria in (:categoriasArea)\n");
-            parametros.put("categoriasArea", filtro.areaSistema().tipos().stream().map(Enum::name).toList());
+            sql.append(" and " + HistoricoRepository.CATEGORIA + " in (:categoriasArea)\n");
+            parametros.put("categoriasArea", filtro.areaSistema().tiposNoContexto(filtro.idUsuario()).stream().map(Enum::name).toList());
         }
         if (filtro.tipoRegistro() != null) {
-            sql.append(" and evento.categoria = :categoria\n");
+            sql.append(" and " + HistoricoRepository.CATEGORIA + " = :categoria\n");
             parametros.put("categoria", filtro.tipoRegistro().name());
         }
         if (filtro.idRegistro() != null) {

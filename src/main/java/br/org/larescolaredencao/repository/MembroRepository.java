@@ -15,6 +15,8 @@ import br.org.larescolaredencao.dto.ResponsavelHistoricoDTO;
 
 public interface MembroRepository extends JpaRepository<Membro, Integer> {
 
+    boolean existsByUnidadesIdAndPapelNomePapelNot(Integer unidadeId, String nomePapel);
+
     @Query("SELECT new br.org.larescolaredencao.dto.ResponsavelHistoricoDTO(m.id, m.nomeCompleto) FROM Membro m")
     List<ResponsavelHistoricoDTO> listarResponsaveisHistorico();
     

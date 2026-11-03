@@ -13,6 +13,14 @@ import java.util.Collection;
 import java.util.List;
 
 public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
+    @Query("""
+            select m from Matricula m join fetch m.turma t join fetch t.unidade u
+            where m.usuario.id = :usuario and (:admin = true or u.id in :unidades)
+            order by m.dataIngresso desc, m.id desc
+            """)
+    List<Matricula> listarParaAcompanhamento(@Param("usuario") Integer usuario,
+            @Param("admin") boolean admin, @Param("unidades") List<Integer> unidades);
+
     
     List<Matricula> findByUsuario(Usuario usuario);
     
@@ -20,6 +28,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     boolean existsByUsuarioAndStatus(Usuario usuario, StatusMatricula status);
     boolean existsByTurmaId(Integer turmaId);
+    boolean existsByTurmaUnidadeId(Integer unidadeId);
 
     @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario u WHERE m.id IN (" +
             "  SELECT MAX(m2.id) FROM Matricula m2 WHERE m2.turma.id = :turmaId " +

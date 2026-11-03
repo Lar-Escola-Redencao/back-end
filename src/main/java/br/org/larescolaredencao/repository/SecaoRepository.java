@@ -15,6 +15,10 @@ import jakarta.persistence.LockModeType;
 
 public interface SecaoRepository extends JpaRepository<Secao, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Secao s where s.pagina.id = :pagina and s.grupo = 'historia' and s.titulo = :ano and (:id is null or s.id <> :id)")
+    List<Secao> buscarOutroMarcoDoAno(@Param("pagina") Long pagina, @Param("ano") String ano, @Param("id") Long id);
+
     /** Seções de uma página específica, para não misturar o conteúdo de páginas diferentes. */
     List<Secao> findByPaginaIdOrderByGrupoAscOrdemAsc(Long idPagina);
 

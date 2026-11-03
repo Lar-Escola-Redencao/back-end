@@ -217,7 +217,73 @@ class PaginaServiceTeste {
         return secao;
     }
 
+    @Test
+    void deveImpedirExclusaoDeSecaoComDocumentosSemApagarArquivos() {
+        Secao secao = secaoExistente("/uploads/capa.png");
+        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        when(documentoRepository.existsBySecaoId(10L)).thenReturn(true);
+
+        assertThatThrownBy(() -> paginaService.deletarSecao(10L))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).contains("documentos vinculados");
+                });
+        verify(secaoRepository, never()).delete(any(Secao.class));
+        org.mockito.Mockito.verifyNoInteractions(arquivoService);
+    }
+
+    @Test
+    void devePermitirExcluirSecaoSemDocumentos() {
+        Secao secao = secaoExistente(null);
+        when(secaoRepository.findById(10L)).thenReturn(Optional.of(secao));
+        paginaService.deletarSecao(10L);
+        verify(secaoRepository).delete(secao);
+    }
+
+    @Test
+    void deveCombinarFiltroDeSecaoComBuscaEPaginacao() {
+        when(documentoRepository.buscarPorSecao(1L, 3L, "%ata%", pageable)).thenReturn(Page.empty(pageable));
+        assertThat(paginaService.listarDocumentosPaginado(1L, pageable, "Ata", 3L).getTotalElements()).isZero();
+        verify(documentoRepository).buscarPorSecao(1L, 3L, "%ata%", pageable);
+        verify(documentoRepository, never()).buscar(any(), any(), any());
+    }
+
+    @Test
+    void deveFiltrarSecaoMesmoSemTermoDeBusca() {
+        when(documentoRepository.buscarPorSecao(1L, 3L, null, pageable)).thenReturn(Page.empty(pageable));
+        paginaService.listarDocumentosPaginado(1L, pageable, null, 3L);
+        verify(documentoRepository).buscarPorSecao(1L, 3L, null, pageable);
+    }
+
     private MultipartFile imagemFake() {
         return new MockMultipartFile("imagem", "foto.png", "image/png", "conteudo-binario".getBytes());
+    }
+
+    @Test
+    void impedeCadastrarOutroMarcoNoMesmoAnoAntesDeSalvarImagem() {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        when(secaoRepository.buscarOutroMarcoDoAno(2L, "2026", null)).thenReturn(List.of(new Secao()));
+        CriarSecaoDTO dto = new CriarSecaoDTO(); dto.setGrupo("historia"); dto.setTitulo("2026"); dto.setImagem(imagemFake());
+        assertThatThrownBy(() -> paginaService.criarSecao(2L, dto))
+                .isInstanceOfSatisfying(ResponseStatusException.class, erro -> {
+                    assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.CONFLICT);
+                    assertThat(erro.getReason()).contains("2026", "registro existente");
+                });
+        verify(secaoRepository, never()).save(any());
+        org.mockito.Mockito.verifyNoInteractions(arquivoService);
+    }
+
+    @Test
+    void impedeEditarMarcoParaAnoJaUtilizado() {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        Secao secao = secaoExistente(null); secao.setGrupo("historia"); secao.setTitulo("2025");
+        when(secaoRepository.findByIdAndPaginaId(10L, 2L)).thenReturn(Optional.of(secao));
+        when(secaoRepository.buscarOutroMarcoDoAno(2L, "2026", 10L)).thenReturn(List.of(new Secao()));
+        var dto = new br.org.larescolaredencao.dto.AtualizarSecaoDTO(); dto.setTitulo("2026");
+        assertThatThrownBy(() -> paginaService.atualizarSecao(2L, 10L, dto)).isInstanceOf(ResponseStatusException.class);
+        assertThat(secao.getTitulo()).isEqualTo("2025");
+        verify(secaoRepository, never()).save(any());
     }
 }

@@ -33,6 +33,7 @@ public enum EntidadeAuditada {
     FICHA(FichaSocioeconomica.class, "ficha_socioeconomica", USUARIOS, "Dados socioeconômicos", "id_usuario"),
     COMPOSICAO(ComposicaoFamiliar.class, "composicao_familiar", USUARIOS, "Composição familiar", "id"),
     ARQUIVO(ArquivoSaude.class, "arquivo_saude", USUARIOS, "Arquivo de saúde", "id"),
+    ENTREVISTA(br.org.larescolaredencao.model.EntrevistaSocial.class, "entrevista_social", ENTREVISTAS, "Entrevista social", "id"),
     CONTATO(Contato.class, "contato", CONTATOS, "Contato", "id"),
     VINCULO(ContatoUsuario.class, "contato_usuario", VINCULOS_CONTATOS, "Vínculo de contato", "id_usuario", "id_contato"),
     FREQUENCIA(Frequencia.class, "frequencia", PRESENCAS, "Presença", "id"),

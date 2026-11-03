@@ -385,7 +385,7 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         return switch (entidade) {
             case LINK_EVENTO -> valores.get("idEvento");
             case PAGINA, SECAO, DOCUMENTO -> contexto.get("idPagina");
-            case MATRICULA, FICHA, COMPOSICAO, ARQUIVO -> contexto.get("idUsuario");
+            case MATRICULA, FICHA, COMPOSICAO, ARQUIVO, ENTREVISTA -> contexto.get("idUsuario");
             case VINCULO -> valores.get("idContato");
             case FREQUENCIA -> null;
             default -> valores.get("id");

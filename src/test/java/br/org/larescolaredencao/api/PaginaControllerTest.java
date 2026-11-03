@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -17,6 +18,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.web.PageableHandlerMethodArgumentResolver;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -42,6 +46,7 @@ class PaginaControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new PaginaController(paginaService, arquivoService))
+                .setCustomArgumentResolvers(new PageableHandlerMethodArgumentResolver())
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -68,6 +73,16 @@ class PaginaControllerTest {
         assertThat(dto.getValue().getGrupo()).isEqualTo("pix");
         assertThat(dto.getValue().getConteudo()).isEqualTo("email@larredencao.org.br");
         assertThat(dto.getValue().getImagem().getOriginalFilename()).isEqualTo("qr-novo.png");
+    }
+
+    @Test
+    void deveEncaminharFiltroDeSecaoBuscaEPaginacao() throws Exception {
+        var pagina = PageRequest.of(1, 10);
+        when(paginaService.listarDocumentosPaginado(1L, pagina, "Ata", 3L)).thenReturn(Page.empty(pagina));
+        mockMvc.perform(get("/paginas/1/documentos/admin")
+                        .param("secaoId", "3").param("search", "Ata").param("page", "1").param("size", "10"))
+                .andExpect(status().isOk());
+        verify(paginaService).listarDocumentosPaginado(1L, pagina, "Ata", 3L);
     }
 
     @Test

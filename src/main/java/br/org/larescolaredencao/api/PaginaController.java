@@ -74,8 +74,9 @@ public class PaginaController {
     @GetMapping("/{idPagina:\\d+}/documentos/admin")
     public PagedModel<DocumentoResponseDTO> listarDocumentosAdmin(@PathVariable("idPagina") Long idPagina,
                                                                   Pageable pageable,
-                                                                  @RequestParam(name = "search", required = false) String search) {
-        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable, search));
+                                                                  @RequestParam(name = "search", required = false) String search,
+                                                                  @RequestParam(name = "secaoId", required = false) Long secaoId) {
+        return new PagedModel<>(paginaService.listarDocumentosPaginado(idPagina, pageable, search, secaoId));
     }
 
     @PostMapping("/{idPagina:\\d+}/secoes")

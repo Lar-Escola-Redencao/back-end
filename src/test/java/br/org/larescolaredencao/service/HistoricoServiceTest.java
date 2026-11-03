@@ -20,6 +20,18 @@ import br.org.larescolaredencao.repository.HistoricoRepository.Linha;
 class HistoricoServiceTest {
 
     @Test
+    void identificaEntrevistaSeparadamenteMesmoEmEventoAntigoClassificadoComoUsuario() {
+        var linha = new Linha(41, 2, 0L, 9, "Ana", "USUARIOS", "entrevista_social", "7", 12,
+                "EDICAO", "{\"relato\":\"Antes\"}", "{\"relato\":\"Depois\"}",
+                "{\"idUsuario\":12,\"usuario\":{\"nomeCompleto\":\"Arthur\"}}",
+                "{\"idUsuario\":12,\"usuario\":{\"nomeCompleto\":\"Arthur\"}}");
+        var resumo = new HistoricoService(mock(HistoricoRepository.class)).montarResumo(linha);
+        assertThat(resumo.tipoRegistro().name()).isEqualTo("ENTREVISTAS");
+        assertThat(resumo.identificacaoRegistro()).isEqualTo("Arthur");
+        assertThat(resumo.informacaoAlterada()).isEqualTo("Entrevista social");
+    }
+
+    @Test
     void identificaContatoEVinculoComVirgulaPreservandoApelido() {
         String contexto = """
                 {"contato":{"nomeCompleto":"João Batista (Seu João)"},"usuario":{"nomeCompleto":"Arthur Silva Gomes"}}
