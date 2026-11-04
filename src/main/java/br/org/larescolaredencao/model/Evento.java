@@ -1,5 +1,8 @@
 package br.org.larescolaredencao.model;
 
+import org.hibernate.envers.Audited;
+import org.hibernate.envers.AuditJoinTable;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
@@ -21,6 +24,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import br.org.larescolaredencao.model.Parceiro;
 
+@Audited
 @Entity
 public class Evento {
 
@@ -50,6 +54,7 @@ public class Evento {
     @Enumerated(EnumType.STRING)
     private TipoEvento tipoEvento;
 
+    @AuditJoinTable(name = "parceiro_evento_aud")
     @ManyToMany
     @JoinTable(
         name = "parceiro_evento",

@@ -75,7 +75,45 @@ class OcorrenciaRegrasTest {
         verify(ocorrencias, times(1)).save(any());
     }
 
-    @Test void monitorNaoPodeAnteciparAulaOuHorarioDoFato() {
+    @Test void perfisEstrategicosRegistramAntesDoMesAnteriorComAutoriaDoColaboradorLogado() {
+        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
+        when(ocorrencias.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            for (String papel : List.of("ADMINISTRADOR", "COORDENADOR")) {
+                var autor = colaborador(8, papel);
+                var resposta = service.criarOcorrencia(cadastro(LocalDateTime.of(2026, 8, 1, 7, 0)), autor);
+                assertThat(resposta.getIdMembro()).isEqualTo(autor.getId());
+                assertThat(resposta.getNomeMembro()).isEqualTo(autor.getNomeCompleto());
+            }
+        }
+        verify(ocorrencias, times(2)).save(any());
+    }
+
+    @Test void todosOsPerfisPodemRegistrarChegadaMasNaoInstanteFuturo() {
+        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
+        when(ocorrencias.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        Ocorrencia oc = registro(); oc.setDataOcorrencia(agora.withHour(7));
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(oc));
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            for (String papel : List.of("MONITOR", "ADMINISTRADOR", "COORDENADOR")) {
+                Membro autor = colaborador(7, papel);
+                for (int hora : List.of(7, 8, 19)) {
+                    LocalDateTime instante = agora.withHour(hora);
+                    oc.setDataCriacao(instante);
+                    tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(instante);
+                    service.criarOcorrencia(cadastro(instante), autor);
+                    service.atualizarOcorrencia(1, edicao(instante), autor);
+                    proibido(() -> service.criarOcorrencia(cadastro(instante.plusSeconds(1)), autor));
+                    proibido(() -> service.atualizarOcorrencia(1, edicao(instante.plusSeconds(1)), autor));
+                    proibido(() -> service.criarOcorrencia(cadastro(instante.plusDays(1)), autor));
+                }
+            }
+        }
+        verify(ocorrencias, times(18)).save(any());
+    }
+
+    @Test void monitorNaoPodeAnteciparHorarioDoFato() {
         when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
         try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
             tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora.withHour(7));

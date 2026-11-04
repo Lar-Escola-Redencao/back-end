@@ -11,8 +11,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import br.org.larescolaredencao.model.Membro;
+import br.org.larescolaredencao.dto.ResponsavelHistoricoDTO;
 
 public interface MembroRepository extends JpaRepository<Membro, Integer> {
+
+    boolean existsByUnidadesIdAndPapelNomePapelNot(Integer unidadeId, String nomePapel);
+
+    @Query("SELECT new br.org.larescolaredencao.dto.ResponsavelHistoricoDTO(m.id, m.nomeCompleto) FROM Membro m")
+    List<ResponsavelHistoricoDTO> listarResponsaveisHistorico();
     
     @EntityGraph(attributePaths = {"unidades", "papel"})
     Optional<Membro> findByEmail(String email);
@@ -28,7 +34,7 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
 
     // Membro não tem soft delete (a exclusão é física). A senha fica de fora da busca.
     @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
-           "(:idUnidade IS NULL OR u.id = :idUnidade) AND " +
+           "(:idUnidade IS NULL OR u.id = :idUnidade OR m.papel.nomePapel = 'ADMINISTRADOR') AND " +
            "(:idPapel IS NULL OR m.papel.id = :idPapel) AND (" +
            "   LOWER(m.nomeCompleto) LIKE :search ESCAPE '!' OR " +
            "   LOWER(m.email) LIKE :search ESCAPE '!' OR " +
@@ -44,7 +50,7 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
 
     @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
            "(:idPapel IS NULL OR m.papel.id = :idPapel) AND " +
-           "(:idUnidade IS NULL OR u.id = :idUnidade)")
+           "(:idUnidade IS NULL OR u.id = :idUnidade OR m.papel.nomePapel = 'ADMINISTRADOR')")
     Page<Membro> filtrar(@Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
 
     @Query("SELECT DISTINCT m FROM Membro m JOIN m.unidades u WHERE " +

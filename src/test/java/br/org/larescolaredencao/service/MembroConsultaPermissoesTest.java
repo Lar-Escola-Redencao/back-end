@@ -101,6 +101,39 @@ class MembroConsultaPermissoesTest {
     }
 
     @Test
+    void administradorSemVinculosPodeFiltrarPorUnidadePreservandoPaginacao() {
+        coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
+        coordenador.setUnidades(List.of());
+        autenticar();
+        Membro global = membro(30, "ADMINISTRADOR");
+        when(membros.filtrar(null, 3, pagina))
+                .thenReturn(new PageImpl<>(List.of(global), pagina, 15));
+
+        var resposta = service.getAllMembros(pagina, null, null, 3, coordenador);
+
+        assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
+        assertThat(resposta.getContent().get(0).getUnidades()).isEmpty();
+        assertThat(resposta.getTotalElements()).isEqualTo(15);
+        verify(membros).filtrar(null, 3, pagina);
+        verify(membros, never()).listarMonitoresDasUnidades(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void administradorSemVinculosCombinaBuscaPapelEUnidade() {
+        coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
+        coordenador.setUnidades(List.of());
+        autenticar();
+        when(membros.buscar("%membro%", null, 1, 3, pagina))
+                .thenReturn(new PageImpl<>(List.of(membro(30, "ADMINISTRADOR")), pagina, 1));
+
+        var resposta = service.getAllMembros(pagina, 1, "Membro", 3, coordenador);
+
+        assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
+        verify(membros).buscar("%membro%", null, 1, 3, pagina);
+        verify(membros, never()).listarMonitoresDasUnidades(any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void bloqueiaDetalheDeMonitorDeOutraUnidade() {
         autenticar();
         when(membros.findById(20)).thenReturn(Optional.of(membro(20, "MONITOR", 3)));

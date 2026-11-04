@@ -69,7 +69,7 @@ class FrequenciaServiceTest {
         FrequenciaDTO item = new FrequenciaDTO();
         item.setIdMatricula(10);
         item.setPresente(true);
-        SalvarFrequenciaEmLoteDTO dto = new SalvarFrequenciaEmLoteDTO();
+        SalvarFrequenciaEmLoteDTO dto = new SalvarFrequenciaEmLoteDTO(); dto.setDeclaracaoAceita(true);
         dto.setIdTurma(1);
         dto.setData(data);
         dto.setFrequencias(List.of(item));
@@ -87,6 +87,25 @@ class FrequenciaServiceTest {
                 .isInstanceOfSatisfying(ResponseStatusException.class,
                         ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
         verify(frequencias, never()).saveAllAndFlush(any());
+    }
+
+    @Test
+    void rejeitaConfirmacaoAusenteOuFalsaEmTodasAsRotasDeEscrita() {
+        for (Boolean confirmacao : new Boolean[] { null, false }) {
+            var dto = lote();
+            dto.setDeclaracaoAceita(confirmacao);
+            var individual = new AtualizarFrequenciaDTO();
+            individual.setPresente(true);
+            individual.setDeclaracaoAceita(confirmacao);
+            for (Runnable operacao : List.<Runnable>of(
+                    () -> service.salvarFrequenciaEmLote(dto, membro),
+                    () -> service.atualizarFrequenciaEmLote(dto, membro),
+                    () -> service.atualizarFrequencia(1, individual, membro))) {
+                assertThatThrownBy(operacao::run).isInstanceOfSatisfying(ResponseStatusException.class,
+                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+            }
+        }
+        verifyNoInteractions(frequencias, matriculas, ocorrencias, turmas);
     }
 
     @Test
@@ -128,16 +147,15 @@ class FrequenciaServiceTest {
     }
 
     @Test
-    void deveBloquearMonitorAntesDoInicioEPermitirCoordenador() {
+    void deveBloquearDataFuturaParaTodosOsPerfis() {
         data = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate().plusDays(1);
-        assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
-                .isInstanceOfSatisfying(ResponseStatusException.class,
-                        ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
-        membro.getPapel().setNomePapel("COORDENADOR");
-        when(matriculas.findById(10)).thenReturn(Optional.of(matricula));
-        when(frequencias.findByMatriculaIdAndDataRegistro(10, data)).thenReturn(Optional.empty());
-        service.salvarFrequenciaEmLote(lote(), membro);
-        verify(frequencias).saveAllAndFlush(any());
+        for (String perfil : List.of("MONITOR", "ADMINISTRADOR", "COORDENADOR")) {
+            membro.getPapel().setNomePapel(perfil);
+            assertThatThrownBy(() -> service.salvarFrequenciaEmLote(lote(), membro))
+                    .isInstanceOfSatisfying(ResponseStatusException.class,
+                            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
+        }
+        verify(frequencias, never()).saveAllAndFlush(any());
     }
 
     @Test
@@ -151,7 +169,7 @@ class FrequenciaServiceTest {
         registro.setDataRegistro(referencia.toLocalDate());
         registro.setDataCriacao(referencia);
         when(frequencias.findByMatriculaTurmaIdAndDataRegistro(1, referencia.toLocalDate())).thenReturn(List.of(registro));
-        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO();
+        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO(); dto.setDeclaracaoAceita(true);
         dto.setPresente(false);
         when(frequencias.findById(1)).thenReturn(Optional.of(registro));
         when(frequencias.save(registro)).thenReturn(registro);
@@ -172,7 +190,7 @@ class FrequenciaServiceTest {
         Frequencia registro = new Frequencia();
         registro.setMatricula(matricula);
         registro.setDataRegistro(data);
-        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO();
+        AtualizarFrequenciaDTO dto = new AtualizarFrequenciaDTO(); dto.setDeclaracaoAceita(true);
         dto.setPresente(true);
         when(frequencias.findById(1)).thenReturn(Optional.of(registro));
         when(frequencias.save(registro)).thenReturn(registro);

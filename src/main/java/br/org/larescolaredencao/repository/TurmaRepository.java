@@ -14,6 +14,7 @@ import org.springframework.data.repository.query.Param;
 import br.org.larescolaredencao.model.Turma;
 
 public interface TurmaRepository extends JpaRepository<Turma, Integer> {
+    boolean existsByUnidadeId(Integer unidadeId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT t FROM Turma t WHERE t.id = :id")
     Optional<Turma> findByIdComBloqueio(@Param("id") Integer id);

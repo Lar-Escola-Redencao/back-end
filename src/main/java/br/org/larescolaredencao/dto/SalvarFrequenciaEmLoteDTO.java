@@ -1,6 +1,7 @@
 package br.org.larescolaredencao.dto;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -13,6 +14,18 @@ public class SalvarFrequenciaEmLoteDTO {
 
     @NotNull
     private LocalDate data;
+
+    @NotNull(message = "Confirme o preenchimento das frequências.")
+    @AssertTrue(message = "Confirme o preenchimento das frequências.")
+    private Boolean declaracaoAceita;
+
+    public Boolean getDeclaracaoAceita() {
+        return declaracaoAceita;
+    }
+
+    public void setDeclaracaoAceita(Boolean declaracaoAceita) {
+        this.declaracaoAceita = declaracaoAceita;
+    }
 
     @NotEmpty
     @Valid

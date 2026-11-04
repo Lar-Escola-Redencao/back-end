@@ -43,23 +43,24 @@ class AutenticacaoServiceTest {
         UserDetails resultado = autenticacaoService.loadUserByUsername("fulano@example.com");
 
         assertThat(resultado).isEqualTo(membro);
-        verify(repository, never()).findByCpf(eq("fulano@example.com"));
+        verify(repository, never()).buscarPorCpf(eq("fulano@example.com"));
     }
 
     @Test
     void deveEncontrarMembroPorCpfQuandoNaoEncontradoPorEmail() {
         when(repository.findByEmail("12345678900")).thenReturn(Optional.empty());
-        when(repository.findByCpf("12345678900")).thenReturn(Optional.of(membro));
+        when(repository.buscarPorCpf("12345678900")).thenReturn(Optional.of(membro));
 
         UserDetails resultado = autenticacaoService.loadUserByUsername("12345678900");
 
         assertThat(resultado).isEqualTo(membro);
+        verify(repository).buscarPorCpf("12345678900");
     }
 
     @Test
     void deveLancarExcecaoQuandoIdentificadorNaoExiste() {
         when(repository.findByEmail("inexistente@example.com")).thenReturn(Optional.empty());
-        when(repository.findByCpf("inexistente@example.com")).thenReturn(Optional.empty());
+        when(repository.buscarPorCpf("inexistente@example.com")).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> autenticacaoService.loadUserByUsername("inexistente@example.com"))
                 .isInstanceOf(UsernameNotFoundException.class);

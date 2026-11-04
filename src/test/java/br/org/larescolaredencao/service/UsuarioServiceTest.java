@@ -234,6 +234,77 @@ public class UsuarioServiceTest {
     }
 
     @Test
+    void atualizarComposicaoDevePreservarIdentidadeDoFamiliar() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        ComposicaoFamiliar familiar = prepararFamiliarAtual(10);
+        ComposicaoFamiliarDTO familiarDTO = cadastroDTO.getComposicaoFamiliar().get(0);
+        familiarDTO.setId(10);
+        familiarDTO.setNomeCompleto("José da Silva Santos");
+        dto.setComposicaoFamiliar(List.of(familiarDTO));
+
+        UsuarioResponseDTO resposta = usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        assertEquals(10, familiar.getId());
+        assertEquals("José da Silva Santos", familiar.getNomeCompleto());
+        assertEquals(10, resposta.getComposicaoFamiliar().get(0).getId());
+        verify(composicaoFamiliarRepository).save(familiar);
+        verify(composicaoFamiliarRepository, never()).deleteByIdUsuario(any());
+        verify(composicaoFamiliarRepository, never()).delete(any());
+    }
+
+    @Test
+    void atualizarComposicaoDeveExcluirApenasFamiliarRemovido() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        ComposicaoFamiliar familiar = prepararFamiliarAtual(10);
+        dto.setComposicaoFamiliar(List.of());
+
+        usuarioService.atualizarUsuario(1, dto, adminLogado);
+
+        verify(composicaoFamiliarRepository).delete(familiar);
+        verify(composicaoFamiliarRepository, never()).deleteByIdUsuario(any());
+    }
+
+    @Test
+    void atualizarComposicaoNaoDeveAceitarFamiliarDeOutroUsuario() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        ComposicaoFamiliarDTO familiarDTO = cadastroDTO.getComposicaoFamiliar().get(0);
+        familiarDTO.setId(99);
+        dto.setComposicaoFamiliar(List.of(familiarDTO));
+
+        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                () -> usuarioService.atualizarUsuario(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, erro.getStatusCode());
+        verify(composicaoFamiliarRepository, never()).save(any());
+    }
+
+    @Test
+    void atualizarComposicaoNaoDeveAceitarFamiliarDuplicado() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        prepararFamiliarAtual(10);
+        ComposicaoFamiliarDTO familiarDTO = cadastroDTO.getComposicaoFamiliar().get(0);
+        familiarDTO.setId(10);
+        dto.setComposicaoFamiliar(List.of(familiarDTO, familiarDTO));
+
+        ResponseStatusException erro = assertThrows(ResponseStatusException.class,
+                () -> usuarioService.atualizarUsuario(1, dto, adminLogado));
+
+        assertEquals(HttpStatus.BAD_REQUEST, erro.getStatusCode());
+    }
+
+    private ComposicaoFamiliar prepararFamiliarAtual(Integer id) {
+        ComposicaoFamiliar familiar = new ComposicaoFamiliar();
+        familiar.setId(id);
+        familiar.setIdUsuario(usuario.getId());
+        familiar.setNomeCompleto("José da Silva");
+        familiar.setParentescoVinculo(Parentesco.PAI);
+        familiar.setEscolaridade(EscolaridadeFamiliar.MEDIO_COMPLETO);
+        when(composicaoFamiliarRepository.findByIdUsuarioOrderByIdAsc(usuario.getId()))
+                .thenReturn(List.of(familiar));
+        return familiar;
+    }
+
+    @Test
     void cadastrarUsuarioDeveCriarNovoUsuarioComMatriculaContatosETabelasAuxiliares() {
         when(usuarioRepository.findByCpf(anyString())).thenReturn(Optional.empty());
         when(usuarioRepository.save(any(Usuario.class))).thenReturn(usuario);

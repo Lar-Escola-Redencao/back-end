@@ -6,14 +6,20 @@ import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import br.org.larescolaredencao.dto.AtualizarUnidadeDTO;
 import br.org.larescolaredencao.dto.CriarUnidadeDTO;
 import br.org.larescolaredencao.model.Unidade;
+import br.org.larescolaredencao.model.enums.Perfil;
 import br.org.larescolaredencao.repository.UnidadeRepository;
+import br.org.larescolaredencao.repository.MatriculaRepository;
+import br.org.larescolaredencao.repository.MembroRepository;
+import br.org.larescolaredencao.repository.TurmaRepository;
 
 @Service
 public class UnidadeService {
@@ -23,10 +29,18 @@ public class UnidadeService {
 
     private final UnidadeRepository unidadeRepository;
     private final ArquivoService arquivoService;
+    private final TurmaRepository turmaRepository;
+    private final MatriculaRepository matriculaRepository;
+    private final MembroRepository membroRepository;
 
-    public UnidadeService(UnidadeRepository unidadeRepository, ArquivoService arquivoService) {
+    public UnidadeService(UnidadeRepository unidadeRepository, ArquivoService arquivoService,
+                          TurmaRepository turmaRepository, MatriculaRepository matriculaRepository,
+                          MembroRepository membroRepository) {
         this.unidadeRepository = unidadeRepository;
         this.arquivoService = arquivoService;
+        this.turmaRepository = turmaRepository;
+        this.matriculaRepository = matriculaRepository;
+        this.membroRepository = membroRepository;
     }
 
     public Page<Unidade> getAllUnidades(Pageable pageable) {
@@ -46,6 +60,7 @@ public class UnidadeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Unidade não encontrada."));
     }
 
+    @Transactional
     public Unidade criarUnidade(CriarUnidadeDTO dto) {
         validarFaixaEtaria(dto.getIdadeMin(), dto.getIdadeMax());
         validarHorarioFuncionamento(dto.getHorarioAbertura(), dto.getHorarioFechamento());
@@ -73,6 +88,7 @@ public class UnidadeService {
         return unidadeRepository.save(unidade);
     }
 
+    @Transactional
     public Unidade atualizarUnidade(Integer id, AtualizarUnidadeDTO dto) {
         Unidade unidade = getUnidadeById(id);
 
@@ -109,9 +125,28 @@ public class UnidadeService {
         return unidadeRepository.save(unidade);
     }
 
+    @Transactional
     public void deletarUnidade(Integer id) {
         Unidade unidade = getUnidadeById(id);
-        unidadeRepository.delete(unidade);
+        if (matriculaRepository.existsByTurmaUnidadeId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir esta unidade: suas turmas possuem matrículas vinculadas, inclusive de usuários transferidos ou desligados.");
+        }
+        if (turmaRepository.existsByUnidadeId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir esta unidade enquanto houver turmas vinculadas. Exclua as turmas primeiro.");
+        }
+        if (membroRepository.existsByUnidadesIdAndPapelNomePapelNot(id, Perfil.ADMINISTRADOR.name())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir esta unidade: há colaboradores vinculados. Remova seus vínculos com a unidade primeiro.");
+        }
+        try {
+            unidadeRepository.delete(unidade);
+            unidadeRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível excluir esta unidade porque existem registros vinculados a ela.");
+        }
 
         if (unidade.getImagem() != null) {
             arquivoService.deletarArquivo(unidade.getImagem());

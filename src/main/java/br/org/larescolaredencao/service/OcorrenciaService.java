@@ -17,7 +17,6 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.ZoneId;
 
 @Service
@@ -38,10 +37,9 @@ public class OcorrenciaService {
         
         validarAcessoUnidade(membroLogado, matricula.getTurma().getUnidade());
         LocalDateTime agora = agora();
+        validarInstanteOcorrencia(dto.getDataOcorrencia(), agora);
         PeriodoDiario.validar(membroLogado, dto.getDataOcorrencia().toLocalDate(), agora.toLocalDate());
-        validarInstanteMonitor(membroLogado, matricula, dto.getDataOcorrencia(), agora);
         validarMatriculaNaData(matricula, dto.getDataOcorrencia().toLocalDate());
-        validarDataHoraOcorrencia(matricula, dto.getDataOcorrencia().toLocalDate(), dto.getDataOcorrencia());
 
         Ocorrencia ocorrencia = new Ocorrencia();
         ocorrencia.setDataCriacao(agora.withNano(0));
@@ -65,8 +63,8 @@ public class OcorrenciaService {
         validarEdicaoOcorrencia(membroLogado, ocorrencia, agora);
         validarMatriculaNaData(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate());
         LocalDateTime fato = dto.getDataOcorrencia() != null ? dto.getDataOcorrencia() : ocorrencia.getDataOcorrencia();
-        validarDataHoraOcorrencia(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate(), fato);
-        validarInstanteMonitor(membroLogado, ocorrencia.getMatricula(), fato, agora);
+        validarDataHoraOcorrencia(ocorrencia.getDataOcorrencia().toLocalDate(), fato);
+        validarInstanteOcorrencia(fato, agora);
         ocorrencia.setDataOcorrencia(fato);
 
         ocorrencia.setDescricao(dto.getDescricao());
@@ -115,27 +113,14 @@ public class OcorrenciaService {
         }
     }
 
-    private void validarDataHoraOcorrencia(Matricula matricula, LocalDate dataDiario, LocalDateTime dataOcorrencia) {
+    private void validarDataHoraOcorrencia(LocalDate dataDiario, LocalDateTime dataOcorrencia) {
         if (!dataOcorrencia.toLocalDate().equals(dataDiario)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "O horário da ocorrência deve pertencer à data do diário.");
         }
-
-        LocalTime hora = dataOcorrencia.toLocalTime();
-        LocalTime inicio = matricula.getTurma().getHoraInicio();
-        LocalTime fim = matricula.getTurma().getHoraFim();
-        if (hora.isBefore(inicio) || hora.isAfter(fim)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O horário da ocorrência deve estar dentro do horário da turma.");
-        }
     }
 
-    private void validarInstanteMonitor(Membro membro, Matricula matricula, LocalDateTime fato, LocalDateTime agora) {
-        if (!isMonitor(membro)) return;
-        LocalDateTime inicio = LocalDateTime.of(fato.toLocalDate(), matricula.getTurma().getHoraInicio());
-        if (agora.isBefore(inicio)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "O registro de ocorrências ficará disponível após o início da aula.");
-        }
+    private void validarInstanteOcorrencia(LocalDateTime fato, LocalDateTime agora) {
         if (fato.isAfter(agora)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível registrar ocorrência com data ou horário futuro.");
         }

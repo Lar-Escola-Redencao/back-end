@@ -78,6 +78,7 @@ public class TurmaService {
         return new TurmaResponseDTO(buscarTurmaOuFalhar(id));
     }
 
+    @Transactional
     public TurmaResponseDTO criarTurma(CriarTurmaDTO dto) {
         Unidade unidade = buscarUnidadeOuFalhar(dto.getUnidadeId());
         validarHorario(dto.getHoraInicio(), dto.getHoraFim());
@@ -92,6 +93,7 @@ public class TurmaService {
         return new TurmaResponseDTO(turmaRepository.save(turma));
     }
 
+    @Transactional
     public TurmaResponseDTO atualizarTurma(Integer id, AtualizarTurmaDTO dto) {
         Turma turma = buscarTurmaOuFalhar(id);
         validarDto(dto);
@@ -112,14 +114,14 @@ public class TurmaService {
         Turma turma = buscarTurmaOuFalhar(id);
         if (matriculaRepository.existsByTurmaId(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Não é possível excluir a turma porque existem matrículas vinculadas.");
+                    "Não é possível excluir esta turma: existem matrículas vinculadas, mesmo que os usuários já tenham sido transferidos ou desligados.");
         }
         try {
             turmaRepository.delete(turma);
             turmaRepository.flush();
         } catch (DataIntegrityViolationException exception) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "Não é possível excluir a turma porque existem registros vinculados.");
+                    "Não é possível excluir esta turma porque existem registros vinculados a ela que precisam ser preservados.");
         }
     }
 

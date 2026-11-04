@@ -9,9 +9,18 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 
 public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
+    @Query("""
+            select m from Matricula m join fetch m.turma t join fetch t.unidade u
+            where m.usuario.id = :usuario and (:admin = true or u.id in :unidades)
+            order by m.dataIngresso desc, m.id desc
+            """)
+    List<Matricula> listarParaAcompanhamento(@Param("usuario") Integer usuario,
+            @Param("admin") boolean admin, @Param("unidades") List<Integer> unidades);
+
     
     List<Matricula> findByUsuario(Usuario usuario);
     
@@ -19,6 +28,7 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
     
     boolean existsByUsuarioAndStatus(Usuario usuario, StatusMatricula status);
     boolean existsByTurmaId(Integer turmaId);
+    boolean existsByTurmaUnidadeId(Integer unidadeId);
 
     @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario u WHERE m.id IN (" +
             "  SELECT MAX(m2.id) FROM Matricula m2 WHERE m2.turma.id = :turmaId " +
@@ -29,6 +39,16 @@ public interface MatriculaRepository extends JpaRepository<Matricula, Integer> {
      List<Matricula> findHistoricoAtivasPorTurmaEData(@Param("turmaId") Integer turmaId, 
                                                       @Param("dataFimDia") LocalDateTime dataFimDia, 
                                                       @Param("data") LocalDate data);
+
+    @Query("SELECT m FROM Matricula m JOIN FETCH m.usuario WHERE m.turma.id = :turmaId " +
+           "AND m.dataIngresso < :fimExclusivo " +
+           "AND (m.dataDesligamento IS NULL OR m.dataDesligamento >= :inicio)")
+    List<Matricula> findVigentesPorTurmaNoPeriodo(@Param("turmaId") Integer turmaId,
+                                                  @Param("fimExclusivo") LocalDateTime fimExclusivo,
+                                                  @Param("inicio") LocalDate inicio);
+
+    @Query("SELECT DISTINCT m.usuario.id FROM Matricula m WHERE m.status = 'EXCLUIDO' AND m.usuario.id IN :ids")
+    List<Integer> findIdsUsuariosExcluidos(@Param("ids") Collection<Integer> ids);
 
     @Query("SELECT COUNT(DISTINCT m.usuario.id) FROM Matricula m WHERE m.status = :status")
     long contarMeninosPorStatus(@Param("status") StatusMatricula status);

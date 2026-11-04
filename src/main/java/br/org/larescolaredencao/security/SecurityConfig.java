@@ -44,6 +44,9 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(req -> {
                     req.requestMatchers("/error").permitAll();
+                    req.requestMatchers(HttpMethod.GET, "/pix").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/pix/codigo").permitAll();
+                    req.requestMatchers(HttpMethod.POST, "/pix/codigo/*/agradecimento").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/login").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/esqueci-minha-senha").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
@@ -78,6 +81,10 @@ public class SecurityConfig {
                             "/paginas/secoes/{id:\\d+}",
                             "/paginas/documentos/{id:\\d+}/download").permitAll();
 
+                    req.requestMatchers("/historico-alteracoes/**").hasRole("ADMINISTRADOR");
+                    req.requestMatchers("/acompanhamento/usuarios/*/entrevistas", "/acompanhamento/usuarios/*/entrevistas/**")
+                            .hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/acompanhamento/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers("/paginas/**").hasRole("ADMINISTRADOR");
 
                     req.requestMatchers(HttpMethod.GET, "/turmas/**")

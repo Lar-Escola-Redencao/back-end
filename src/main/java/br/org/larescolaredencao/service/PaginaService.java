@@ -106,7 +106,14 @@ public class PaginaService {
     }
 
     public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search) {
+        return listarDocumentosPaginado(idPagina, pageable, search, null);
+    }
+
+    public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search, Long secaoId) {
         String termo = TermoBusca.like(search);
+        if (secaoId != null) {
+            return documentoRepository.buscarPorSecao(idPagina, secaoId, termo, pageable).map(DocumentoResponseDTO::new);
+        }
         if (termo != null) {
             return documentoRepository.buscar(idPagina, termo, pageable).map(DocumentoResponseDTO::new);
         }
@@ -133,6 +140,7 @@ public class PaginaService {
         }
 
         validarTamanhoTitulo(dto.getTitulo());
+        validarAnoHistoria(idPagina, normalizarGrupo(dto.getGrupo()), dto.getTitulo(), null);
         Secao secao = new Secao();
         String grupo = normalizarGrupo(dto.getGrupo());
         secao.setTitulo(resolverTituloSecao(dto.getTitulo(), grupo));
@@ -165,6 +173,7 @@ public class PaginaService {
     @Transactional
     public Secao atualizarSecao(Long idPagina, Long id, AtualizarSecaoDTO dto) {
         buscarPaginaPorId(idPagina);
+        if (Long.valueOf(2L).equals(idPagina)) paginaRepository.findByIdComBloqueio(idPagina);
         Secao secao = secaoRepository.findByIdAndPaginaId(id, idPagina)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada nesta página."));
 
@@ -173,6 +182,7 @@ public class PaginaService {
         }
 
         if (dto.getTitulo() != null) {
+            validarAnoHistoria(idPagina, dto.getGrupo() == null ? secao.getGrupo() : normalizarGrupo(dto.getGrupo()), dto.getTitulo(), id);
             validarTamanhoTitulo(dto.getTitulo());
             secao.setTitulo(arquivoService.sanitizarTexto(dto.getTitulo()));
         }
@@ -183,6 +193,7 @@ public class PaginaService {
             secao.setAtivo(dto.getAtivo());
         }
         if (dto.getGrupo() != null) {
+            if (dto.getTitulo() == null) validarAnoHistoria(idPagina, normalizarGrupo(dto.getGrupo()), secao.getTitulo(), id);
             // Impede que uma seção livre vire um grupo da Gráfica/Pix (ex.: telefone na Transparência).
             validarGrupoDaPagina(idPagina, dto.getGrupo());
             secao.setGrupo(normalizarGrupo(dto.getGrupo()));
@@ -229,15 +240,18 @@ public class PaginaService {
         return persistirSecao(secao, novaImagem, imagemAnterior);
     }
 
+    @Transactional
     public void deletarSecao(Long id) {
         Secao secao = buscarSecaoPorId(id);
-        arquivoService.deletarArquivo(secao.getImagem());
-        for (Documento documento : secao.getDocumentos()) {
-            arquivoService.deletarArquivo(documento.getArquivo());
+        if (documentoRepository.existsBySecaoId(id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Exclua os documentos vinculados a esta seção antes de excluí-la.");
         }
+        arquivoService.deletarArquivo(secao.getImagem());
         secaoRepository.delete(secao);
     }
 
+    @Transactional
     public Documento adicionarDocumento(Long secaoId, String titulo, MultipartFile arquivo) {
         String tituloSanitizado = arquivoService.sanitizarTexto(titulo);
         if (tituloSanitizado == null || tituloSanitizado.isEmpty()) {
@@ -262,6 +276,7 @@ public class PaginaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Documento não encontrado."));
     }
 
+    @Transactional
     public Documento atualizarDocumento(Long id, Long secaoId, String titulo, MultipartFile arquivo) {
         Documento documento = buscarDocumentoPorId(id);
 
@@ -287,6 +302,7 @@ public class PaginaService {
         return documentoRepository.save(documento);
     }
 
+    @Transactional
     public void deletarDocumento(Long id) {
         Documento documento = buscarDocumentoPorId(id);
         arquivoService.deletarArquivo(documento.getArquivo());
@@ -408,10 +424,16 @@ public class PaginaService {
                 exigirImagem(grupo, possuiArquivo, imagemAnterior);
             }
             case GRUPO_PIX -> {
-                // Chave em conteudo e QR Code em imagem; titulo não é usado.
-                secao.setTitulo(null);
-                secao.setConteudo(textoObrigatorio(grupo, "conteudo", conteudo));
-                exigirImagem(grupo, possuiArquivo, imagemAnterior);
+                // O QR Code é gerado a partir da chave; imagens antigas continuam compatíveis.
+                String recebedor = validarTamanhoTitulo(textoObrigatorio(grupo, "titulo", arquivoService.sanitizarTexto(titulo)));
+                try {
+                    CodigoPix.normalizarNome(recebedor, 25);
+                } catch (IllegalStateException e) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                            "Informe um nome de recebedor válido, com até 25 caracteres.");
+                }
+                secao.setTitulo(recebedor);
+                secao.setConteudo(CodigoPix.normalizarChave(textoObrigatorio(grupo, "conteudo", conteudo)));
             }
             default -> throw new IllegalStateException("Grupo sem regra de gravação: " + grupo);
         }
@@ -452,6 +474,19 @@ public class PaginaService {
      * Limite de tamanho do título, aplicado só onde o título é usado. Antes ficava no
      * @Size dos DTOs, que rodava antes do mapeamento e recusava o pix com titulo="".
      */
+    private void validarAnoHistoria(Long idPagina, String grupo, String titulo, Long id) {
+        if (!Long.valueOf(2L).equals(idPagina) || !"historia".equals(grupo)) return;
+        String ano = titulo == null ? "" : titulo.trim();
+        if (!ano.matches("[1-9][0-9]{3}")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um ano válido com quatro dígitos.");
+        }
+        paginaRepository.findByIdComBloqueio(idPagina);
+        if (!secaoRepository.buscarOutroMarcoDoAno(idPagina, ano, id).isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Já existe um registro de Nossa História para " + ano + ". Edite o registro existente para incluir novos acontecimentos.");
+        }
+    }
+
     private String validarTamanhoTitulo(String titulo) {
         if (titulo != null && (titulo.length() < TITULO_TAMANHO_MINIMO || titulo.length() > TITULO_TAMANHO_MAXIMO)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
