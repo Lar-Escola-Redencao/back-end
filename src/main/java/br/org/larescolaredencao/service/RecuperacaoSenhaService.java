@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.service;
 
+import br.org.larescolaredencao.dto.RecuperacaoSenhaRespostaDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.TokenRecuperacao;
 import br.org.larescolaredencao.repository.MembroRepository;
@@ -38,14 +39,15 @@ public class RecuperacaoSenhaService {
     }
 
     @Transactional
-    public void solicitarRecuperacao(String email, String captchaToken, String ip) {
+    public RecuperacaoSenhaRespostaDTO solicitarRecuperacao(String email, String captchaToken, String ip) {
         email = email.trim().toLowerCase(java.util.Locale.ROOT);
         var tentativa = protecao.iniciarRecuperacao(email, captchaToken, ip);
         try {
             enviarCodigo(email);
+            return protecao.respostaRecuperacao(tentativa);
         } catch (RuntimeException erro) {
             throw new ProtecaoAutenticacaoException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "Não foi possível solicitar a recuperação. Aguarde e tente novamente.", true, 60);
+                    "Não foi possível solicitar a recuperação. Aguarde e tente novamente.", true, protecao.esperaRecuperacao(tentativa));
         } finally {
             protecao.concluir(tentativa, false);
         }

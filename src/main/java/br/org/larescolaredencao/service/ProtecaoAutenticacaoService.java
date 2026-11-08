@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.service;
 
+import br.org.larescolaredencao.dto.RecuperacaoSenhaRespostaDTO;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -20,6 +22,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 public class ProtecaoAutenticacaoService {
     private static final int MAX_REGISTROS = 20000;
+    private static final int[] PENALIDADES_SEGUNDOS = {30, 60, 90, 180, 600, 1800, 3600};
+    private static final int TEMPO_RESET_TENTATIVAS = 2 * 60 * 60;
+    private static final int TEMPO_PERDAO = 2 * 60;
     private final CaptchaPixService captcha;
     private final Clock relogio;
     private final Map<String, Registro> registros = new HashMap<>();
@@ -57,7 +62,7 @@ public class ProtecaoAutenticacaoService {
             throw new ProtecaoAutenticacaoException(status,
                     status == HttpStatus.BAD_REQUEST ? "A verificação expirou ou não é válida. Faça uma nova verificação."
                             : "A verificação está indisponível. Aguarde e tente novamente.",
-                    true, "recuperacao_senha".equals(acao) ? 60 : 0);
+                    true, "recuperacao_senha".equals(acao) ? esperaRecuperacao(tentativa) : 0);
         }
     }
 
@@ -69,15 +74,15 @@ public class ProtecaoAutenticacaoService {
         Registro conta = registros.get(chaveConta);
         Registro origem = registros.get(chaveIp);
         boolean exigeCaptcha = recuperacao || exigeCaptcha(conta, origem, agora);
-        long espera = Math.max(espera(conta, agora, 60, recuperacao ? 1 : 10),
+        long espera = Math.max(recuperacao ? restante(conta, agora) : espera(conta, agora, 60, 10),
                 espera(origem, agora, 60, recuperacao ? 10 : 60));
         if (recuperacao) {
-            espera = Math.max(espera, espera(conta, agora, 3600, 5));
             espera = Math.max(espera, espera(origem, agora, 3600, 100));
         }
-        if (conta != null && conta.emAndamento > 0 && recuperacao) espera = Math.max(espera, 60);
+        if (conta != null && conta.emAndamento > 0 && recuperacao) espera = Math.max(espera, 1);
         if (espera > 0) throw new ProtecaoAutenticacaoException(HttpStatus.TOO_MANY_REQUESTS,
-                "Muitas tentativas. Aguarde o tempo indicado para tentar novamente.", exigeCaptcha, espera);
+                recuperacao ? "Aguarde antes de solicitar um novo código."
+                        : "Muitas tentativas. Aguarde o tempo indicado para tentar novamente.", exigeCaptcha, espera);
         if (exigeCaptcha && (token == null || token.isBlank() || token.length() > 2048)) {
             throw new ProtecaoAutenticacaoException(HttpStatus.BAD_REQUEST,
                     "Conclua a verificação de segurança para continuar.", true, 0);
@@ -92,6 +97,12 @@ public class ProtecaoAutenticacaoService {
         }
         conta = registros.computeIfAbsent(chaveConta, chave -> new Registro());
         origem = registros.computeIfAbsent(chaveIp, chave -> new Registro());
+        if (recuperacao) {
+            long desdeFim = conta.liberadoEm == null ? Long.MAX_VALUE : Duration.between(conta.liberadoEm, agora).getSeconds();
+            conta.penalidade = desdeFim < TEMPO_RESET_TENTATIVAS && desdeFim < TEMPO_PERDAO
+                    ? Math.min(conta.penalidade + 1, PENALIDADES_SEGUNDOS.length - 1) : 0;
+            conta.liberadoEm = agora.plusSeconds(PENALIDADES_SEGUNDOS[conta.penalidade]);
+        }
         conta.tentativas.addLast(agora);
         origem.tentativas.addLast(agora);
         conta.emAndamento++;
@@ -120,6 +131,21 @@ public class ProtecaoAutenticacaoService {
         if (origem != null) origem.emAndamento = Math.max(0, origem.emAndamento - 1);
     }
 
+    public synchronized long esperaRecuperacao(Tentativa tentativa) {
+        return restante(registros.get(tentativa.conta()), relogio.instant());
+    }
+
+    public synchronized RecuperacaoSenhaRespostaDTO respostaRecuperacao(Tentativa tentativa) {
+        Registro conta = registros.get(tentativa.conta());
+        return new RecuperacaoSenhaRespostaDTO(
+                restante(conta, relogio.instant()), conta == null ? 0 : conta.penalidade);
+    }
+
+    private long restante(Registro registro, Instant agora) {
+        return registro == null || registro.liberadoEm == null ? 0
+                : Math.max(0, (Duration.between(agora, registro.liberadoEm).toMillis() + 999) / 1000);
+    }
+
     private boolean exigeCaptcha(Registro conta, Registro ip, Instant agora) {
         return falhas(conta, agora) + (conta == null ? 0 : conta.emAndamento) >= 5
                 || falhas(ip, agora) + (ip == null ? 0 : ip.emAndamento) >= 20;
@@ -141,7 +167,8 @@ public class ProtecaoAutenticacaoService {
         registros.values().removeIf(registro -> {
             while (!registro.tentativas.isEmpty() && !registro.tentativas.peekFirst().plusSeconds(3600).isAfter(agora)) registro.tentativas.removeFirst();
             while (!registro.falhas.isEmpty() && !registro.falhas.peekFirst().plusSeconds(900).isAfter(agora)) registro.falhas.removeFirst();
-            return registro.emAndamento == 0 && registro.tentativas.isEmpty() && registro.falhas.isEmpty();
+            return registro.emAndamento == 0 && registro.tentativas.isEmpty() && registro.falhas.isEmpty()
+                    && (registro.liberadoEm == null || !registro.liberadoEm.plusSeconds(TEMPO_RESET_TENTATIVAS).isAfter(agora));
         });
     }
 
@@ -162,5 +189,7 @@ public class ProtecaoAutenticacaoService {
         private final ArrayDeque<Instant> tentativas = new ArrayDeque<>();
         private final ArrayDeque<Instant> falhas = new ArrayDeque<>();
         private int emAndamento;
+        private int penalidade;
+        private Instant liberadoEm;
     }
 }

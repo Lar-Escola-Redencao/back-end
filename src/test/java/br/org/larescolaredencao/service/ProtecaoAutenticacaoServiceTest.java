@@ -104,7 +104,7 @@ class ProtecaoAutenticacaoServiceTest {
         verify(captcha).validar("token", "ip", "recuperacao_senha", "recuperacao_senha");
         var erro = assertThrows(ProtecaoAutenticacaoException.class,
                 () -> protecao.iniciarRecuperacao("PESSOA@exemplo.com", "outro", "outro-ip"));
-        assertThat(erro.getRetryAfterSeconds()).isEqualTo(60);
+        assertThat(erro.getRetryAfterSeconds()).isEqualTo(30);
         assertThat(protecao.iniciarRecuperacao("outra@exemplo.com", "outro", "ip")).isNotNull();
     }
 
@@ -124,8 +124,8 @@ class ProtecaoAutenticacaoServiceTest {
         var erro = assertThrows(ProtecaoAutenticacaoException.class,
                 () -> protecao.iniciarRecuperacao("pessoa@exemplo.com", "falha", "ip"));
         assertThat(erro.getStatusCode()).isEqualTo(HttpStatus.SERVICE_UNAVAILABLE);
-        assertThat(erro.getRetryAfterSeconds()).isEqualTo(60);
-        relogio.avancar(60);
+        assertThat(erro.getRetryAfterSeconds()).isEqualTo(30);
+        relogio.avancar(30);
         assertThat(protecao.iniciarRecuperacao("pessoa@exemplo.com", "novo", "ip")).isNotNull();
     }
 
@@ -148,6 +148,39 @@ class ProtecaoAutenticacaoServiceTest {
             } finally { liberar.countDown(); }
             protecao.concluir(primeira.get(5, TimeUnit.SECONDS), false);
         }
+    }
+
+    @Test
+    void recuperacaoMantemProgressaoMesmoTrocandoIpENaoEscalaChamadasBloqueadas() {
+        int[] penalidades = {30, 60, 90, 180, 600, 1800, 3600, 3600};
+        for (int i = 0; i < penalidades.length; i++) {
+            var tentativa = protecao.iniciarRecuperacao("pessoa@exemplo.com", "token-" + i, "ip-" + i);
+            assertThat(protecao.respostaRecuperacao(tentativa).retryAfterSeconds()).isEqualTo(penalidades[i]);
+            protecao.concluir(tentativa, false);
+            relogio.avancar(1);
+            var erro = assertThrows(ProtecaoAutenticacaoException.class,
+                    () -> protecao.iniciarRecuperacao("pessoa@exemplo.com", "bloqueado", "outro-ip"));
+            assertThat(erro.getRetryAfterSeconds()).isEqualTo(penalidades[i] - 1);
+            relogio.avancar(penalidades[i] - 1);
+        }
+    }
+
+    @Test
+    void recuperacaoPerdoaAposDoisMinutosDoFimDoCooldown() {
+        var primeira = protecao.iniciarRecuperacao("pessoa@exemplo.com", "primeiro", "ip");
+        protecao.concluir(primeira, false);
+        relogio.avancar(30 + 119);
+        var segunda = protecao.iniciarRecuperacao("pessoa@exemplo.com", "segundo", "ip");
+        assertThat(protecao.esperaRecuperacao(segunda)).isEqualTo(60);
+        protecao.concluir(segunda, false);
+        relogio.avancar(60 + 120);
+        var terceira = protecao.iniciarRecuperacao("pessoa@exemplo.com", "terceiro", "ip");
+        assertThat(protecao.esperaRecuperacao(terceira)).isEqualTo(30);
+        protecao.concluir(terceira, false);
+        relogio.avancar(30 + 7200);
+        var nova = protecao.iniciarRecuperacao("pessoa@exemplo.com", "novo", "ip");
+        assertThat(protecao.respostaRecuperacao(nova).tentativas()).isZero();
+        assertThat(protecao.esperaRecuperacao(nova)).isEqualTo(30);
     }
 
     private void falharCincoVezes() {

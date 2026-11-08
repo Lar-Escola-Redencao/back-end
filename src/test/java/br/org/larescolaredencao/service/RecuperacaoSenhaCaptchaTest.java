@@ -33,7 +33,7 @@ class RecuperacaoSenhaCaptchaTest {
         recuperacao.solicitarRecuperacao("PESSOA@exemplo.com", "token", "ip");
         var erro = assertThrows(ProtecaoAutenticacaoException.class,
                 () -> recuperacao.solicitarRecuperacao("pessoa@exemplo.com", "outro-token", "outro-ip"));
-        assertThat(erro.getRetryAfterSeconds()).isEqualTo(60);
+        assertThat(erro.getRetryAfterSeconds()).isEqualTo(30);
         verify(membros, times(1)).findByEmail("pessoa@exemplo.com");
         verifyNoInteractions(codigos, email);
     }
