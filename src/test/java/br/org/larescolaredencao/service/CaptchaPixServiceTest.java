@@ -95,10 +95,18 @@ class CaptchaPixServiceTest {
     }
 
     @Test
-    void naoAceitaChavesOficiaisDeTesteSemOptInLocal() {
+    void naoAceitaChavesOficiaisDeTeste() {
         service = new CaptchaPixService(RestClient.create(), "1x0000000000000000000000000000000AA",
                 "example.com", Clock.systemUTC());
         assertThatThrownBy(() -> service.validar("token", "127.0.0.1", "LER123")).hasMessageContaining("503");
+    }
+
+    @Test
+    void acessoLocalNaoDispensaValidacaoDeContexto() {
+        responder("{\"success\":true,\"challenge_ts\":\"2026-11-08T11:59:00Z\",\"hostname\":\"doar.example.org\"}");
+        assertThatThrownBy(() -> service.validar("token", "127.0.0.1", "LER123"))
+                .hasMessageContaining("400");
+        servidor.verify();
     }
 
     private void responder(String json) {

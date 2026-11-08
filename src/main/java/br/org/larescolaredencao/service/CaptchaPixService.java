@@ -13,8 +13,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
-import org.springframework.core.env.Environment;
-import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
@@ -27,19 +25,14 @@ public class CaptchaPixService {
     private final String chaveSecreta;
     private final Set<String> hostnames;
     private final Clock relogio;
-    private boolean permitirChavesTeste;
     private static final Set<String> CHAVES_TESTE = Set.of(
             "1x0000000000000000000000000000000AA", "2x0000000000000000000000000000000AA",
             "3x0000000000000000000000000000000AA");
 
     @Autowired
     public CaptchaPixService(@Value("${app.pix.captcha.secret-key:}") String chaveSecreta,
-            @Value("${app.pix.captcha.hostnames:}") String hostnames,
-            @Value("${app.pix.captcha.allow-test-keys:false}") boolean permitirChavesTeste,
-            Environment ambiente) {
+            @Value("${app.pix.captcha.hostnames:}") String hostnames) {
         this(criarCliente(), chaveSecreta, hostnames, Clock.systemUTC());
-        this.permitirChavesTeste = permitirChavesTeste && ambiente.acceptsProfiles(Profiles.of("dev"))
-                && !ambiente.acceptsProfiles(Profiles.of("prod"));
     }
 
     CaptchaPixService(RestClient cliente, String chaveSecreta, String hostnames, Clock relogio) {
@@ -66,10 +59,7 @@ public class CaptchaPixService {
         if (token == null || token.isBlank() || token.length() > 2048) {
             throw invalido();
         }
-        boolean chaveTeste = CHAVES_TESTE.contains(chaveSecreta);
-        boolean testeLocal = permitirChavesTeste && chaveTeste
-                && Set.of("127.0.0.1", "0:0:0:0:0:0:0:1", "::1").contains(ip);
-        if (chaveSecreta.isBlank() || hostnames.isEmpty() || (chaveTeste && !testeLocal)) {
+        if (chaveSecreta.isBlank() || hostnames.isEmpty() || CHAVES_TESTE.contains(chaveSecreta)) {
             throw indisponivel();
         }
         LinkedMultiValueMap<String, String> dados = new LinkedMultiValueMap<>();
@@ -92,7 +82,6 @@ public class CaptchaPixService {
             }
             throw invalido();
         }
-        if (testeLocal && "example.com".equals(resposta.get("hostname"))) return;
         try {
             Instant desafio = Instant.parse((String) resposta.get("challenge_ts"));
             Instant agora = relogio.instant();
