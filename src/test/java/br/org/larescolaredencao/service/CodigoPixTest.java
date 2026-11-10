@@ -58,12 +58,12 @@ class CodigoPixTest {
 
     @Test
     void deveRecusarValoresInvalidosSemArredondar() {
-        for (String valor : new String[] { "0", "-1", "1000000", "10.001" }) {
+        for (String valor : new String[] { "0", "0.01", "0.99", "-1", "1000000", "10.001" }) {
             assertThatThrownBy(() -> CodigoPix.gerar("doacoes@example.org", new BigDecimal(valor),
                     "Lar Escola Redencao", "Araraquara", "LER123"))
                     .isInstanceOf(ResponseStatusException.class);
         }
-        assertThat(CodigoPix.gerar("doacoes@example.org", new BigDecimal("0.01"),
-                "Lar Escola Redencao", "Araraquara", "LER123")).contains("54040.01");
+        assertThat(CodigoPix.gerar("doacoes@example.org", new BigDecimal("1.00"),
+                "Lar Escola Redencao", "Araraquara", "LER123")).contains("54041.00");
     }
 }

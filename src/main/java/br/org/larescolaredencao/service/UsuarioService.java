@@ -549,6 +549,19 @@ public class UsuarioService {
             matriculaAtiva = obterMatriculaAtiva(usuario);
         }
 
+        if (dto.isRemoverFotoPerfil()) {
+            String fotoAntiga = usuario.getImagemPerfil();
+            usuario.setImagemPerfil(null);
+            usuarioRepository.save(usuario);
+            if (fotoAntiga != null) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        arquivoService.deletarArquivo(fotoAntiga);
+                    }
+                });
+            }
+        }
         List<ContatoUsuario> contatosSalvos = contatoUsuarioRepository.findByUsuario(usuario);
         return montarRespostaCompleta(usuario, contatosSalvos, matriculaAtiva);
     }

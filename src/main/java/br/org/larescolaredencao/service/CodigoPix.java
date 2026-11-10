@@ -15,7 +15,7 @@ final class CodigoPix {
 
     private static final Pattern EMAIL = Pattern.compile("[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+");
     private static final Pattern ALEATORIA = Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
-    private static final BigDecimal VALOR_MINIMO = new BigDecimal("0.01");
+    private static final BigDecimal VALOR_MINIMO = new BigDecimal("1.00");
     private static final BigDecimal VALOR_MAXIMO = new BigDecimal("999999.99");
     private static final int TAMANHO_BASE_CPF = 9;
     private static final int TAMANHO_BASE_CNPJ = 12;
@@ -122,7 +122,7 @@ final class CodigoPix {
 
     private static String formatarValor(BigDecimal valor) {
         if (valor == null || valor.compareTo(VALOR_MINIMO) < 0 || valor.compareTo(VALOR_MAXIMO) > 0) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um valor entre R$ 0,01 e R$ 999.999,99.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um valor entre R$ 1,00 e R$ 999.999,99.");
         }
         try {
             return valor.setScale(2, RoundingMode.UNNECESSARY).toPlainString();

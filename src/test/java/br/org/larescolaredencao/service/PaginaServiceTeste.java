@@ -89,12 +89,12 @@ class PaginaServiceTeste {
 
         CriarSecaoDTO dto = new CriarSecaoDTO();
         dto.setTitulo("Relatórios Financeiros");
-        dto.setConteudo("Prestação de contas de 2025.");
+        dto.setConteudo("Prestação de contas de 2025.\n\nInformações revisadas.\nOutra linha.");
 
         Secao secao = paginaService.criarSecao(1L, dto);
 
         assertThat(secao.getTitulo()).isEqualTo("Relatórios Financeiros");
-        assertThat(secao.getConteudo()).isEqualTo("Prestação de contas de 2025.");
+        assertThat(secao.getConteudo()).isEqualTo("Prestação de contas de 2025.\n\nInformações revisadas.\nOutra linha.");
         assertThat(secao.getImagem()).isNull();
         assertThat(secao.getAtivo()).isTrue();
         assertThat(secao.getPagina()).isSameAs(pagina);
