@@ -129,4 +129,24 @@ class ArquivoServiceTest {
     private Path arquivoGravado(String caminhoNoBanco) {
         return pastaUploads.resolve(caminhoNoBanco.substring("/uploads/".length()));
     }
+
+    @Test
+    void naoExcluiArquivoForaDoDiretorioDeUploads(@TempDir Path externo) throws IOException {
+        Path alvo = Files.writeString(externo.resolve("importante.txt"), "manter");
+        String relativo = pastaUploads.toAbsolutePath().relativize(alvo.toAbsolutePath()).toString();
+
+        arquivoService.deletarArquivo("/uploads/" + relativo);
+
+        assertThat(alvo).exists();
+    }
+
+    @Test
+    void excluiArquivoDentroDoDiretorioDeUploads() throws IOException {
+        Files.createDirectories(pastaUploads.resolve("usuarios"));
+        Path foto = Files.writeString(pastaUploads.resolve("usuarios/foto.jpg"), "x");
+
+        arquivoService.deletarArquivo("/uploads/usuarios/foto.jpg");
+
+        assertThat(foto).doesNotExist();
+    }
 }

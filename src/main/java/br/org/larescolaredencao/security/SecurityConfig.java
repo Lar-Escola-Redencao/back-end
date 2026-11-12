@@ -1,7 +1,9 @@
 package br.org.larescolaredencao.security;
 
+import br.org.larescolaredencao.config.RecursosPublicos;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -52,17 +54,14 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.POST, "/auth/validar-codigo").permitAll();
                     req.requestMatchers(HttpMethod.POST, "/auth/redefinir-senha").permitAll();            
                     
-                    req.requestMatchers(HttpMethod.GET, "/uploads/usuarios/saude/**", "/uploads/saude/**")
+                    // Documentos de saúde: servidos por ArquivoSaudeController, que valida a unidade do usuário.
+                    req.requestMatchers(HttpMethod.GET, "/uploads/usuarios/saude/*", "/uploads/saude/*")
                             .hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
-                    req.requestMatchers(HttpMethod.GET,
-                            "/uploads/parceiros/**",
-                            "/uploads/diretoria/**",
-                            "/uploads/redes-sociais/**",
-                            "/uploads/eventos/**",
-                            "/uploads/unidades/**", 
-                            "/uploads/transparencia/**",
-                            "/uploads/paginas/**",
-                            "/uploads/usuarios/{nome}").permitAll();
+                    // Conteúdo institucional publicado no site (ver RecursosPublicos).
+                    req.requestMatchers(HttpMethod.GET, RecursosPublicos.padroesUpload()).permitAll();
+                    // Demais arquivos (inclusive as URLs antigas das fotos em /uploads/usuarios/) nunca são
+                    // servidos diretamente: a foto é consultada por GET /usuarios/{id}/foto.
+                    req.requestMatchers("/uploads/**").denyAll();
 
                     req.requestMatchers(HttpMethod.GET,
                             "/evento/**",
@@ -97,9 +96,10 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.PUT, "/membro/me/senha").authenticated();
                     req.requestMatchers(HttpMethod.POST, "/membro/me/senha/validar").authenticated();
                     
-                    req.requestMatchers("/membro/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
+                    req.requestMatchers("/membro/**", "/papel/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/{id:[0-9]+}",
-                            "/usuarios/{id:[0-9]+}/arquivos-saude").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
+                            "/usuarios/{id:[0-9]+}/arquivos-saude",
+                            "/usuarios/{id:[0-9]+}/foto").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers("/usuarios/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/buscar").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
                     req.requestMatchers("/contatos/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
@@ -118,6 +118,18 @@ public class SecurityConfig {
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration configuration) throws Exception {
         return configuration.getAuthenticationManager();
+    }
+
+    /**
+     * O SecurityFilter roda somente dentro da cadeia do Spring Security. Sem isto o Boot também o
+     * registraria como filtro de servlet e, conforme a ordem, ele seria executado fora da cadeia e
+     * ignorado dentro dela (OncePerRequestFilter), deixando a requisição sem autenticação.
+     */
+    @Bean
+    public FilterRegistrationBean<SecurityFilter> securityFilterRegistration(SecurityFilter filter) {
+        FilterRegistrationBean<SecurityFilter> registro = new FilterRegistrationBean<>(filter);
+        registro.setEnabled(false);
+        return registro;
     }
 
     @Bean
