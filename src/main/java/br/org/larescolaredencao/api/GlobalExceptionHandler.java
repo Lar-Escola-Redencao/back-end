@@ -20,9 +20,29 @@ import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.util.unit.DataSize;
+import br.org.larescolaredencao.service.BloqueioAgradecimentoException;
+import br.org.larescolaredencao.service.ProtecaoAutenticacaoException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ProtecaoAutenticacaoException.class)
+    public ResponseEntity<Map<String, Object>> handleProtecaoAutenticacao(
+            ProtecaoAutenticacaoException exception) {
+        var resposta = ResponseEntity.status(exception.getStatusCode());
+        if (exception.getRetryAfterSeconds() > 0) resposta.header("Retry-After", Long.toString(exception.getRetryAfterSeconds()));
+        return resposta.body(Map.of("message", exception.getReason(), "captchaRequired", exception.isCaptchaRequired(),
+                "retryAfterSeconds", exception.getRetryAfterSeconds()));
+    }
+
+    @ExceptionHandler(BloqueioAgradecimentoException.class)
+    public ResponseEntity<Map<String, Object>> handleBloqueioAgradecimento(
+            BloqueioAgradecimentoException exception) {
+        return ResponseEntity.status(exception.getStatusCode())
+                .header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
+                .body(Map.of("message", exception.getReason(),
+                        "retryAfterSeconds", exception.getRetryAfterSeconds()));
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
