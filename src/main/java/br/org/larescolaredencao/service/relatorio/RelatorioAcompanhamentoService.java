@@ -5,7 +5,9 @@ import br.org.larescolaredencao.model.Frequencia;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Ocorrencia;
+import br.org.larescolaredencao.model.Unidade;
 import br.org.larescolaredencao.model.enums.Perfil;
+import br.org.larescolaredencao.model.enums.FormatoRelatorio;
 import br.org.larescolaredencao.model.enums.Periodo;
 import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 import br.org.larescolaredencao.repository.EntrevistaSocialRepository;
@@ -44,32 +46,40 @@ public class RelatorioAcompanhamentoService {
     private final EntrevistaSocialRepository entrevistas;
     private final MembroRepository membros;
     private final RelatorioAcompanhamentoPdfGerador pdf;
+    private final RelatorioXlsxGerador xlsx;
     private final Clock relogio;
 
     @Autowired
     public RelatorioAcompanhamentoService(UsuarioService usuarios, FrequenciaAcompanhamentoService selecao,
             FrequenciaRepository frequencias, OcorrenciaRepository ocorrencias,
-            EntrevistaSocialRepository entrevistas, MembroRepository membros, RelatorioAcompanhamentoPdfGerador pdf) {
-        this(usuarios, selecao, frequencias, ocorrencias, entrevistas, membros, pdf,
+            EntrevistaSocialRepository entrevistas, MembroRepository membros, RelatorioAcompanhamentoPdfGerador pdf, RelatorioXlsxGerador xlsx) {
+        this(usuarios, selecao, frequencias, ocorrencias, entrevistas, membros, pdf, xlsx,
                 Clock.system(ZoneId.of("America/Sao_Paulo")));
     }
 
     RelatorioAcompanhamentoService(UsuarioService usuarios, FrequenciaAcompanhamentoService selecao,
             FrequenciaRepository frequencias, OcorrenciaRepository ocorrencias,
             EntrevistaSocialRepository entrevistas, MembroRepository membros, RelatorioAcompanhamentoPdfGerador pdf,
-            Clock relogio) {
+            RelatorioXlsxGerador xlsx, Clock relogio) {
         this.usuarios = usuarios; this.selecao = selecao; this.frequencias = frequencias;
         this.ocorrencias = ocorrencias; this.entrevistas = entrevistas; this.membros = membros;
-        this.pdf = pdf; this.relogio = relogio;
+        this.pdf = pdf; this.xlsx = xlsx; this.relogio = relogio;
     }
 
     public ArquivoRelatorio gerar(Integer usuario, Integer matricula, LocalDate inicio, LocalDate fim, Membro membro) {
+        return gerar(usuario, matricula, inicio, fim, membro, FormatoRelatorio.PDF);
+    }
+
+    public ArquivoRelatorio gerar(Integer usuario, Integer matricula, LocalDate inicio, LocalDate fim,
+            Membro membro, FormatoRelatorio formato) {
         DadosAcompanhamento dados = montar(usuario, matricula, inicio, fim, membro);
         String nome = "acompanhamento_" + RelatorioFrequenciaService.slug(dados.usuario()) + "_"
-                + dados.geradoEm().toLocalDate() + ".pdf";
+                + dados.geradoEm().toLocalDate();
         try {
-            return new ArquivoRelatorio(nome, RelatorioFrequenciaService.TIPO_PDF, pdf.gerar(dados));
-        } catch (RuntimeException e) {
+            return formato == FormatoRelatorio.XLSX
+                    ? new ArquivoRelatorio(nome + ".xlsx", RelatorioFrequenciaService.TIPO_XLSX, xlsx.acompanhamento(dados))
+                    : new ArquivoRelatorio(nome + ".pdf", RelatorioFrequenciaService.TIPO_PDF, pdf.gerar(dados));
+        } catch (java.io.IOException | RuntimeException e) {
             log.error("Falha ao gerar o relatório de acompanhamento do usuário {}", usuario, e);
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Não foi possível gerar o relatório. Tente novamente.", e);
@@ -80,7 +90,15 @@ public class RelatorioAcompanhamentoService {
         var nomeUsuario = usuarios.buscarUsuarioPorId(usuario, membro).getNomeCompleto();
         var escolha = selecao.selecionar(usuario, matricula, inicio, fim, membro);
         inicio = escolha.intervalo().inicio(); fim = escolha.intervalo().fim();
-        List<Matricula> alvo = escolha.matriculas();
+        var periodo = escolha.intervalo();
+        List<Matricula> alvo = escolha.matriculas().stream()
+                .filter(m -> m.getDataIngresso() != null && !m.getDataIngresso().toLocalDate().isAfter(periodo.fim())
+                        && (m.getDataDesligamento() == null || !m.getDataDesligamento().isBefore(periodo.inicio())))
+                .toList();
+        if (matricula != null && alvo.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "O período selecionado está fora da vigência da matrícula. Escolha um período entre o ingresso e o desligamento.");
+        }
         List<Integer> ids = alvo.stream().map(Matricula::getId).toList();
         var fimExclusivo = fim.plusDays(1).atStartOfDay();
 
@@ -92,7 +110,14 @@ public class RelatorioAcompanhamentoService {
                         .add(new DadosAcompanhamento.RegistroDia(f.getMatricula().getId(),
                                 Boolean.TRUE.equals(f.getPresente())));
             }
-            listaOcorrencias = ocorrencias.listarParaRelatorioAcompanhamento(ids, inicio.atStartOfDay(), fimExclusivo)
+        }
+        boolean administrador = Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR;
+        var unidadesPermitidas = membro.getUnidades().stream().map(Unidade::getId).toList();
+        var idsOcorrencias = alvo.stream()
+                .filter(m -> administrador || unidadesPermitidas.contains(m.getTurma().getUnidade().getId()))
+                .map(Matricula::getId).toList();
+        if (!idsOcorrencias.isEmpty()) {
+            listaOcorrencias = ocorrencias.listarParaRelatorioAcompanhamento(idsOcorrencias, inicio.atStartOfDay(), fimExclusivo)
                     .stream().map(RelatorioAcompanhamentoService::ocorrencia).toList();
         }
 
@@ -118,7 +143,7 @@ public class RelatorioAcompanhamentoService {
     }
 
     private static DadosAcompanhamento.Ocorrencia ocorrencia(Ocorrencia o) {
-        return new DadosAcompanhamento.Ocorrencia(o.getDataOcorrencia(), rotulo(o.getTipoOcorrencia()),
+        return new DadosAcompanhamento.Ocorrencia(o.getMatricula().getId(), o.getDataOcorrencia(), rotulo(o.getTipoOcorrencia()),
                 o.getDescricao(), o.getMembro().getNomeCompleto(),
                 o.getMatricula().getTurma().getUnidade().getNome() + " — " + turma(o.getMatricula()));
     }

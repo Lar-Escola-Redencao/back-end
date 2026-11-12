@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.util.List;
 
@@ -50,22 +51,49 @@ public class RelatorioAcompanhamentoPdfGerador {
 
     public byte[] gerar(DadosAcompanhamento dados) {
         ByteArrayOutputStream saida = new ByteArrayOutputStream();
-        Document documento = new Document(PageSize.A4, 36, 36, 110, 52);
+        Document documento = new Document(PageSize.A4, 36, 36, 96, 52);
         PdfWriter writer = PdfWriter.getInstance(documento, saida);
         writer.setPageEvent(new CabecalhoRodape(base.imagemLogo(), "Relatório de acompanhamento", info(dados),
-                new Phrase("Dias sem registro de frequência não são contabilizados como faltas.", RODAPE)));
+                legendaPresencas(false)));
         documento.open();
         float largura = documento.right() - documento.left();
 
-        documento.add(secao("Frequência"));
-        if (dados.matriculas().size() > 1) documento.add(legenda(dados));
+        Paragraph tituloMatriculas = secao("Matrículas");
+        tituloMatriculas.setSpacingBefore(0);
+        documento.add(tituloMatriculas);
+        if (dados.matriculas().isEmpty()) {
+            documento.add(new Paragraph("Nenhuma matrícula disponível no período.", INFO));
+        } else {
+            for (var matricula : dados.matriculas()) {
+                Paragraph vinculo = new Paragraph(rotuloMatricula(matricula), INFO);
+                vinculo.setSpacingAfter(4);
+                documento.add(vinculo);
+            }
+        }
+        Paragraph tituloFrequencia = secao("Frequência");
+        tituloFrequencia.setLeading(13);
+        tituloFrequencia.setSpacingBefore(8);
+        tituloFrequencia.setSpacingAfter(10);
+        documento.add(tituloFrequencia);
         for (int ano = dados.inicio().getYear(); ano <= dados.fim().getYear(); ano++) {
             documento.add(calendarioDoAno(dados, ano, largura));
         }
 
+        documento.newPage();
         documento.add(secao("Ocorrências"));
-        documento.add(tabelaOcorrencias(dados));
+        if (dados.ocorrencias().isEmpty()) {
+            documento.add(tabelaOcorrencias(List.of(), null));
+        } else {
+            for (var matricula : dados.matriculas()) {
+                var ocorrencias = dados.ocorrencias().stream()
+                        .filter(o -> o.idMatricula() == matricula.id()).toList();
+                if (!ocorrencias.isEmpty()) {
+                    documento.add(tabelaOcorrencias(ocorrencias, rotuloMatricula(matricula)));
+                }
+            }
+        }
         if (dados.incluiEntrevistas()) {
+            documento.newPage();
             documento.add(secao("Entrevistas"));
             documento.add(tabelaEntrevistas(dados));
         }
@@ -87,27 +115,6 @@ public class RelatorioAcompanhamentoPdfGerador {
         return p;
     }
 
-    private Paragraph legenda(DadosAcompanhamento dados) {
-        Paragraph legenda = new Paragraph();
-        legenda.setLeading(13);
-        legenda.setSpacingAfter(6);
-        legenda.add(new Chunk("Matrículas: ", INFO));
-        if (dados.matriculas().isEmpty()) {
-            legenda.add(new Chunk("nenhuma matrícula acessível.", INFO));
-        }
-        for (var m : dados.matriculas()) {
-            String texto = "M" + m.id() + " = " + m.unidade() + ", " + m.turma()
-                    + (m.ingresso() == null ? "" : " (desde " + m.ingresso().format(DATA)
-                    + (m.desligamento() == null ? "" : " até " + m.desligamento().format(DATA)) + ")");
-            legenda.add(new Chunk(texto + (m == dados.matriculas().get(dados.matriculas().size() - 1) ? "." : "; "), INFO));
-        }
-        if (dados.matriculas().size() > 1) {
-            legenda.add(new Chunk("\nQuando há mais de uma matrícula, cada registro do dia indica sua matrícula (ex.: M"
-                    + dados.matriculas().get(0).id() + " P).", INFO));
-        }
-        return legenda;
-    }
-
     private PdfPTable calendarioDoAno(DadosAcompanhamento dados, int ano, float larguraUtil) {
         YearMonth primeiro = YearMonth.of(ano, 1).isBefore(YearMonth.from(dados.inicio()))
                 ? YearMonth.from(dados.inicio()) : YearMonth.of(ano, 1);
@@ -118,6 +125,7 @@ public class RelatorioAcompanhamentoPdfGerador {
         // Grade de 6 colunas: cada card ocupa 2, de modo que linhas incompletas ficam centralizadas.
         PdfPTable tabela = new PdfPTable(6);
         tabela.setWidthPercentage(100);
+        tabela.setSpacingBefore(8);
         tabela.setSplitLate(true);
         tabela.setSplitRows(false);
         tabela.setHeaderRows(1);
@@ -136,6 +144,9 @@ public class RelatorioAcompanhamentoPdfGerador {
             if (vazias > 0) tabela.addCell(vazia(vazias));
             for (int k = 0; k < naLinha; k++) {
                 PdfPCell envoltorio = new PdfPCell(cardDoMes(dados, primeiro.plusMonths(i + k), larguraCard));
+                envoltorio.setVerticalAlignment(Element.ALIGN_TOP);
+                // O alinhamento superior também ativa a extensão da última linha da tabela aninhada.
+                envoltorio.getTable().setExtendLastRow(false);
                 envoltorio.setColspan(2);
                 envoltorio.setBorder(Rectangle.NO_BORDER);
                 envoltorio.setPadding(LARGURA_ESPACO);
@@ -199,7 +210,7 @@ public class RelatorioAcompanhamentoPdfGerador {
             case SEM_MATRICULA -> {
                 fundo = FUNDO_SEM_MATRICULA;
                 conteudo.add(new Chunk(numero + "\n", NUMERO_DIA));
-                conteudo.add(new Chunk("—", MARCA_NEUTRA));
+                conteudo.add(new Chunk("N/A", MARCA_NEUTRA));
             }
             case SEM_REGISTRO -> {
                 conteudo.add(new Chunk(numero + "\n", NUMERO_DIA));
@@ -209,21 +220,15 @@ public class RelatorioAcompanhamentoPdfGerador {
                 var registros = dados.registros().get(data);
                 boolean todosPresentes = registros.stream().allMatch(DadosAcompanhamento.RegistroDia::presente);
                 boolean todosFaltas = registros.stream().noneMatch(DadosAcompanhamento.RegistroDia::presente);
-                boolean identificar = dados.matriculas().size() > 1;
-                // Fundo da célula só quando todos os registros do dia coincidem; senão cada linha é destacada.
                 if (todosPresentes) fundo = FUNDO_PRESENCA;
                 if (todosFaltas) fundo = FUNDO_FALTA;
                 boolean uniforme = todosPresentes || todosFaltas;
                 conteudo.add(new Chunk(numero, uniforme && todosFaltas ? new Font(Font.HELVETICA, 6.5f, Font.NORMAL, Color.WHITE)
                         : NUMERO_DIA));
-                for (var r : registros) {
-                    String texto = (identificar ? "M" + r.idMatricula() + " " : "") + (r.presente() ? "P" : "F");
-                    Font fonte = r.presente() ? (identificar ? new Font(Font.HELVETICA, 7, Font.BOLD, VERDE_PRESENCA)
-                            : INDICADOR_PRESENCA)
-                            : (uniforme ? (identificar ? new Font(Font.HELVETICA, 7, Font.BOLD, Color.WHITE) : INDICADOR_FALTA)
-                            : new Font(Font.HELVETICA, 7, Font.BOLD, Color.WHITE));
-                    Chunk marca = new Chunk(texto, fonte);
-                    if (!uniforme) marca.setBackground(r.presente() ? FUNDO_PRESENCA : FUNDO_FALTA, 1, 1, 1, 1);
+                for (boolean presente : registros.stream().map(DadosAcompanhamento.RegistroDia::presente).distinct().toList()) {
+                    Font fonte = presente ? INDICADOR_PRESENCA : INDICADOR_FALTA;
+                    Chunk marca = new Chunk(presente ? "P" : "F", fonte);
+                    if (!uniforme) marca.setBackground(presente ? FUNDO_PRESENCA : FUNDO_FALTA, 1, 1, 1, 1);
                     conteudo.add(new Chunk("\n", fonte));
                     conteudo.add(marca);
                 }
@@ -240,40 +245,54 @@ public class RelatorioAcompanhamentoPdfGerador {
         return c;
     }
 
-    private PdfPTable tabelaOcorrencias(DadosAcompanhamento dados) {
-        PdfPTable tabela = tabela(new float[] {10, 9, 12, 29, 16, 24});
-        for (String coluna : List.of("Data", "Horário", "Tipo", "Descrição", "Autor", "Unidade e turma")) {
+    private String rotuloMatricula(DadosAcompanhamento.MatriculaRelatorio matricula) {
+        String ingresso = matricula.ingresso() == null ? "início não informado" : matricula.ingresso().format(DATA);
+        String fim = matricula.desligamento() == null ? "hoje" : matricula.desligamento().format(DATA);
+        return matricula.unidade() + " - " + matricula.turma() + " (" + ingresso + " a " + fim + ")";
+    }
+
+    private PdfPTable tabelaOcorrencias(List<DadosAcompanhamento.Ocorrencia> ocorrencias, String matricula) {
+        PdfPTable tabela = tabela(new float[] {19, 15, 46, 20});
+        if (matricula != null) {
+            PdfPCell titulo = texto(matricula);
+            titulo.setColspan(4);
+            titulo.setBorder(Rectangle.NO_BORDER);
+            titulo.setPaddingTop(8);
+            titulo.setPaddingBottom(8);
+            tabela.addCell(titulo);
+            tabela.setHeaderRows(2);
+        }
+        for (String coluna : List.of("Data e hora", "Tipo", "Descrição", "Autor")) {
             tabela.addCell(cabecalho(coluna, Element.ALIGN_LEFT));
         }
-        if (dados.ocorrencias().isEmpty()) {
-            tabela.addCell(vazio(DadosAcompanhamento.SEM_OCORRENCIAS, 6));
-        }
-        for (var o : dados.ocorrencias()) {
-            tabela.addCell(texto(o.dataHora().format(DATA)));
-            tabela.addCell(texto(o.dataHora().format(HORA)));
+        if (ocorrencias.isEmpty()) tabela.addCell(vazio(DadosAcompanhamento.SEM_OCORRENCIAS, 4));
+        for (var o : ocorrencias) {
+            tabela.addCell(dataHora(o.dataHora()));
             tabela.addCell(texto(o.tipo()));
             tabela.addCell(texto(o.descricao()));
             tabela.addCell(texto(o.autor()));
-            tabela.addCell(texto(o.unidadeTurma()));
         }
         return tabela;
     }
 
     private PdfPTable tabelaEntrevistas(DadosAcompanhamento dados) {
-        PdfPTable tabela = tabela(new float[] {11, 9, 57, 23});
-        for (String coluna : List.of("Data", "Horário", "Descrição", "Autor")) {
+        PdfPTable tabela = tabela(new float[] {19, 61, 20});
+        for (String coluna : List.of("Data e hora", "Descrição", "Autor")) {
             tabela.addCell(cabecalho(coluna, Element.ALIGN_LEFT));
         }
-        if (dados.entrevistas().isEmpty()) {
-            tabela.addCell(vazio(DadosAcompanhamento.SEM_ENTREVISTAS, 4));
-        }
+        if (dados.entrevistas().isEmpty()) tabela.addCell(vazio(DadosAcompanhamento.SEM_ENTREVISTAS, 3));
         for (var e : dados.entrevistas()) {
-            tabela.addCell(texto(e.dataHora().format(DATA)));
-            tabela.addCell(texto(e.dataHora().format(HORA)));
+            tabela.addCell(dataHora(e.dataHora()));
             tabela.addCell(texto(e.descricao()));
             tabela.addCell(texto(e.autor()));
         }
         return tabela;
+    }
+
+    private PdfPCell dataHora(LocalDateTime dataHora) {
+        PdfPCell celula = texto(dataHora.format(DATA_HORA));
+        celula.setNoWrap(true);
+        return celula;
     }
 
     private PdfPTable tabela(float[] larguras) {

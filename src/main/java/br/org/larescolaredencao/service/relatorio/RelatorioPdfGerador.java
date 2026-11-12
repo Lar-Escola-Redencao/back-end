@@ -275,6 +275,10 @@ public class RelatorioPdfGerador {
     }
 
     private Phrase legendaPresencas(DadosRelatorio.Presencas dados) {
+        return legendaPresencas(dados.possuiRegistroForaDaMatricula());
+    }
+
+    static Phrase legendaPresencas(boolean possuiRegistroForaDaMatricula) {
         Phrase legenda = new Phrase("Legenda: ", RODAPE);
         Chunk presente = new Chunk(" P ", new Font(Font.HELVETICA, 10.5f, Font.BOLD, VERDE_PRESENCA));
         presente.setBackground(FUNDO_PRESENCA, 1.5f, 2, 1.5f, 3);
@@ -284,7 +288,7 @@ public class RelatorioPdfGerador {
         falta.setBackground(FUNDO_FALTA, 1.5f, 2, 1.5f, 3);
         legenda.add(falta);
         legenda.add(new Chunk(" = ausente  ·  — = frequência não registrada  ·  N/A = não matriculado na data", RODAPE));
-        if (dados.possuiRegistroForaDaMatricula()) {
+        if (possuiRegistroForaDaMatricula) {
             legenda.add(new Chunk("  ·  * = registro fora da vigência da matrícula, mantido como salvo", RODAPE));
         }
         return legenda;

@@ -23,7 +23,7 @@ public record DadosAcompanhamento(String usuario, LocalDate inicio, LocalDate fi
 
     public record RegistroDia(int idMatricula, boolean presente) {}
 
-    public record Ocorrencia(LocalDateTime dataHora, String tipo, String descricao, String autor, String unidadeTurma) {}
+    public record Ocorrencia(int idMatricula, LocalDateTime dataHora, String tipo, String descricao, String autor, String unidadeTurma) {}
 
     public record Entrevista(LocalDateTime dataHora, String descricao, String autor) {}
 
@@ -33,6 +33,17 @@ public record DadosAcompanhamento(String usuario, LocalDate inicio, LocalDate fi
         if (data.isBefore(inicio) || data.isAfter(fim)) return Situacao.FORA_DO_PERIODO;
         if (!registros.getOrDefault(data, List.of()).isEmpty()) return Situacao.COM_REGISTRO;
         return matriculas.stream().anyMatch(m -> m.vigente(data)) ? Situacao.SEM_REGISTRO : Situacao.SEM_MATRICULA;
+    }
+
+    /** Isola o vínculo para que dias de matrículas simultâneas sejam apresentados separadamente. */
+    public DadosAcompanhamento paraMatricula(MatriculaRelatorio matricula) {
+        Map<LocalDate, List<RegistroDia>> frequencias = new java.util.LinkedHashMap<>();
+        registros.forEach((data, registrosDia) -> {
+            var registrosMatricula = registrosDia.stream().filter(r -> r.idMatricula() == matricula.id()).toList();
+            if (!registrosMatricula.isEmpty()) frequencias.put(data, registrosMatricula);
+        });
+        return new DadosAcompanhamento(usuario, inicio, fim, filtroMatricula, geradoEm, responsavel,
+                List.of(matricula), frequencias, ocorrencias, entrevistas);
     }
 
     /** As entrevistas só existem no relatório de perfis autorizados; para os demais a seção é omitida. */

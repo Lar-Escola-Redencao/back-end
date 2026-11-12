@@ -34,7 +34,7 @@ class RelatorioAcompanhamentoTest {
     final RelatorioAcompanhamentoService service = new RelatorioAcompanhamentoService(usuarios,
             selecao(),
             frequencias, ocorrencias, entrevistas, membros,
-            new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()), relogio);
+            new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()), new RelatorioXlsxGerador(), relogio);
 
     FrequenciaAcompanhamentoService selecao() {
         var f = new FrequenciaAcompanhamentoServiceTestAcesso(usuarios, matriculas, frequencias, relogio);
@@ -169,7 +169,8 @@ class RelatorioAcompanhamentoTest {
         var texto = texto(pdf);
         assertThat(texto).contains("Maria da Silva", "15/11/2025 a 31/03/2026", "Todas as matrículas",
                 "10/11/2026 12:30", "Responsável Exportação", "2025", "2026", "Novembro de 2025", "Dezembro de 2025",
-                "Janeiro de 2026", "Fevereiro de 2026", "Março de 2026", "M7 P", "M8 F".replace("M8 F", "M8 P"),
+                "Janeiro de 2026", "Fevereiro de 2026", "Março de 2026", "Sede São José - Manhã (01/11/2025 a 20/12/2025)",
+                "Sede São José - Tarde (15/01/2026 a hoje)",
                 "Segundo parágrafo preservado.", "Segundo parágrafo da entrevista", "Autora Original");
         assertThat(texto).doesNotContain("Abril de 2026").doesNotContain("Outubro de 2025");
         Path saida = Path.of(System.getProperty("acompanhamento.pdf.saida", "build/tmp/acompanhamento-exemplo.pdf"));
@@ -188,4 +189,203 @@ class RelatorioAcompanhamentoTest {
         assertThat(texto.indexOf("RecenteOc")).isLessThan(texto.indexOf("AntigaOc")).isPositive();
         assertThat(texto).contains("Março de 2026").doesNotContain("Fevereiro de 2026");
     }
+    @Test void geraXlsxComLinhasDeFrequenciaOcorrenciasEEntrevistasSomenteParaPerfisPermitidos() throws Exception {
+        var m7 = matricula(7, Periodo.MANHA, LocalDate.of(2025, 1, 1), null);
+        var m8 = matricula(8, Periodo.TARDE, LocalDate.of(2025, 1, 1), null);
+        cenario(m7, m8);
+        when(frequencias.findPorMatriculasNoPeriodo(any(), any(), any())).thenReturn(List.of(
+                freq(m7, LocalDate.of(2026, 3, 2), true), freq(m8, LocalDate.of(2026, 3, 2), false)));
+        when(ocorrencias.listarParaRelatorioAcompanhamento(any(), any(), any())).thenReturn(List.of(
+                ocorrencia(m7, LocalDateTime.of(2026, 3, 2, 9, 30), "Relato\n\nOutro parágrafo")));
+        when(entrevistas.listarParaRelatorio(any(), any(), any())).thenReturn(List.of(
+                entrevista(LocalDateTime.of(2026, 3, 3, 10, 0), "Entrevista reservada")));
+        for (String perfil : List.of("ADMINISTRADOR", "COORDENADOR", "MONITOR")) {
+            var arquivo = service.gerar(10, null, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), membro(perfil),
+                    br.org.larescolaredencao.model.enums.FormatoRelatorio.XLSX);
+            assertThat(arquivo.nome()).endsWith("2026-11-10.xlsx");
+            assertThat(arquivo.tipoConteudo()).contains("spreadsheetml");
+            try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(arquivo.conteudo()))) {
+                assertThat(workbook.getSheet("Informações").getColumnWidth(0)).isEqualTo(60 * 256);
+                assertThat(workbook.getSheet("Sede São José - Manhã")).isNotNull();
+                assertThat(workbook.getSheet("Sede São José - Tarde")).isNotNull();
+                assertThat(workbook.getSheet("Ocorrências").getRow(1).getCell(2).getStringCellValue())
+                        .isEqualTo("Relato\n\nOutro parágrafo");
+                var frequencia = workbook.getSheet("Sede São José - Manhã");
+                assertThat(frequencia.getRow(0).getLastCellNum()).isEqualTo((short) 2);
+                assertThat(frequencia.getRow(0).getCell(0).getStringCellValue()).isEqualTo("Data");
+                assertThat(frequencia.getRow(0).getCell(1).getStringCellValue()).isEqualTo("Situação do dia");
+                assertThat(frequencia.getLastRowNum()).isEqualTo(31);
+                assertThat(org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(frequencia.getRow(2).getCell(0))).isTrue();
+                assertThat(frequencia.getRow(2).getCell(0).getLocalDateTimeCellValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 3, 2));
+                assertThat(frequencia.getRow(2).getCell(1).getStringCellValue()).isEqualTo("P");
+                assertThat(workbook.getSheet("Sede São José - Tarde").getRow(2).getCell(1).getStringCellValue()).isEqualTo("F");
+                assertThat(workbook.getSheet("Entrevistas") != null).isEqualTo(!perfil.equals("MONITOR"));
+            }
+        }
+    }
+
+    @Test void distinguePresencaFaltaSemRegistroESemMatriculaNosDoisFormatos() throws Exception {
+        var inicio = LocalDate.of(2026, 1, 1);
+        var dados = new DadosAcompanhamento("Usuário de teste", inicio, LocalDate.of(2026, 3, 31), "Todas as matrículas",
+                LocalDateTime.of(2026, 4, 1, 10, 0), "Responsável", List.of(
+                        new DadosAcompanhamento.MatriculaRelatorio(7, "Unidade A", "Manhã", inicio, LocalDate.of(2026, 1, 15)),
+                        new DadosAcompanhamento.MatriculaRelatorio(8, "Unidade B", "Tarde", LocalDate.of(2026, 3, 1), null)),
+                Map.of(inicio.plusDays(1), List.of(new DadosAcompanhamento.RegistroDia(7, true)),
+                        inicio.plusDays(2), List.of(new DadosAcompanhamento.RegistroDia(7, false))), List.of(), null);
+        byte[] pdf = new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados);
+        var conteudo = texto(pdf);
+        assertThat(conteudo.indexOf("Matrículas")).isLessThan(conteudo.indexOf("Frequência"));
+        assertThat(texto(pdf)).contains("Legenda:", "N/A = não matriculado na data", "frequência não registrada", "Unidade A - Manhã", "Unidade B - Tarde")
+                .doesNotContain("M7", "M8", "cada registro do dia indica sua matrícula");
+        byte[] xlsx = new RelatorioXlsxGerador().acompanhamento(dados);
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(xlsx))) {
+            var aba = workbook.getSheet("Unidade A - Manhã");
+            assertThat(aba.getLastRowNum()).isEqualTo(15);
+            assertThat(aba.getRow(1).getCell(1).getStringCellValue()).isEqualTo("—");
+            assertThat(aba.getRow(2).getCell(1).getStringCellValue()).isEqualTo("P");
+            assertThat(aba.getRow(3).getCell(1).getStringCellValue()).isEqualTo("F");
+            assertThat(aba.getRow(1).getCell(0).getLocalDateTimeCellValue().toLocalDate()).isEqualTo(inicio);
+            assertThat(aba.getRow(15).getCell(0).getLocalDateTimeCellValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 1, 15));
+            var outraAba = workbook.getSheet("Unidade B - Tarde");
+            assertThat(outraAba.getLastRowNum()).isEqualTo(31);
+            assertThat(outraAba.getRow(1).getCell(0).getLocalDateTimeCellValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 3, 1));
+            assertThat(outraAba.getRow(31).getCell(0).getLocalDateTimeCellValue().toLocalDate()).isEqualTo(LocalDate.of(2026, 3, 31));
+            assertThat(outraAba.getRow(1).getCell(1).getStringCellValue()).isEqualTo("—");
+            for (var linha : aba) {
+                assertThat(linha.getCell(1).getStringCellValue()).isNotEqualTo("N/A");
+            }
+        }
+        Files.createDirectories(Path.of("build/tmp"));
+        Files.write(Path.of("build/tmp/acompanhamento-layout.pdf"), pdf);
+        Files.write(Path.of("build/tmp/acompanhamento-linhas.xlsx"), xlsx);
+    }
+
+    @Test void pdfSeparaSecoesEmPaginasEAgrupaOcorrenciasPelaMatriculaComDataEHoraJuntas() throws Exception {
+        var m7 = matricula(7, Periodo.MANHA, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 31));
+        var m8 = matricula(8, Periodo.TARDE, LocalDate.of(2026, 2, 1), null);
+        cenario(m7, m8);
+        when(ocorrencias.listarParaRelatorioAcompanhamento(any(), any(), any())).thenReturn(List.of(
+                ocorrencia(m8, LocalDateTime.of(2026, 2, 2, 10, 5), "OcorrenciaTarde"),
+                ocorrencia(m7, LocalDateTime.of(2026, 1, 15, 9, 30), "OcorrenciaManha")));
+        when(entrevistas.listarParaRelatorio(any(), any(), any())).thenReturn(List.of(
+                entrevista(LocalDateTime.of(2026, 2, 3, 14, 30), "EntrevistaSeparada")));
+        byte[] pdf = service.gerar(10, null, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 2, 28), membro("ADMINISTRADOR")).conteudo();
+        try (var reader = new PdfReader(pdf)) {
+            assertThat(reader.getNumberOfPages()).isEqualTo(3);
+            var extrator = new PdfTextExtractor(reader);
+            assertThat(extrator.getTextFromPage(1)).contains("Frequência").doesNotContain("OcorrenciaManha", "EntrevistaSeparada");
+            assertThat(extrator.getTextFromPage(2)).contains("Ocorrências", "Data e hora", "Tipo", "Descrição", "Autor",
+                    "Sede São José - Manhã (01/01/2026 a 31/01/2026)",
+                    "Sede São José - Tarde (01/02/2026 a hoje)",
+                    "15/01/2026 09:30", "02/02/2026 10:05", "OcorrenciaManha", "OcorrenciaTarde")
+                    .doesNotContain("Unidade e turma", "EntrevistaSeparada");
+            assertThat(extrator.getTextFromPage(3)).contains("Entrevistas", "Data e hora", "03/02/2026 14:30", "EntrevistaSeparada")
+                    .doesNotContain("OcorrenciaManha", "OcorrenciaTarde");
+        }
+        Files.write(Path.of("build/tmp/acompanhamento-secoes.pdf"), pdf);
+    }
+
+    @Test void isolaFrequenciasSimultaneasENomesDeAbasRepetidos() throws Exception {
+        var dia = LocalDate.of(2026, 3, 2);
+        var primeira = new DadosAcompanhamento.MatriculaRelatorio(7, "Unidade com nome muito longo para a aba", "Manhã", dia, null);
+        var segunda = new DadosAcompanhamento.MatriculaRelatorio(8, primeira.unidade(), "Manhã", dia, null);
+        var dados = new DadosAcompanhamento("Usuário", dia, dia.plusDays(1), "Todas as matrículas",
+                dia.atTime(12, 0), "Responsável", List.of(primeira, segunda),
+                Map.of(dia, List.of(new DadosAcompanhamento.RegistroDia(7, true), new DadosAcompanhamento.RegistroDia(8, false))),
+                List.of(), null);
+        assertThat(dados.paraMatricula(primeira).registros().get(dia))
+                .containsExactly(new DadosAcompanhamento.RegistroDia(7, true));
+        assertThat(dados.paraMatricula(segunda).registros().get(dia))
+                .containsExactly(new DadosAcompanhamento.RegistroDia(8, false));
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(new RelatorioXlsxGerador().acompanhamento(dados)))) {
+            var aba1 = workbook.getSheetAt(1);
+            var aba2 = workbook.getSheetAt(2);
+            assertThat(aba1.getSheetName()).hasSizeLessThanOrEqualTo(31);
+            assertThat(aba2.getSheetName()).hasSizeLessThanOrEqualTo(31).isNotEqualTo(aba1.getSheetName());
+            assertThat(aba1.getRow(1).getCell(1).getStringCellValue()).isEqualTo("P");
+            assertThat(aba2.getRow(1).getCell(1).getStringCellValue()).isEqualTo("F");
+        }
+        var pdf = new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados);
+        try (var reader = new PdfReader(pdf)) {
+            var extrator = new PdfTextExtractor(reader);
+            assertThat(extrator.getTextFromPage(1)).contains(primeira.unidade()).doesNotContain("M7", "M8");
+            assertThat(reader.getNumberOfPages()).isEqualTo(2);
+            assertThat(extrator.getTextFromPage(1)).contains("Matrículas", "Março de 2026");
+            assertThat(extrator.getTextFromPage(2)).contains("Ocorrências").doesNotContain("Março de 2026");
+        }
+    }
+
+    @Test void selecionaSomenteMatriculasQueCruzamOPeriodoComLimitesInclusivos() throws Exception {
+        var outubro = matricula(7, Periodo.MANHA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31));
+        var novembro = matricula(8, Periodo.TARDE, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30));
+        var dezembro = matricula(9, Periodo.MANHA, LocalDate.of(2026, 12, 1), null);
+        cenario(outubro, novembro, dezembro);
+        for (int mes = 10; mes <= 12; mes++) {
+            var inicio = LocalDate.of(2026, mes, 1);
+            var dados = service.montar(10, null, inicio, inicio.withDayOfMonth(inicio.lengthOfMonth()), membro("ADMINISTRADOR"));
+            assertThat(dados.matriculas()).extracting(DadosAcompanhamento.MatriculaRelatorio::id).containsExactly(mes - 3);
+            verify(frequencias).findPorMatriculasNoPeriodo(List.of(mes - 3), inicio, inicio.withDayOfMonth(inicio.lengthOfMonth()));
+            try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                    new java.io.ByteArrayInputStream(new RelatorioXlsxGerador().acompanhamento(dados)))) {
+                assertThat(workbook.getNumberOfSheets()).isEqualTo(4);
+            }
+        }
+        var dados = service.montar(10, null, LocalDate.of(2026, 10, 31), LocalDate.of(2026, 11, 1), membro("MONITOR"));
+        assertThat(dados.matriculas()).extracting(DadosAcompanhamento.MatriculaRelatorio::id).containsExactly(7, 8);
+        assertThat(texto(new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados)))
+                .contains("01/10/2026 a 31/10/2026", "01/11/2026 a 30/11/2026")
+                .doesNotContain("01/12/2026 a hoje");
+    }
+
+    @Test void recusaMatriculaEspecificaSemIntersecaoComPeriodoAntesDeConsultarRegistros() {
+        cenario(matricula(7, Periodo.MANHA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31)));
+        for (String perfil : List.of("ADMINISTRADOR", "COORDENADOR", "MONITOR")) {
+            for (var formato : br.org.larescolaredencao.model.enums.FormatoRelatorio.values()) {
+                assertThatThrownBy(() -> service.gerar(10, 7, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30), membro(perfil), formato))
+                        .isInstanceOfSatisfying(ResponseStatusException.class,
+                                erro -> assertThat(erro.getStatusCode().value()).isEqualTo(400))
+                        .hasMessageContaining("fora da vigência da matrícula");
+            }
+        }
+        verifyNoInteractions(frequencias, ocorrencias, entrevistas);
+    }
+
+    @Test void permiteIntersecaoParcialEDiasForaDaMatriculaPermanecemNaoAplicaveis() {
+        cenario(matricula(7, Periodo.MANHA, LocalDate.of(2026, 10, 1), LocalDate.of(2026, 10, 31)));
+        var dados = service.montar(10, 7, LocalDate.of(2026, 10, 31), LocalDate.of(2026, 11, 2), membro("MONITOR"));
+        assertThat(dados.situacao(LocalDate.of(2026, 10, 31))).isEqualTo(DadosAcompanhamento.Situacao.SEM_REGISTRO);
+        assertThat(dados.situacao(LocalDate.of(2026, 11, 1))).isEqualTo(DadosAcompanhamento.Situacao.SEM_MATRICULA);
+        var vazio = service.montar(10, null, LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 2), membro("MONITOR"));
+        assertThat(vazio.matriculas()).isEmpty();
+    }
+
+    @Test void monitorExportaFrequenciasDeOutrasUnidadesSemSuasOcorrenciasOuEntrevistas() throws Exception {
+        var local = matricula(7, Periodo.MANHA, LocalDate.of(2026, 1, 1), null);
+        var externa = matricula(8, Periodo.TARDE, LocalDate.of(2026, 1, 1), null);
+        externa.getTurma().getUnidade().setId(4); externa.getTurma().getUnidade().setNome("Outra unidade");
+        cenario(local, externa);
+        var dia = LocalDate.of(2026, 3, 2);
+        when(frequencias.findPorMatriculasNoPeriodo(List.of(7, 8), dia, dia))
+                .thenReturn(List.of(freq(local, dia, true), freq(externa, dia, false)));
+        when(ocorrencias.listarParaRelatorioAcompanhamento(eq(List.of(7)), any(), any()))
+                .thenReturn(List.of(ocorrencia(local, dia.atTime(9, 0), "Ocorrência permitida")));
+        var dados = service.montar(10, null, dia, dia, membro("MONITOR"));
+        assertThat(dados.registros().get(dia)).hasSize(2);
+        assertThat(dados.ocorrencias()).extracting(DadosAcompanhamento.Ocorrencia::idMatricula).containsExactly(7);
+        assertThat(dados.incluiEntrevistas()).isFalse();
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(new RelatorioXlsxGerador().acompanhamento(dados)))) {
+            assertThat(workbook.getSheet("Outra unidade - Tarde").getRow(1).getCell(1).getStringCellValue()).isEqualTo("F");
+            assertThat(workbook.getSheet("Entrevistas")).isNull();
+        }
+        assertThat(texto(new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados)))
+                .contains("Outra unidade", "Ocorrência permitida").doesNotContain("Entrevistas");
+        var somenteExterna = service.montar(10, 8, dia, dia, membro("MONITOR"));
+        assertThat(somenteExterna.matriculas()).extracting(DadosAcompanhamento.MatriculaRelatorio::id).containsExactly(8);
+        assertThat(somenteExterna.ocorrencias()).isEmpty();
+        verify(ocorrencias, times(1)).listarParaRelatorioAcompanhamento(any(), any(), any());
+        verifyNoInteractions(entrevistas);
+    }
+
 }
