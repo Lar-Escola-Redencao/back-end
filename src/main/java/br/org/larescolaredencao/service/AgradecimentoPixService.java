@@ -14,6 +14,8 @@ import br.org.larescolaredencao.dto.CodigoPixResponseDTO;
 public class AgradecimentoPixService {
 
     private static final int LIMITE_CODIGOS_EM_ABERTO = 5000;
+    /** Mesmo formato aceito no campo de identificação do BR Code (ver CodigoPix). */
+    private static final java.util.regex.Pattern FORMATO_IDENTIFICADOR = java.util.regex.Pattern.compile("[A-Za-z0-9]{1,25}");
 
     private final EmailService emailService;
     private final Map<String, RegistroAgradecimento> registros = new HashMap<>();
@@ -46,7 +48,9 @@ public class AgradecimentoPixService {
     }
 
     private synchronized RegistroAgradecimento buscarRegistro(String identificador) {
-        RegistroAgradecimento registro = registros.get(identificador);
+        RegistroAgradecimento registro = identificador != null && FORMATO_IDENTIFICADOR.matcher(identificador).matches()
+                ? registros.get(identificador)
+                : null;
         if (registro == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Código indisponível. Gere um novo Pix.");
         }

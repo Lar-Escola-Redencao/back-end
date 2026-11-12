@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.service.FotoPerfilUsuario;
 import java.util.List;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
@@ -39,7 +40,7 @@ public class FrequenciaUsuarioResponseDTO {
         this.idMatricula = matricula.getId();
         this.idUsuario = matricula.getUsuario().getId();
         this.nomeUsuario = matricula.getUsuario().getNomeCompleto();
-        this.imagemPerfil = matricula.getUsuario().getImagemPerfil();
+        this.imagemPerfil = FotoPerfilUsuario.urlProtegida(matricula.getUsuario().getId(), matricula.getUsuario().getImagemPerfil());
         this.idFrequencia = frequencia != null ? frequencia.getId() : null;
         this.dataCriacao = frequencia != null ? frequencia.getDataCriacao() : null;
         this.presente = frequencia != null ? frequencia.getPresente() : null;

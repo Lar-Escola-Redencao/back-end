@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.api;
 
+import br.org.larescolaredencao.security.RespostaErroSeguranca;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -99,8 +100,9 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAcessoNegado(AccessDeniedException exception) {
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of("message",
-                "Você não tem permissão para realizar esta operação."));
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(Map.of(
+                "message", RespostaErroSeguranca.MENSAGEM_ACESSO_NEGADO,
+                "status", HttpStatus.FORBIDDEN.toString()));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)

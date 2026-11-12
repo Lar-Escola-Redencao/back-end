@@ -16,7 +16,13 @@ import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.service.UsuarioService;
 import jakarta.validation.Valid;
+import org.springframework.core.io.Resource;
+import org.springframework.http.CacheControl;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -96,6 +102,18 @@ public class UsuarioController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void atualizarFotoPerfil(@PathVariable("id") Integer id, @RequestParam("foto") MultipartFile foto, @AuthenticationPrincipal Membro membroLogado) {
         usuarioService.atualizarFotoPerfil(id, foto, membroLogado);
+    }
+
+    @GetMapping("/{id}/foto")
+    public ResponseEntity<Resource> carregarFotoPerfil(@PathVariable("id") Integer id, @AuthenticationPrincipal Membro membroLogado) {
+        Resource foto = usuarioService.carregarFotoPerfil(id, membroLogado);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore().cachePrivate())
+                .header(HttpHeaders.PRAGMA, "no-cache")
+                .header("X-Content-Type-Options", "nosniff")
+                .contentType(MediaTypeFactory.getMediaType(foto).orElse(MediaType.APPLICATION_OCTET_STREAM))
+                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.inline().build().toString())
+                .body(foto);
     }
 
     @PutMapping("/{id}/turma")
