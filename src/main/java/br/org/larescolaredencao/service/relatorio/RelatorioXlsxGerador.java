@@ -43,9 +43,8 @@ public class RelatorioXlsxGerador {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Estilos estilos = new Estilos(workbook);
             List<String[]> informacoes = new ArrayList<>();
-            informacoes.add(new String[] {"Relatório", "Acompanhamento do usuário"});
+            informacoes.add(new String[] {"Relatório", "Dados de acompanhamento individual"});
             informacoes.add(new String[] {"Usuário", dados.usuario()});
-            informacoes.add(new String[] {"Matrícula", dados.filtroMatricula()});
             informacoes.addAll(periodo(dados.inicio(), dados.fim(), dados.geradoEm()));
             informacoes.add(new String[] {"Exportado por", dados.responsavel()});
             informacoes.add(new String[] {"Legenda", "P = presente; F = ausente; — = frequência não registrada"});

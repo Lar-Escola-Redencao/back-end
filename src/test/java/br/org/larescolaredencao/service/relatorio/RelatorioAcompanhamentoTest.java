@@ -100,7 +100,7 @@ class RelatorioAcompanhamentoTest {
         verify(entrevistas).listarParaRelatorio(10, LocalDateTime.of(2026, 1, 1, 0, 0), LocalDateTime.of(2027, 1, 1, 0, 0));
     }
 
-    @Test void filtroDeMatriculaRestringeFrequenciasEOcorrenciasMasEntrevistasSaoDoUsuario() {
+    @Test void filtroDeMatriculaRestringeFrequenciasEOcorrenciasMasEntrevistasSaoDoUsuario() throws Exception {
         cenario(matricula(7, Periodo.MANHA, LocalDate.of(2025, 1, 1), null),
                 matricula(8, Periodo.TARDE, LocalDate.of(2025, 1, 1), null));
         var dados = service.montar(10, 8, LocalDate.of(2026, 3, 1), LocalDate.of(2026, 3, 31), membro("ADMINISTRADOR"));
@@ -108,6 +108,18 @@ class RelatorioAcompanhamentoTest {
         verify(ocorrencias).listarParaRelatorioAcompanhamento(eq(List.of(8)), any(), any());
         verify(entrevistas).listarParaRelatorio(eq(10), any(), any());
         assertThat(dados.filtroMatricula()).contains("Matrícula 8", "Tarde");
+        assertThat(texto(new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados)))
+                .contains("Matrículas", "Sede São José - Tarde (01/01/2025 a hoje)")
+                .doesNotContain("Matrícula:", "Matrícula 8");
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(
+                new java.io.ByteArrayInputStream(new RelatorioXlsxGerador().acompanhamento(dados)))) {
+            for (var linha : workbook.getSheet("Informações")) {
+                for (var celula : linha) {
+                    assertThat(celula.getStringCellValue()).doesNotContain("Matrícula 8");
+                }
+                assertThat(linha.getCell(0).getStringCellValue()).isNotEqualTo("Matrícula");
+            }
+        }
     }
 
     @Test void matriculaForaDoAcessoEPeriodoInvalidoSaoRecusados() {
@@ -167,7 +179,7 @@ class RelatorioAcompanhamentoTest {
 
         byte[] pdf = new RelatorioAcompanhamentoPdfGerador(new RelatorioPdfGerador()).gerar(dados);
         var texto = texto(pdf);
-        assertThat(texto).contains("Maria da Silva", "15/11/2025 a 31/03/2026", "Todas as matrículas",
+        assertThat(texto).contains("Dados de acompanhamento individual", "Maria da Silva", "15/11/2025 a 31/03/2026",
                 "10/11/2026 12:30", "Responsável Exportação", "2025", "2026", "Novembro de 2025", "Dezembro de 2025",
                 "Janeiro de 2026", "Fevereiro de 2026", "Março de 2026", "Sede São José - Manhã (01/11/2025 a 20/12/2025)",
                 "Sede São José - Tarde (15/01/2026 a hoje)",
@@ -205,6 +217,8 @@ class RelatorioAcompanhamentoTest {
             assertThat(arquivo.nome()).endsWith("2026-11-10.xlsx");
             assertThat(arquivo.tipoConteudo()).contains("spreadsheetml");
             try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(arquivo.conteudo()))) {
+                assertThat(workbook.getSheet("Informações").getRow(2).getCell(1).getStringCellValue())
+                        .isEqualTo("Dados de acompanhamento individual");
                 assertThat(workbook.getSheet("Informações").getColumnWidth(0)).isEqualTo(60 * 256);
                 assertThat(workbook.getSheet("Sede São José - Manhã")).isNotNull();
                 assertThat(workbook.getSheet("Sede São José - Tarde")).isNotNull();

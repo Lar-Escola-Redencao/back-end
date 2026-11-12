@@ -53,7 +53,7 @@ public class RelatorioAcompanhamentoPdfGerador {
         ByteArrayOutputStream saida = new ByteArrayOutputStream();
         Document documento = new Document(PageSize.A4, 36, 36, 96, 52);
         PdfWriter writer = PdfWriter.getInstance(documento, saida);
-        writer.setPageEvent(new CabecalhoRodape(base.imagemLogo(), "Relatório de acompanhamento", info(dados),
+        writer.setPageEvent(new CabecalhoRodape(base.imagemLogo(), "Dados de acompanhamento individual", info(dados),
                 legendaPresencas(false)));
         documento.open();
         float largura = documento.right() - documento.left();
@@ -103,7 +103,6 @@ public class RelatorioAcompanhamentoPdfGerador {
 
     private static String info(DadosAcompanhamento d) {
         return "Usuário: " + d.usuario() + "\nPeríodo: " + d.inicio().format(DATA) + " a " + d.fim().format(DATA)
-                + "\nMatrícula: " + d.filtroMatricula()
                 + "\nEmitido em " + d.geradoEm().format(DATA_HORA) + " (horário de Brasília) por " + d.responsavel();
     }
 
