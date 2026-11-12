@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.validacao.CpfValido;
+
 import java.util.List;
 
 import jakarta.validation.constraints.Email;
@@ -20,6 +22,7 @@ public class AtualizarMembroDTO {
     
     @NotBlank
     @Size(max = 14)
+    @CpfValido
     private String cpf;
     private String endereco;
     private String telefone;

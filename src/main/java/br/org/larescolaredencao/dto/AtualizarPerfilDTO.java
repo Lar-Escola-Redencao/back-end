@@ -1,9 +1,10 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.validacao.CpfValido;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.Pattern;
 
 public class AtualizarPerfilDTO {
 
@@ -19,7 +20,7 @@ public class AtualizarPerfilDTO {
     @Size(min = 5, max = 100)
     private String email;
 
-    @Pattern(regexp = "(?:\\d{11}|\\d{3}\\.\\d{3}\\.\\d{3}-\\d{2})", message = "Informe um CPF com 11 dígitos.")
+    @CpfValido
     private String cpf;
 
     public String getEmail() {
@@ -35,7 +36,7 @@ public class AtualizarPerfilDTO {
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf;
+        this.cpf = cpf == null || cpf.isBlank() ? null : cpf.trim();
     }
 
     public String getNomeCompleto() {

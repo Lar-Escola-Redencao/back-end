@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.validacao.CpfValido;
+
 import br.org.larescolaredencao.model.enums.PeriodoEscolar;
 import br.org.larescolaredencao.model.enums.SerieEscolar;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
@@ -20,6 +22,7 @@ public class CadastroUsuarioCompletoDTO {
     @NotNull
     private LocalDate dataNascimento;
 
+    @CpfValido
     private String cpf;
 
     private String documentoAuxiliar;
@@ -103,7 +106,7 @@ public class CadastroUsuarioCompletoDTO {
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf;
+        this.cpf = cpf == null || cpf.isBlank() ? null : cpf.trim();
     }
 
     public String getDocumentoAuxiliar() {

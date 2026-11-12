@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import br.org.larescolaredencao.validacao.EmailOuCpf;
 
-public record LoginRequestDTO(@NotBlank String identificador, @NotBlank String senha, Boolean lembrarMe) {}
+public record LoginRequestDTO(@NotBlank @EmailOuCpf String identificador, @NotBlank String senha, Boolean lembrarMe) {}
