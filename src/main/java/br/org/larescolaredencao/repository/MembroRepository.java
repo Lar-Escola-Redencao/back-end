@@ -32,10 +32,8 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
         return findByCpf(digitos).or(() -> findByCpf(comMascara));
     }
 
-    // Membro não tem soft delete (a exclusão é física). A senha fica de fora da busca.
-    @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
-           "(:idUnidade IS NULL OR u.id = :idUnidade OR m.papel.nomePapel = 'ADMINISTRADOR') AND " +
-           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND (" +
+    // A consulta usa EXISTS para cada membro ocupar uma única posição antes da paginação.
+    String FILTRO_BUSCA = "(:search IS NULL OR " +
            "   LOWER(m.nomeCompleto) LIKE :search ESCAPE '!' OR " +
            "   LOWER(m.email) LIKE :search ESCAPE '!' OR " +
            "   LOWER(m.cpf) LIKE :search ESCAPE '!' OR " +
@@ -44,29 +42,37 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
            "   LOWER(m.papel.nomePapel) LIKE :search ESCAPE '!' OR " +
            "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(m.cpf, '.', ''), '-', '') LIKE :searchDigitos) OR " +
            "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(m.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
-           ")")
+           ")";
+
+    String FILTROS_ADMINISTRADOR =
+           "(:idUnidade IS NULL OR m.papel.nomePapel = 'ADMINISTRADOR' OR " +
+           " EXISTS (SELECT 1 FROM Membro mu JOIN mu.unidades u WHERE mu.id = m.id AND u.id = :idUnidade)) AND " +
+           "(:idPapel IS NULL OR m.papel.id = :idPapel)";
+
+    @Query("SELECT m FROM Membro m WHERE " + FILTROS_ADMINISTRADOR + " AND " + FILTRO_BUSCA)
     Page<Membro> buscar(@Param("search") String search, @Param("searchDigitos") String searchDigitos,
                         @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
 
-    @Query("SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u WHERE " +
-           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND " +
-           "(:idUnidade IS NULL OR u.id = :idUnidade OR m.papel.nomePapel = 'ADMINISTRADOR')")
+    @Query("SELECT m FROM Membro m WHERE " + FILTROS_ADMINISTRADOR)
     Page<Membro> filtrar(@Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade, Pageable pageable);
 
-    @Query("SELECT DISTINCT m FROM Membro m JOIN m.unidades u WHERE " +
-           "m.papel.nomePapel = 'MONITOR' AND u.id IN :idsUnidades AND " +
-           "(:idUnidade IS NULL OR u.id = :idUnidade) AND " +
-           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND (" +
-           "   :search IS NULL OR LOWER(m.nomeCompleto) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(m.email) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(m.cpf) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(m.endereco) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(m.telefone) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(m.papel.nomePapel) LIKE :search ESCAPE '!' OR " +
-           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(m.cpf, '.', ''), '-', '') LIKE :searchDigitos) OR " +
-           "   (:searchDigitos IS NOT NULL AND REPLACE(REPLACE(REPLACE(REPLACE(m.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos)" +
-           ")")
-    Page<Membro> listarMonitoresDasUnidades(@Param("idsUnidades") List<Integer> idsUnidades,
+    String ORDEM_PERFIL = " ORDER BY CASE WHEN m.id = :idProprio THEN 0 ELSE 1 END";
+
+    @Query(value = "SELECT m FROM Membro m WHERE " + FILTROS_ADMINISTRADOR + " AND " + FILTRO_BUSCA + ORDEM_PERFIL,
+            countQuery = "SELECT COUNT(m) FROM Membro m WHERE " + FILTROS_ADMINISTRADOR + " AND " + FILTRO_BUSCA)
+    Page<Membro> listarParaAdministrador(@Param("idProprio") Integer idProprio,
+            @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade,
+            @Param("search") String search, @Param("searchDigitos") String searchDigitos, Pageable pageable);
+
+    String FILTROS_COORDENADOR =
+           "(m.id = :idProprio OR m.papel.nomePapel = 'MONITOR') AND " +
+           "EXISTS (SELECT 1 FROM Membro mu JOIN mu.unidades u WHERE mu.id = m.id AND u.id IN :idsUnidades " +
+           "        AND (:idUnidade IS NULL OR u.id = :idUnidade)) AND " +
+           "(:idPapel IS NULL OR m.papel.id = :idPapel) AND " + FILTRO_BUSCA;
+
+    @Query(value = "SELECT m FROM Membro m WHERE " + FILTROS_COORDENADOR + ORDEM_PERFIL,
+            countQuery = "SELECT COUNT(m) FROM Membro m WHERE " + FILTROS_COORDENADOR)
+    Page<Membro> listarParaCoordenador(@Param("idProprio") Integer idProprio, @Param("idsUnidades") List<Integer> idsUnidades,
             @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade,
             @Param("search") String search, @Param("searchDigitos") String searchDigitos, Pageable pageable);
 }

@@ -54,7 +54,7 @@ public class PaginaController {
     /** O padrão numérico evita ambiguidade com as rotas literais /paginas/secoes e /paginas/documentos. */
     @GetMapping("/{idPagina:\\d+}")
     public Pagina obterPagina(@PathVariable("idPagina") Long idPagina) {
-        return paginaService.buscarPaginaPorId(idPagina);
+        return paginaService.obterPaginaPublica(idPagina);
     }
 
     @GetMapping("/{idPagina:\\d+}/secoes")

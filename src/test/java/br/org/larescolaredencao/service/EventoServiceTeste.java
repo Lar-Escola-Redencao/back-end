@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
@@ -62,27 +63,29 @@ class EventoServiceTeste {
     private EventoService eventoService;
 
     private Pageable pageable;
+    private Pageable paginaOrdenada;
 
     @BeforeEach
     void setUp() {
         pageable = PageRequest.of(0, 10);
+        paginaOrdenada = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("dataEvento"), Sort.Order.desc("id")));
     }
 
     @Test
     void deveManterListagemSemFiltroDeValorSemConverterNullParaBoolean() {
-        when(eventoRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
+        when(eventoRepository.findAll(paginaOrdenada)).thenReturn(Page.empty(pageable));
         assertThat(eventoService.getAllEventos(pageable, null, null, null, null, null).isEmpty()).isTrue();
-        verify(eventoRepository).findAll(pageable);
+        verify(eventoRepository).findAll(paginaOrdenada);
     }
 
     @Test
     void deveAbrangerDiaInteiroSemFiltroDeValor() {
         LocalDate dia = LocalDate.of(2026, 10, 15);
         when(eventoRepository.buscarComFiltros(null, null, dia.atStartOfDay(),
-                dia.plusDays(1).atStartOfDay(), null, pageable)).thenReturn(Page.empty(pageable));
+                dia.plusDays(1).atStartOfDay(), null, paginaOrdenada)).thenReturn(Page.empty(pageable));
         assertThat(eventoService.getAllEventos(pageable, null, null, dia, dia, null).isEmpty()).isTrue();
         verify(eventoRepository).buscarComFiltros(null, null, dia.atStartOfDay(),
-                dia.plusDays(1).atStartOfDay(), null, pageable);
+                dia.plusDays(1).atStartOfDay(), null, paginaOrdenada);
     }
 
     @Test
@@ -90,11 +93,11 @@ class EventoServiceTeste {
         for (String valor : List.of("gratuito", "pago")) {
             Boolean gratuito = Boolean.valueOf("gratuito".equals(valor));
             when(eventoRepository.buscarComFiltros("%festa%", TipoEvento.CULTURAL, null,
-                    null, gratuito, pageable)).thenReturn(Page.empty(pageable));
+                    null, gratuito, paginaOrdenada)).thenReturn(Page.empty(pageable));
             assertThat(eventoService.getAllEventos(pageable, TipoEvento.CULTURAL,
                     "Festa", null, null, valor).isEmpty()).isTrue();
             verify(eventoRepository).buscarComFiltros("%festa%", TipoEvento.CULTURAL,
-                    null, null, gratuito, pageable);
+                    null, null, gratuito, paginaOrdenada);
         }
     }
 
@@ -106,13 +109,13 @@ class EventoServiceTeste {
         evento.setTipoEvento(TipoEvento.ARRECADACAO);
 
         Page<Evento> paginaEsperada = new PageImpl<>(List.of(evento), pageable, 1);
-        when(eventoRepository.findAll(pageable)).thenReturn(paginaEsperada);
+        when(eventoRepository.findAll(paginaOrdenada)).thenReturn(paginaEsperada);
 
         Page<EventoResponseDTO> resultado = eventoService.getAllEventos(pageable, null);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getTitulo()).isEqualTo("Bazar Beneficente");
-        verify(eventoRepository).findAll(pageable);
+        verify(eventoRepository).findAll(paginaOrdenada);
         verify(eventoRepository, never()).findByTipoEvento(any(), any());
     }
 
@@ -124,20 +127,20 @@ class EventoServiceTeste {
         evento.setTipoEvento(TipoEvento.CULTURAL);
 
         Page<Evento> paginaEsperada = new PageImpl<>(List.of(evento), pageable, 1);
-        when(eventoRepository.findByTipoEvento(TipoEvento.CULTURAL, pageable)).thenReturn(paginaEsperada);
+        when(eventoRepository.findByTipoEvento(TipoEvento.CULTURAL, paginaOrdenada)).thenReturn(paginaEsperada);
 
         Page<EventoResponseDTO> resultado = eventoService.getAllEventos(pageable, TipoEvento.CULTURAL);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getTipoEvento()).isEqualTo(TipoEvento.CULTURAL);
-        verify(eventoRepository).findByTipoEvento(TipoEvento.CULTURAL, pageable);
-        verify(eventoRepository, never()).findAll(pageable);
+        verify(eventoRepository).findByTipoEvento(TipoEvento.CULTURAL, paginaOrdenada);
+        verify(eventoRepository, never()).findAll(any(Pageable.class));
     }
 
     @Test
     void deveRetornarPaginaVaziaQuandoNaoHaEventos() {
         Page<Evento> paginaVazia = new PageImpl<>(List.of(), pageable, 0);
-        when(eventoRepository.findAll(pageable)).thenReturn(paginaVazia);
+        when(eventoRepository.findAll(paginaOrdenada)).thenReturn(paginaVazia);
 
         Page<EventoResponseDTO> resultado = eventoService.getAllEventos(pageable, null);
 
