@@ -94,6 +94,32 @@ public interface MembroRepository extends JpaRepository<Membro, Integer> {
                 null, pageable);
     }
 
+    @Query("""
+            SELECT DISTINCT m FROM Membro m LEFT JOIN m.unidades u
+            WHERE (:administrador = true OR m.id = :idSolicitante
+                OR (m.papel.nomePapel = 'MONITOR' AND u.id IN :idsUnidades))
+              AND (:ativo IS NULL OR m.ativo = :ativo)
+              AND (:idPapel IS NULL OR m.papel.id = :idPapel)
+              AND (:idUnidade IS NULL OR u.id = :idUnidade OR m.papel.nomePapel = 'ADMINISTRADOR')
+              AND (:search IS NULL
+                OR LOWER(m.nomeCompleto) LIKE :search ESCAPE '!'
+                OR LOWER(m.email) LIKE :search ESCAPE '!'
+                OR LOWER(m.cpf) LIKE :search ESCAPE '!'
+                OR LOWER(m.endereco) LIKE :search ESCAPE '!'
+                OR LOWER(m.telefone) LIKE :search ESCAPE '!'
+                OR LOWER(m.papel.nomePapel) LIKE :search ESCAPE '!'
+                OR (:searchDigitos IS NOT NULL
+                    AND REPLACE(REPLACE(m.cpf, '.', ''), '-', '') LIKE :searchDigitos)
+                OR (:searchDigitos IS NOT NULL
+                    AND REPLACE(REPLACE(REPLACE(REPLACE(m.telefone, '(', ''), ')', ''), '-', ''), ' ', '') LIKE :searchDigitos))
+            ORDER BY CASE WHEN m.id = :idSolicitante THEN 0 ELSE 1 END, m.ativo DESC, m.id DESC
+            """)
+    Page<Membro> listarComProprioPrimeiro(@Param("idSolicitante") Integer idSolicitante,
+            @Param("administrador") boolean administrador, @Param("idsUnidades") List<Integer> idsUnidades,
+            @Param("idPapel") Integer idPapel, @Param("idUnidade") Integer idUnidade,
+            @Param("search") String search, @Param("searchDigitos") String searchDigitos,
+            @Param("ativo") Boolean ativo, Pageable pageable);
+
     /**
      * Trava, na ordem do id, o membro alvo e todos os administradores ativos. Serializa desativações e
      * reativações simultâneas e protege o último administrador ativo.

@@ -1,6 +1,8 @@
 package br.org.larescolaredencao.api;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -37,7 +39,8 @@ public class MembroController {
     }
 
     @GetMapping("/todos")
-    public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable,
+    public PagedModel<MembroResponseDTO> listarMembros(
+            @PageableDefault(size = 10, sort = {"ativo", "id"}, direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(name = "idPapel", required = false) Integer idPapel,
             @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
             @RequestParam(name = "search", required = false) String search,
