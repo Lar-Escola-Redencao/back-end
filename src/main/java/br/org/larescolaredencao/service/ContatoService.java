@@ -13,6 +13,7 @@ import br.org.larescolaredencao.repository.ContatoRepository;
 import br.org.larescolaredencao.repository.MatriculaRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,9 +52,20 @@ public class ContatoService {
     @Transactional(readOnly = true)
     public Page<ContatoListagemDTO> listarContatos(Integer membroId, Pageable pageable, String search) {
         String termo = TermoBusca.like(search);
-        Page<Contato> contatos = termo != null
-                ? contatoRepository.buscar(termo, TermoBusca.digitosLike(search), pageable)
-                : contatoRepository.findAll(pageable);
+        String digitos = TermoBusca.digitosLike(search);
+        Sort.Order ordemVinculos = pageable.getSort().getOrderFor("quantidadeVinculos");
+        Page<Contato> contatos;
+        if (ordemVinculos != null) {
+            Pageable pagina = OrdenacaoPaginada.comOrdem(pageable, Sort.unsorted());
+            contatos = ordemVinculos.isAscending()
+                    ? contatoRepository.listarPorVinculosAsc(termo, digitos, pagina)
+                    : contatoRepository.listarPorVinculosDesc(termo, digitos, pagina);
+        } else {
+            Pageable pagina = OrdenacaoPaginada.porCadastro(pageable);
+            contatos = termo != null
+                    ? contatoRepository.buscar(termo, digitos, pagina)
+                    : contatoRepository.findAll(pagina);
+        }
         return contatos.map(contato -> {
             long vinculos = contatoUsuarioRepository.countByContatoId(contato.getId());
             return new ContatoListagemDTO(contato, vinculos);

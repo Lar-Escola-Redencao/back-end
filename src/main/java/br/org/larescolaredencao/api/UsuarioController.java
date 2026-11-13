@@ -16,6 +16,8 @@ import br.org.larescolaredencao.model.enums.Parentesco;
 import br.org.larescolaredencao.model.enums.TipoDocumento;
 import br.org.larescolaredencao.service.UsuarioService;
 import jakarta.validation.Valid;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -51,6 +53,17 @@ public class UsuarioController {
                                                    @RequestParam(name = "idTurma", required = false) Integer idTurma,
                                                    @RequestParam(name = "statusMatricula", required = false) StatusMatricula statusMatricula) {
         return usuarioService.listarUsuariosDoMembro(membroLogado.getId(), search, idUnidade, idTurma, statusMatricula);
+    }
+
+    @GetMapping("/paginados")
+    public PagedModel<UsuarioResponseDTO> listarUsuariosPaginados(@AuthenticationPrincipal Membro membroLogado,
+            @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
+            @RequestParam(name = "idTurma", required = false) Integer idTurma,
+            @RequestParam(name = "statusMatricula", required = false) StatusMatricula statusMatricula,
+            Pageable pageable) {
+        return new PagedModel<>(usuarioService.listarUsuariosPaginados(membroLogado.getId(), search,
+                idUnidade, idTurma, statusMatricula, pageable));
     }
 
     @GetMapping("/{id}")
