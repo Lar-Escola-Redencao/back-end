@@ -58,6 +58,14 @@ public class Membro implements UserDetails {
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "id_papel", nullable = false)
     private Papel papel;
+
+    @Column(nullable = false)
+    private boolean ativo = true;
+
+    /** Incrementada ao desativar/reativar: tokens emitidos com outra versão deixam de valer. */
+    @NotAudited
+    @Column(name = "versao_sessao", nullable = false)
+    private int versaoSessao = 0;
     
     @AuditJoinTable(name = "membro_unidade_aud")
     @ManyToMany
@@ -151,6 +159,26 @@ public class Membro implements UserDetails {
         this.papel = papel;
     }
     
+    public boolean isAtivo() {
+        return ativo;
+    }
+
+    public void setAtivo(boolean ativo) {
+        this.ativo = ativo;
+    }
+
+    public int getVersaoSessao() {
+        return versaoSessao;
+    }
+
+    public void setVersaoSessao(int versaoSessao) {
+        this.versaoSessao = versaoSessao;
+    }
+
+    public void invalidarSessoes() {
+        this.versaoSessao++;
+    }
+
     public List<Unidade> getUnidades() {
     	return unidades;
     }
@@ -192,6 +220,6 @@ public class Membro implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return ativo;
     }
 }

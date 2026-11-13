@@ -153,6 +153,9 @@ public class HistoricoService {
             if ("entrevista_social".equals(evento.entidade()) && "dataRegistro".equals(campo)) {
                 nome = "Data do cadastro";
             }
+            if ("membro".equals(evento.entidade()) && "ativo".equals(campo)) {
+                nome = "Permissão de acesso";
+            }
             camposAlterados.add(new CampoAlteradoDTO(
                     campo, nome, valorAnterior, valorNovo, referenciaAnteriorDisponivel));
         }

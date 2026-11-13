@@ -1,6 +1,8 @@
 package br.org.larescolaredencao.api;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.data.web.PagedModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +22,7 @@ import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
 import br.org.larescolaredencao.dto.AlterarSenhaDTO;
 import br.org.larescolaredencao.dto.ValidarSenhaAtualDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
+import br.org.larescolaredencao.dto.ReativarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.service.MembroService;
@@ -36,12 +39,14 @@ public class MembroController {
     }
 
     @GetMapping("/todos")
-    public PagedModel<MembroResponseDTO> listarMembros(Pageable pageable,
+    public PagedModel<MembroResponseDTO> listarMembros(
+            @PageableDefault(size = 10, sort = {"ativo", "id"}, direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(name = "idPapel", required = false) Integer idPapel,
             @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
             @RequestParam(name = "search", required = false) String search,
+            @RequestParam(name = "ativo", required = false) Boolean ativo,
             @AuthenticationPrincipal Membro membroLogado) {
-        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel, search, idUnidade, membroLogado));
+        return new PagedModel<>(membroService.getAllMembros(pageable, idPapel, search, idUnidade, ativo, membroLogado));
     }
 
     @GetMapping("/{id}")
@@ -61,6 +66,19 @@ public class MembroController {
     public MembroResponseDTO atualizarMembro(@PathVariable("id") Integer id, @Valid @RequestBody AtualizarMembroDTO atualizarMembroDTO,
                                              @AuthenticationPrincipal Membro membroLogado) {
         return membroService.atualizarMembro(id, atualizarMembroDTO, membroLogado);
+    }
+
+    @PutMapping("/{id}/desativar")
+    public MembroResponseDTO desativarMembro(@PathVariable("id") Integer id,
+                                             @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.desativarMembro(id, membroLogado);
+    }
+
+    @PutMapping("/{id}/reativar")
+    public MembroResponseDTO reativarMembro(@PathVariable("id") Integer id,
+                                            @Valid @RequestBody ReativarMembroDTO reativarMembroDTO,
+                                            @AuthenticationPrincipal Membro membroLogado) {
+        return membroService.reativarMembro(id, reativarMembroDTO, membroLogado);
     }
 
     @DeleteMapping("/{id}")
