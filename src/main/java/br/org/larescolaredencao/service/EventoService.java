@@ -29,6 +29,7 @@ import br.org.larescolaredencao.repository.ParceiroRepository;
 import br.org.larescolaredencao.repository.RedeSocialRepository;
 
 @Service
+@Transactional(readOnly = true)
 public class EventoService {
 
     private final EventoRepository eventoRepository;
@@ -60,7 +61,7 @@ public class EventoService {
             return eventoRepository.buscar(termo, tipo, pageable).map(EventoResponseDTO::new);
         }
         Page<Evento> eventos = tipo != null
-                ? eventoRepository.findByTipoEvento(tipo, pageable)
+                ? eventoRepository.findByCategoriasContaining(tipo, pageable)
                 : eventoRepository.findAll(pageable);
         return eventos.map(EventoResponseDTO::new);
     }
@@ -107,7 +108,7 @@ public class EventoService {
         evento.setDescricao(dto.getDescricao());
         evento.setDataEvento(dto.getDataEvento());
         evento.setEndereco(dto.getEndereco());
-        evento.setTipoEvento(dto.getTipoEvento());
+        evento.setCategorias(dto.getCategorias());
 
         if (dto.getValor() != null) {
             evento.setValor(dto.getValor());
@@ -139,7 +140,7 @@ public class EventoService {
         evento.setDataEvento(dto.getDataEvento());
         evento.setEndereco(dto.getEndereco());
         evento.setValor(dto.getValor());
-        evento.setTipoEvento(dto.getTipoEvento());
+        evento.setCategorias(dto.getCategorias());
 
         if (dto.getParceirosIds() != null && !dto.getParceirosIds().isEmpty()) {
             List<Parceiro> parceiros = parceiroRepository.findAllById(dto.getParceirosIds());

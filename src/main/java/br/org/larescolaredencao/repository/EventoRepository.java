@@ -17,7 +17,7 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
 
     List<Evento> findByParceirosId(Long idParceiro);
 	boolean existsByTituloAndDataEvento(String titulo, LocalDateTime dataEvento);
-	Page<Evento> findByTipoEvento(TipoEvento tipoEvento, Pageable pageable);
+	Page<Evento> findByCategoriasContaining(TipoEvento tipoEvento, Pageable pageable);
 
 	// INTENCIONAL: não filtra por parceiro.ativo. A página do evento é registro histórico,
 	// então quem apoiou aquela edição aparece mesmo que a parceria já tenha sido encerrada.
@@ -25,19 +25,19 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
 	Optional<Evento> findByIdComParceiros(@Param("id") Integer id);
 
     @Query("SELECT e FROM Evento e WHERE " +
-           "(:tipo IS NULL OR e.tipoEvento = :tipo) AND (" +
+           "(:tipo IS NULL OR :tipo MEMBER OF e.categorias) AND (" +
            "   LOWER(e.titulo) LIKE :search ESCAPE '!' OR " +
            "   LOWER(e.descricao) LIKE :search ESCAPE '!' OR " +
            "   LOWER(format(e.dataEvento as 'dd/MM/yyyy HH:mm')) LIKE :search ESCAPE '!' OR " +
            "   LOWER(e.endereco) LIKE :search ESCAPE '!' OR " +
            "   LOWER(e.imagem) LIKE :search ESCAPE '!' OR " +
            "   LOWER(cast(e.valor as String)) LIKE :search ESCAPE '!' OR " +
-           "   LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!'" +
+           "   EXISTS (SELECT 1 FROM Evento categoriaEvento JOIN categoriaEvento.categorias categoria WHERE categoriaEvento.id = e.id AND LOWER(cast(categoria as String)) LIKE :search ESCAPE '!')" +
            ")")
     Page<Evento> buscar(@Param("search") String search, @Param("tipo") TipoEvento tipo, Pageable pageable);
 
     @Query("SELECT e FROM Evento e WHERE " +
-           "(:tipo IS NULL OR e.tipoEvento = :tipo) " +
+           "(:tipo IS NULL OR :tipo MEMBER OF e.categorias) " +
            "AND (:inicio IS NULL OR e.dataEvento >= :inicio) " +
            "AND (:fimExclusivo IS NULL OR e.dataEvento < :fimExclusivo) " +
            "AND (:gratuito IS NULL OR (:gratuito = true AND COALESCE(e.valor, 0) = 0) " +
@@ -48,7 +48,7 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
            "OR LOWER(e.endereco) LIKE :search ESCAPE '!' " +
            "OR LOWER(e.imagem) LIKE :search ESCAPE '!' " +
            "OR LOWER(cast(e.valor as String)) LIKE :search ESCAPE '!' " +
-           "OR LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!')")
+           "OR EXISTS (SELECT 1 FROM Evento categoriaEvento JOIN categoriaEvento.categorias categoria WHERE categoriaEvento.id = e.id AND LOWER(cast(categoria as String)) LIKE :search ESCAPE '!'))")
     Page<Evento> buscarComFiltros(@Param("search") String search, @Param("tipo") TipoEvento tipo,
             @Param("inicio") LocalDateTime inicio, @Param("fimExclusivo") LocalDateTime fimExclusivo,
             @Param("gratuito") Boolean gratuito, Pageable pageable);

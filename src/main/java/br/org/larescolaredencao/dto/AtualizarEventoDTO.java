@@ -3,11 +3,13 @@ package br.org.larescolaredencao.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.web.multipart.MultipartFile;
 
 import br.org.larescolaredencao.model.enums.TipoEvento;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -28,8 +30,8 @@ public class AtualizarEventoDTO {
     private MultipartFile imagem;
     private BigDecimal valor;
     
-    @NotNull
-    private TipoEvento tipoEvento;
+    @NotEmpty(message = "Selecione pelo menos uma categoria.")
+    private Set<@NotNull TipoEvento> categorias;
     private List<Long> parceirosIds;
 
     public String getTitulo() {
@@ -80,12 +82,12 @@ public class AtualizarEventoDTO {
         this.valor = valor;
     }
 
-    public TipoEvento getTipoEvento() {
-        return tipoEvento;
+    public Set<TipoEvento> getCategorias() {
+        return categorias;
     }
 
-    public void setTipoEvento(TipoEvento tipoEvento) {
-        this.tipoEvento = tipoEvento;
+    public void setCategorias(Set<TipoEvento> categorias) {
+        this.categorias = categorias;
     }
 
     public List<Long> getParceirosIds() {

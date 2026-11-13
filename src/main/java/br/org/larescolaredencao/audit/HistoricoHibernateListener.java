@@ -561,33 +561,85 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         });
     }
 
+    private boolean possuiCategoriasDoEvento(AbstractCollectionEvent evento) {
+        String relacionamento = evento.getCollection().getRole();
+        return evento.getAffectedOwnerOrNull() instanceof Evento
+                && relacionamento != null && relacionamento.endsWith("Evento.categorias");
+    }
+
+    private Map<String, Object> consultarCategoriasAtuais(Connection conexao, Integer idEvento) throws SQLException {
+        List<String> categorias = new ArrayList<>();
+        try (var consulta = conexao.prepareStatement(
+                "select categoria from evento_categoria where id_evento = ? order by categoria")) {
+            consulta.setInt(1, idEvento);
+            try (var resultado = consulta.executeQuery()) {
+                while (resultado.next()) {
+                    categorias.add(resultado.getString("categoria"));
+                }
+            }
+        }
+        return Map.of("id", idEvento, "categorias", categorias);
+    }
+
+    private void guardarCategoriasAnteriores(AbstractCollectionEvent evento) {
+        if (!possuiCategoriasDoEvento(evento)) return;
+        Integer idEvento = (Integer) evento.getAffectedOwnerIdOrNull();
+        evento.getSession().doWork(conexao -> OperacaoAuditoria.atual().categoriasAnteriores
+                .putIfAbsent(idEvento, consultarCategoriasAtuais(conexao, idEvento)));
+    }
+
+    private void registrarMudancaDeCategorias(AbstractCollectionEvent evento) {
+        if (!possuiCategoriasDoEvento(evento)) return;
+        Integer idEvento = (Integer) evento.getAffectedOwnerIdOrNull();
+        evento.getSession().doWork(conexao -> {
+            var operacao = OperacaoAuditoria.atual();
+            Map<String, Object> anterior = operacao.categoriasAnteriores.get(idEvento);
+            var cadastro = operacao.alteracoes.get("evento:" + idEvento);
+            boolean eventoNovo = cadastro != null && cadastro.anterior() == null;
+            if (anterior == null && !eventoNovo) {
+                anterior = Map.of("id", idEvento, "categorias", List.of());
+            }
+            Map<String, Object> novo = consultarCategoriasAtuais(conexao, idEvento);
+            if (anterior == null && ((List<?>) novo.get("categorias")).isEmpty()) return;
+            Evento dono = (Evento) evento.getAffectedOwnerOrNull();
+            Map<String, Object> contexto = Map.of("titulo", dono.getTitulo());
+            gravarEvento(conexao, EntidadeAuditada.EVENTO, "evento_categoria", idEvento.toString(),
+                    anterior, novo, contexto, contexto);
+        });
+    }
+
     @Override
     public void onPreUpdateCollection(PreCollectionUpdateEvent evento) {
         guardarUnidadesAnteriores(evento);
         guardarParceirosAnteriores(evento);
+        guardarCategoriasAnteriores(evento);
     }
 
     @Override
     public void onPreRemoveCollection(PreCollectionRemoveEvent evento) {
         guardarUnidadesAnteriores(evento);
         guardarParceirosAnteriores(evento);
+        guardarCategoriasAnteriores(evento);
     }
 
     @Override
     public void onPostUpdateCollection(PostCollectionUpdateEvent evento) {
         registrarMudancaDeUnidades(evento);
         registrarMudancaDeParceiros(evento);
+        registrarMudancaDeCategorias(evento);
     }
 
     @Override
     public void onPostRemoveCollection(PostCollectionRemoveEvent evento) {
         registrarMudancaDeUnidades(evento);
         registrarMudancaDeParceiros(evento);
+        registrarMudancaDeCategorias(evento);
     }
 
     @Override
     public void onPostRecreateCollection(PostCollectionRecreateEvent evento) {
         registrarMudancaDeUnidades(evento);
         registrarMudancaDeParceiros(evento);
+        registrarMudancaDeCategorias(evento);
     }
 }

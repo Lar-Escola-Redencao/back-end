@@ -3,6 +3,8 @@ package br.org.larescolaredencao.dto;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 import br.org.larescolaredencao.model.Evento;
 import br.org.larescolaredencao.model.enums.TipoEvento;
@@ -16,7 +18,7 @@ public class EventoDetalhadoResponseDTO {
     private String endereco;
     private String imagem;
     private BigDecimal valor;
-    private TipoEvento tipoEvento;
+    private Set<TipoEvento> categorias;
     private boolean encerrado;
     private List<ParceiroResponseDTO> parceiros;
 
@@ -28,7 +30,7 @@ public class EventoDetalhadoResponseDTO {
         this.endereco = evento.getEndereco();
         this.imagem = evento.getImagem();
         this.valor = evento.getValor();
-        this.tipoEvento = evento.getTipoEvento();
+        this.categorias = new TreeSet<>(evento.getCategorias());
         this.encerrado = evento.ehEventoEncerrado();
         this.parceiros = evento.getParceiros() == null ? List.of()
                 : evento.getParceiros().stream().map(ParceiroResponseDTO::new).toList();
@@ -62,8 +64,8 @@ public class EventoDetalhadoResponseDTO {
         return valor;
     }
 
-    public TipoEvento getTipoEvento() {
-        return tipoEvento;
+    public Set<TipoEvento> getCategorias() {
+        return categorias;
     }
 
     public boolean isEncerrado() {
