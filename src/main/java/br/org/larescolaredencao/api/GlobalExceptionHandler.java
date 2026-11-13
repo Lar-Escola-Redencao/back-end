@@ -16,13 +16,34 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.ErrorResponse;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.util.unit.DataSize;
+import br.org.larescolaredencao.service.BloqueioAgradecimentoException;
+import br.org.larescolaredencao.service.ProtecaoAutenticacaoException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ProtecaoAutenticacaoException.class)
+    public ResponseEntity<Map<String, Object>> handleProtecaoAutenticacao(
+            ProtecaoAutenticacaoException exception) {
+        var resposta = ResponseEntity.status(exception.getStatusCode());
+        if (exception.getRetryAfterSeconds() > 0) resposta.header("Retry-After", Long.toString(exception.getRetryAfterSeconds()));
+        return resposta.body(Map.of("message", exception.getReason(), "captchaRequired", exception.isCaptchaRequired(),
+                "retryAfterSeconds", exception.getRetryAfterSeconds()));
+    }
+
+    @ExceptionHandler(BloqueioAgradecimentoException.class)
+    public ResponseEntity<Map<String, Object>> handleBloqueioAgradecimento(
+            BloqueioAgradecimentoException exception) {
+        return ResponseEntity.status(exception.getStatusCode())
+                .header("Retry-After", Long.toString(exception.getRetryAfterSeconds()))
+                .body(Map.of("message", exception.getReason(),
+                        "retryAfterSeconds", exception.getRetryAfterSeconds()));
+    }
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
@@ -77,6 +98,27 @@ public class GlobalExceptionHandler {
         erro.put("message", exception.getReason());
         erro.put("status", exception.getStatusCode().toString());
         return ResponseEntity.status(exception.getStatusCode()).body(erro);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, String>> handleParametroInvalido(MethodArgumentTypeMismatchException exception) {
+        String parametro = exception.getName();
+        String mensagem = "Parâmetro inválido: " + parametro + ".";
+        Class<?> tipo = exception.getRequiredType();
+        if (tipo != null && tipo.isEnum()) {
+            StringBuilder validos = new StringBuilder();
+            for (Object constante : tipo.getEnumConstants()) {
+                if (validos.length() > 0) validos.append(", ");
+                validos.append(constante);
+            }
+            mensagem = "Valor inválido para o parâmetro '" + parametro + "'. Valores aceitos: " + validos + ".";
+        } else if (tipo != null && java.time.LocalDate.class.equals(tipo)) {
+            mensagem = "Data inválida no parâmetro '" + parametro + "'. Use o formato AAAA-MM-DD com uma data existente.";
+        }
+        Map<String, String> erro = new LinkedHashMap<>();
+        erro.put(parametro, mensagem);
+        erro.put("message", mensagem);
+        return ResponseEntity.badRequest().body(erro);
     }
 
     @ExceptionHandler(MultipartException.class)

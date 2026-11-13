@@ -40,25 +40,53 @@ public class FrequenciaAcompanhamentoService {
     }
 
     public List<MatriculaHistoricoResponseDTO> matriculas(Integer usuario, Membro membro) {
+        usuarios.buscarUsuarioPorId(usuario, membro);
         return acessiveis(usuario, membro).stream().map(MatriculaHistoricoResponseDTO::new).toList();
     }
 
-    public FrequenciaAcompanhamentoDTO consultar(Integer usuario, Integer matricula, LocalDate inicio,
-            LocalDate fim, Membro membro) {
+    /** Período efetivo de uma consulta de acompanhamento (ambas as datas inclusivas). */
+    public record Intervalo(LocalDate inicio, LocalDate fim) {}
+
+    /** Seleção de matrículas acessíveis e período, com as mesmas regras e padrões da consulta de frequências. */
+    public record Selecao(Intervalo intervalo, List<Matricula> matriculas) {}
+
+    public Selecao selecionar(Integer usuario, Integer matricula, LocalDate inicio, LocalDate fim, Membro membro) {
+        var dadosUsuario = usuarios.buscarUsuarioPorId(usuario, membro);
+        var primeiraMatricula = dadosUsuario == null ? null : dadosUsuario.getDataPrimeiraMatricula();
+        Intervalo intervalo = intervalo(inicio, fim);
+        if (primeiraMatricula != null && intervalo.inicio().isBefore(primeiraMatricula.toLocalDate())) {
+            if (inicio != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "A data inicial não pode ser anterior à primeira matrícula do usuário.");
+            }
+            intervalo = new Intervalo(primeiraMatricula.toLocalDate(), intervalo.fim());
+        }
+        List<Matricula> acessiveis = acessiveis(usuario, membro);
+        if (matricula != null) {
+            acessiveis = acessiveis.stream().filter(m -> matricula.equals(m.getId())).toList();
+            if (acessiveis.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada ou sem acesso.");
+            }
+        }
+        return new Selecao(intervalo, acessiveis);
+    }
+
+    private Intervalo intervalo(LocalDate inicio, LocalDate fim) {
         if (inicio == null && fim == null) {
             var hoje = LocalDate.now(relogio);
-            inicio = hoje.withDayOfYear(1); fim = hoje.withMonth(12).withDayOfMonth(31);
+            return new Intervalo(hoje.withDayOfYear(1), hoje.withMonth(12).withDayOfMonth(31));
         } else if (inicio == null || fim == null || fim.isBefore(inicio)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Informe as duas datas; a data final não pode ser anterior à inicial.");
         }
-        List<Integer> ids = acessiveis(usuario, membro).stream().map(Matricula::getId).toList();
-        if (matricula != null) {
-            if (!ids.contains(matricula)) {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada ou sem acesso.");
-            }
-            ids = List.of(matricula);
-        }
+        return new Intervalo(inicio, fim);
+    }
+
+    public FrequenciaAcompanhamentoDTO consultar(Integer usuario, Integer matricula, LocalDate inicio,
+            LocalDate fim, Membro membro) {
+        var selecao = selecionar(usuario, matricula, inicio, fim, membro);
+        inicio = selecao.intervalo().inicio(); fim = selecao.intervalo().fim();
+        List<Integer> ids = selecao.matriculas().stream().map(Matricula::getId).toList();
         List<FrequenciaAcompanhamentoDTO.Mes> meses = ids.isEmpty() ? List.of()
                 : frequencias.resumirPorMatriculasEPeriodo(ids, inicio, fim).stream()
                     .map(m -> new FrequenciaAcompanhamentoDTO.Mes(m.getAno(), m.getMes(), m.getPresencas(), m.getFaltas()))
@@ -70,9 +98,10 @@ public class FrequenciaAcompanhamentoService {
     }
 
     private List<Matricula> acessiveis(Integer usuario, Membro membro) {
-        usuarios.buscarUsuarioPorId(usuario, membro);
-        boolean admin = Perfil.fromNomePapel(membro.getPapel().getNomePapel()) == Perfil.ADMINISTRADOR;
-        List<Integer> unidades = admin ? List.of(-1) : membro.getUnidades().stream().map(Unidade::getId).toList();
-        return unidades.isEmpty() ? List.of() : matriculas.listarParaAcompanhamento(usuario, admin, unidades);
+        Perfil perfil = Perfil.fromNomePapel(membro.getPapel().getNomePapel());
+        // O acesso ao usuário já foi validado antes de consultar seu histórico de frequência.
+        boolean historicoCompleto = perfil == Perfil.ADMINISTRADOR || perfil == Perfil.MONITOR;
+        List<Integer> unidades = historicoCompleto ? List.of(-1) : membro.getUnidades().stream().map(Unidade::getId).toList();
+        return unidades.isEmpty() ? List.of() : matriculas.listarParaAcompanhamento(usuario, historicoCompleto, unidades);
     }
 }
