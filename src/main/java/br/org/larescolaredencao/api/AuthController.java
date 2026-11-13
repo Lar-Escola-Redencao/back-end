@@ -2,35 +2,26 @@ package br.org.larescolaredencao.api;
 
 import br.org.larescolaredencao.dto.LoginRequestDTO;
 import br.org.larescolaredencao.dto.LoginResponseDTO;
-import br.org.larescolaredencao.model.Membro;
-import br.org.larescolaredencao.security.TokenService;
-import org.springframework.beans.factory.annotation.Autowired;
+import br.org.larescolaredencao.service.LoginService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
 
-    @Autowired
-    private AuthenticationManager manager;
+    private final LoginService loginService;
 
-    @Autowired
-    private TokenService tokenService;
+    public AuthController(LoginService loginService) {
+        this.loginService = loginService;
+    }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> efetuarLogin(@RequestBody @Valid LoginRequestDTO dados) {
-        var authenticationToken = new UsernamePasswordAuthenticationToken(dados.identificador(), dados.senha());
-        
-        var authentication = manager.authenticate(authenticationToken);
-
-        var lembrarMe = Boolean.TRUE.equals(dados.lembrarMe());
-        var tokenJWT = tokenService.gerarToken((Membro) authentication.getPrincipal(), lembrarMe);
-
-        return ResponseEntity.ok(new LoginResponseDTO(tokenJWT));
+    public ResponseEntity<LoginResponseDTO> efetuarLogin(@RequestBody @Valid LoginRequestDTO dados, HttpServletRequest request) {
+        return ResponseEntity.ok().cacheControl(org.springframework.http.CacheControl.noStore())
+                .body(loginService.entrar(dados, request.getRemoteAddr()));
     }
 }
