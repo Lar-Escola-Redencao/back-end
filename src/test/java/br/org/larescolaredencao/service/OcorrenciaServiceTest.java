@@ -83,24 +83,30 @@ class OcorrenciaServiceTest {
     }
 
     @Test
-    void deveRejeitarMudancaDoDiaNaEdicao() {
-        LocalDate hoje = LocalDateTime.now(ZoneId.of("America/Sao_Paulo")).toLocalDate();
+    void permiteCorrigirDiaDaOcorrenciaPreservandoAutoriaECadastro() {
+        LocalDateTime agora = LocalDateTime.of(2026, 11, 11, 22, 0);
+        LocalDateTime cadastro = agora.minusHours(1);
         Ocorrencia registro = new Ocorrencia();
         registro.setMatricula(matricula);
         registro.setMembro(membro);
-        registro.setDataCriacao(hoje.atStartOfDay());
-        registro.setDataOcorrencia(hoje.atTime(9, 0));
+        registro.setDataCriacao(cadastro);
+        matricula.setDataIngresso(agora.minusMonths(2));
         when(ocorrencias.findById(1)).thenReturn(Optional.of(registro));
+        when(ocorrencias.save(any())).thenAnswer(i -> i.getArgument(0));
         AtualizarOcorrenciaDTO dto = new AtualizarOcorrenciaDTO();
-        dto.setDescricao("Correção");
-        dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
-        for (LocalDateTime fato : List.of(hoje.minusDays(1).atTime(9, 0), hoje.plusDays(1).atTime(9, 0))) {
-            dto.setDataOcorrencia(fato);
-            assertThatThrownBy(() -> service.atualizarOcorrencia(1, dto, membro))
-                    .isInstanceOfSatisfying(ResponseStatusException.class,
-                            ex -> assertThat(ex.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        dto.setDescricao("Correção"); dto.setTipoOcorrencia(TipoOcorrencia.SAUDE);
+        dto.setDataOcorrencia(agora.minusDays(1).withHour(9));
+        try (MockedStatic<LocalDateTime> tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            for (String perfil : List.of("MONITOR", "ADMINISTRADOR", "COORDENADOR")) {
+                membro.getPapel().setNomePapel(perfil);
+                registro.setDataOcorrencia(agora.withHour(9));
+                var resposta = service.atualizarOcorrencia(1, dto, membro);
+                assertThat(resposta.getDataOcorrencia()).isEqualTo(dto.getDataOcorrencia());
+                assertThat(registro.getDataCriacao()).isEqualTo(cadastro);
+                assertThat(registro.getMembro()).isSameAs(membro);
+            }
         }
-        verify(ocorrencias, never()).save(any());
     }
 
     @Test

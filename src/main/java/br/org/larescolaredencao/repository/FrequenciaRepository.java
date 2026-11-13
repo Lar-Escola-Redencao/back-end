@@ -39,4 +39,11 @@ public interface FrequenciaRepository extends JpaRepository<Frequencia, Integer>
     List<Frequencia> findPorTurmaNoPeriodo(@Param("turmaId") Integer turmaId,
                                            @Param("inicio") LocalDate inicio,
                                            @Param("fim") LocalDate fim);
+
+    @Query("SELECT f FROM Frequencia f JOIN FETCH f.matricula m JOIN FETCH m.turma t JOIN FETCH t.unidade " +
+           "WHERE m.id IN :matriculas AND f.dataRegistro BETWEEN :inicio AND :fim " +
+           "ORDER BY f.dataRegistro, m.id")
+    List<Frequencia> findPorMatriculasNoPeriodo(@Param("matriculas") List<Integer> matriculas,
+                                                @Param("inicio") LocalDate inicio,
+                                                @Param("fim") LocalDate fim);
 }

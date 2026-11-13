@@ -104,4 +104,19 @@ class AcompanhamentoServiceTest {
         var resultado = service.salvarEntrevista(10, null, new EntrevistaDTO(agora, "Relato"), membro("ADMINISTRADOR"));
         assertThat(resultado.dataEntrevista()).isEqualTo(agora);
     }
+    @Test void rejeitaEntrevistaAnteriorAPrimeiraMatriculaNoCadastroENaEdicao() {
+        var usuario = mock(br.org.larescolaredencao.dto.UsuarioResponseDTO.class);
+        when(usuario.getDataPrimeiraMatricula()).thenReturn(LocalDateTime.of(2026, 10, 29, 18, 0));
+        when(usuarios.buscarUsuarioPorId(eq(10), any())).thenReturn(usuario);
+        for (Integer id : new Integer[] {null, 3}) {
+            assertThatThrownBy(() -> service.salvarEntrevista(10, id,
+                    new EntrevistaDTO(LocalDateTime.of(2026, 10, 28, 9, 0), "Relato"), membro("ADMINISTRADOR")))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("primeira matrícula");
+        }
+        verifyNoInteractions(entrevistas);
+        when(entrevistas.save(any())).thenAnswer(i -> i.getArgument(0));
+        assertThat(service.salvarEntrevista(10, null, dados(), membro("COORDENADOR")).dataEntrevista())
+                .isEqualTo(dados().dataEntrevista());
+    }
+
 }
