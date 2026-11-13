@@ -7,6 +7,7 @@ import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTVerificationException;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ public class TokenService {
                     .withIssuer("lar-redencao-api")
                     .withSubject(membro.getEmail())
                     .withClaim("role", perfil.name())
+                    .withClaim("ver", membro.getVersaoSessao())
                     .withExpiresAt(gerarDataExpiracao(lembrarMe))
                     .sign(algorithm);
         } catch (JWTCreationException exception) {
@@ -38,13 +40,22 @@ public class TokenService {
     }
 
     public String getSubject(String tokenJWT) {
+        return verificar(tokenJWT).getSubject();
+    }
+
+    /** Versão de sessão do token; tokens antigos, sem a claim, valem como versão 0. */
+    public int getVersaoSessao(DecodedJWT token) {
+        var versao = token.getClaim("ver");
+        return versao.isMissing() || versao.isNull() ? 0 : versao.asInt();
+    }
+
+    public DecodedJWT verificar(String tokenJWT) {
         try {
             Algorithm algorithm = Algorithm.HMAC256(secret);
             return JWT.require(algorithm)
                     .withIssuer("lar-redencao-api")
                     .build()
-                    .verify(tokenJWT)
-                    .getSubject();
+                    .verify(tokenJWT);
         } catch (JWTVerificationException exception) {
             throw new RuntimeException("Token JWT inválido ou expirado", exception);
         }

@@ -18,6 +18,7 @@ import br.org.larescolaredencao.dto.AtualizarPerfilDTO;
 import br.org.larescolaredencao.dto.AlterarSenhaDTO;
 import br.org.larescolaredencao.dto.CriarMembroDTO;
 import br.org.larescolaredencao.dto.MembroResponseDTO;
+import br.org.larescolaredencao.dto.ReativarMembroDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
@@ -48,30 +49,50 @@ public class MembroService {
     }
 
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search, Integer idUnidade) {
+        return getAllMembros(pageable, idPapel, search, idUnidade, (Boolean) null);
+    }
+
+    private Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
+            Integer idUnidade, Boolean ativo) {
         String termo = TermoBusca.like(search);
         if (termo != null) {
-            return membroRepository.buscar(termo, TermoBusca.digitosLike(search), idPapel, idUnidade, pageable)
-                    .map(MembroResponseDTO::new);
+            Page<Membro> encontrados = ativo == null
+                    ? membroRepository.buscar(termo, TermoBusca.digitosLike(search), idPapel, idUnidade, pageable)
+                    : membroRepository.buscarPorSituacao(termo, TermoBusca.digitosLike(search), idPapel, idUnidade,
+                            ativo, pageable);
+            return encontrados.map(MembroResponseDTO::new);
         }
-        Page<Membro> membros = (idPapel != null || idUnidade != null)
-                ? membroRepository.filtrar(idPapel, idUnidade, pageable)
-                : membroRepository.findAll(pageable);
+        Page<Membro> membros = ativo != null
+                ? membroRepository.filtrarPorSituacao(idPapel, idUnidade, ativo, pageable)
+                : (idPapel != null || idUnidade != null)
+                    ? membroRepository.filtrar(idPapel, idUnidade, pageable)
+                    : membroRepository.findAll(pageable);
         return membros.map(MembroResponseDTO::new);
     }
 
     @Transactional(readOnly = true)
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
             Integer idUnidade, Membro membroLogado) {
+        return getAllMembros(pageable, idPapel, search, idUnidade, null, membroLogado);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
+            Integer idUnidade, Boolean ativo, Membro membroLogado) {
         Membro solicitante = obterSolicitanteDaConsulta(membroLogado);
         if ("ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel())) {
-            return getAllMembros(pageable, idPapel, search, idUnidade);
+            return getAllMembros(pageable, idPapel, search, idUnidade, ativo);
         }
         List<Integer> permitidas = solicitante.getUnidades().stream().map(Unidade::getId).toList();
         if (permitidas.isEmpty() || (idUnidade != null && !permitidas.contains(idUnidade))) {
             return Page.empty(pageable);
         }
-        return membroRepository.listarMonitoresDasUnidades(permitidas, idPapel, idUnidade,
-                TermoBusca.like(search), TermoBusca.digitosLike(search), pageable).map(MembroResponseDTO::new);
+        Page<Membro> monitores = ativo == null
+                ? membroRepository.listarMonitoresDasUnidades(permitidas, idPapel, idUnidade,
+                        TermoBusca.like(search), TermoBusca.digitosLike(search), pageable)
+                : membroRepository.listarMonitoresDasUnidadesPorSituacao(permitidas, idPapel, idUnidade,
+                        TermoBusca.like(search), TermoBusca.digitosLike(search), ativo, pageable);
+        return monitores.map(MembroResponseDTO::new);
     }
 
     @Transactional(readOnly = true)
@@ -130,12 +151,12 @@ public class MembroService {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Selecione apenas unidades às quais você tem acesso.");
             }
         }
-    	if (membroRepository.findByEmail(dto.getEmail()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está cadastrado no sistema.");
-        }
-        if (membroRepository.buscarPorCpf(dto.getCpf()).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está cadastrado no sistema.");
-        }
+        membroRepository.findByEmail(dto.getEmail()).ifPresent(existente -> {
+            throw conflitoDeDuplicidade(existente, "e-mail", "Este e-mail já está cadastrado no sistema.");
+        });
+        membroRepository.buscarPorCpf(dto.getCpf()).ifPresent(existente -> {
+            throw conflitoDeDuplicidade(existente, "CPF", "Este CPF já está cadastrado no sistema.");
+        });
         
         if (!"ADMINISTRADOR".equals(papel.getNomePapel()) && (dto.getIdsUnidades() == null || dto.getIdsUnidades().isEmpty())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Selecione ao menos uma unidade para este perfil.");
@@ -233,20 +254,24 @@ public class MembroService {
     public MembroResponseDTO atualizarMembro(Integer id, AtualizarMembroDTO dto) {
         Membro membro = membroRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
-        
+        aplicarDados(membro, dto);
+        Membro salvo = membroRepository.save(membro);
+        return new MembroResponseDTO(salvo);
+    }
+
+    /** Valida e aplica os dados cadastrais; não altera senha nem situação (ativo/inativo). */
+    private void aplicarDados(Membro membro, AtualizarMembroDTO dto) {
         if (!membro.getEmail().equals(dto.getEmail())) {
-            Optional<Membro> membroComEmail = membroRepository.findByEmail(dto.getEmail());
-            if (membroComEmail.isPresent()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Este e-mail já está em uso por outro usuário.");
-            }
+            membroRepository.findByEmail(dto.getEmail()).ifPresent(outro -> {
+                throw conflitoDeDuplicidade(outro, "e-mail", "Este e-mail já está em uso por outro usuário.");
+            });
         }
 
         String cpf = Membro.somenteDigitos(dto.getCpf());
         if (!Membro.somenteDigitos(membro.getCpf()).equals(cpf)) {
-            Optional<Membro> membroComCpf = membroRepository.buscarPorCpf(cpf);
-            if (membroComCpf.isPresent()) {
-                throw new ResponseStatusException(HttpStatus.CONFLICT, "Este CPF já está em uso por outro usuário.");
-            }
+            membroRepository.buscarPorCpf(cpf).ifPresent(outro -> {
+                throw conflitoDeDuplicidade(outro, "CPF", "Este CPF já está em uso por outro usuário.");
+            });
         }
 
         Papel papel = papelRepository.findById(dto.getIdPapel())
@@ -274,11 +299,74 @@ public class MembroService {
             membro.getUnidades().clear();
             membro.getUnidades().addAll(unidades);
         }
-
-        Membro salvo = membroRepository.save(membro);
-        return new MembroResponseDTO(salvo);
     }
-    
+
+    private ResponseStatusException conflitoDeDuplicidade(Membro existente, String campo, String mensagemPadrao) {
+        if (existente.isAtivo()) {
+            return new ResponseStatusException(HttpStatus.CONFLICT, mensagemPadrao);
+        }
+        return new ResponseStatusException(HttpStatus.CONFLICT, "Este " + campo
+                + " pertence a um colaborador inativo. Reative o cadastro existente em vez de criar outro.");
+    }
+
+    @Transactional
+    public MembroResponseDTO desativarMembro(Integer id, Membro membroLogado) {
+        if (id.equals(membroLogado.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Não é possível desativar a própria conta.");
+        }
+        List<Membro> bloqueados = membroRepository.bloquearParaGestao(id);
+        Membro membro = bloqueados.stream().filter(m -> id.equals(m.getId())).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarGestaoMembro(membroLogado, membro.getPapel(),
+                membro.getUnidades().stream().map(Unidade::getId).toList());
+        if (!membro.isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este colaborador já está inativo.");
+        }
+        // A consulta trava o alvo e os administradores ativos: sem outro administrador ativo, não pode desativar.
+        boolean ultimoAdministrador = "ADMINISTRADOR".equals(membro.getPapel().getNomePapel())
+                && bloqueados.stream().noneMatch(m -> !id.equals(m.getId()));
+        if (ultimoAdministrador) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "Não é possível desativar o último administrador ativo.");
+        }
+        membro.setAtivo(false);
+        membro.invalidarSessoes();
+        return new MembroResponseDTO(membroRepository.save(membro));
+    }
+
+    @Transactional
+    public MembroResponseDTO reativarMembro(Integer id, ReativarMembroDTO dto, Membro membroLogado) {
+        validarGestaoDaPropriaConta(id, membroLogado);
+        Membro membro = membroRepository.bloquearParaGestao(id).stream()
+                .filter(m -> id.equals(m.getId())).findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado"));
+        validarGestaoMembro(membroLogado, membro.getPapel(),
+                membro.getUnidades().stream().map(Unidade::getId).toList());
+        if (membro.isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Este colaborador já está ativo.");
+        }
+        Papel papel = papelRepository.findById(dto.getIdPapel())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Papel não encontrado"));
+        validarGestaoMembro(membroLogado, papel, dto.getIdsUnidades());
+        if (dto.getConfirmacaoSenha() != null && !dto.getSenha().equals(dto.getConfirmacaoSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A confirmação da senha não confere.");
+        }
+        if (passwordEncoder.matches(dto.getSenha(), membro.getSenha())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Informe uma nova senha, diferente da anterior.");
+        }
+
+        aplicarDados(membro, dto);
+        membro.setSenha(passwordEncoder.encode(dto.getSenha()));
+        membro.setAtivo(true);
+        membro.invalidarSessoes();
+        try {
+            return new MembroResponseDTO(membroRepository.saveAndFlush(membro));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "CPF ou e-mail já cadastrado em outro colaborador.");
+        }
+    }
 
     public MembroResponseDTO buscarPerfil(Integer idMembroLogado) {
         Membro membro = membroRepository.findById(idMembroLogado)

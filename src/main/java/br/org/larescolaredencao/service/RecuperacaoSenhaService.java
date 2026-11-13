@@ -38,7 +38,7 @@ public class RecuperacaoSenhaService {
     public void solicitarRecuperacao(String email) {
         Optional<Membro> membroOpt = membroRepository.findByEmail(email);
 
-        if (membroOpt.isEmpty()) {
+        if (membroOpt.isEmpty() || !membroOpt.get().isAtivo()) {
             return;
         }
 
@@ -78,6 +78,9 @@ public class RecuperacaoSenhaService {
         if (tokenRecuperacao.getDataExpiracao().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O código fornecido expirou.");
         }
+        if (!tokenRecuperacao.getMembro().isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou não encontrado.");
+        }
     }
 
     @Transactional
@@ -91,6 +94,10 @@ public class RecuperacaoSenhaService {
         }
 
         Membro membro = tokenRecuperacao.getMembro();
+        if (!membro.isAtivo()) {
+            tokenRecuperacaoRepository.delete(tokenRecuperacao);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou não encontrado.");
+        }
         membro.setSenha(passwordEncoder.encode(novaSenha));
         membroRepository.save(membro);
 
