@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import br.org.larescolaredencao.model.Membro;
@@ -49,6 +50,8 @@ class MembroConsultaPermissoesTest {
         return membro;
     }
 
+    private final PageRequest paginaOrdenada = pagina.withSort(Sort.by(Sort.Order.desc("id")));
+
     private void autenticar() {
         when(membros.findById(10)).thenReturn(Optional.of(coordenador));
     }
@@ -56,7 +59,7 @@ class MembroConsultaPermissoesTest {
     @Test
     void coordenadorUsaConsultaRestritaAsPropriasUnidadesAntesDaPaginacao() {
         autenticar();
-        when(membros.listarMonitoresDasUnidades(List.of(1, 2), null, null, null, null, pagina))
+        when(membros.listarParaCoordenador(10, List.of(1, 2), null, null, null, null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(membro(20, "MONITOR", 1)), pagina, 15));
         var resposta = service.getAllMembros(pagina, null, null, null, coordenador);
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(20);
@@ -68,10 +71,10 @@ class MembroConsultaPermissoesTest {
     @Test
     void buscaEParametrosDaUrlNaoRetiramRestricaoDasUnidades() {
         autenticar();
-        when(membros.listarMonitoresDasUnidades(List.of(1, 2), 1, 2, "%123%", "%123%", pagina))
+        when(membros.listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", paginaOrdenada))
                 .thenReturn(Page.empty(pagina));
         assertThat(service.getAllMembros(pagina, 1, "123", 2, coordenador).getContent()).isEmpty();
-        verify(membros).listarMonitoresDasUnidades(List.of(1, 2), 1, 2, "%123%", "%123%", pagina);
+        verify(membros).listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", paginaOrdenada);
     }
 
     @Test
@@ -95,7 +98,7 @@ class MembroConsultaPermissoesTest {
     void administradorMantemListagemDeTodosOsColaboradores() {
         coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
         autenticar();
-        when(membros.findAll(pagina)).thenReturn(new PageImpl<>(List.of(membro(30, "MONITOR", 3))));
+        when(membros.listarParaAdministrador(10, null, null, null, null, paginaOrdenada)).thenReturn(new PageImpl<>(List.of(membro(30, "MONITOR", 3))));
         assertThat(service.getAllMembros(pagina, null, null, null, coordenador).getContent())
                 .extracting(dto -> dto.getId()).containsExactly(30);
     }
@@ -106,7 +109,7 @@ class MembroConsultaPermissoesTest {
         coordenador.setUnidades(List.of());
         autenticar();
         Membro global = membro(30, "ADMINISTRADOR");
-        when(membros.filtrar(null, 3, pagina))
+        when(membros.listarParaAdministrador(10, null, 3, null, null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(global), pagina, 15));
 
         var resposta = service.getAllMembros(pagina, null, null, 3, coordenador);
@@ -114,8 +117,8 @@ class MembroConsultaPermissoesTest {
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
         assertThat(resposta.getContent().get(0).getUnidades()).isEmpty();
         assertThat(resposta.getTotalElements()).isEqualTo(15);
-        verify(membros).filtrar(null, 3, pagina);
-        verify(membros, never()).listarMonitoresDasUnidades(any(), any(), any(), any(), any(), any());
+        verify(membros).listarParaAdministrador(10, null, 3, null, null, paginaOrdenada);
+        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -123,14 +126,14 @@ class MembroConsultaPermissoesTest {
         coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
         coordenador.setUnidades(List.of());
         autenticar();
-        when(membros.buscar("%membro%", null, 1, 3, pagina))
+        when(membros.listarParaAdministrador(10, 1, 3, "%membro%", null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(membro(30, "ADMINISTRADOR")), pagina, 1));
 
         var resposta = service.getAllMembros(pagina, 1, "Membro", 3, coordenador);
 
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
-        verify(membros).buscar("%membro%", null, 1, 3, pagina);
-        verify(membros, never()).listarMonitoresDasUnidades(any(), any(), any(), any(), any(), any());
+        verify(membros).listarParaAdministrador(10, 1, 3, "%membro%", null, paginaOrdenada);
+        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test

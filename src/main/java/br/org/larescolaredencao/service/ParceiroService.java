@@ -35,6 +35,7 @@ public class ParceiroService {
 	}
 
 	public Page<Parceiro> getAllParceiros(Pageable pageable, String search) {
+		pageable = OrdenacaoPaginada.porCadastro(pageable);
 		String termo = TermoBusca.like(search);
 		if (termo != null) {
 			return parceiroRepository.buscar(termo, pageable);

@@ -48,6 +48,7 @@ public class MembroService {
     }
 
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search, Integer idUnidade) {
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         String termo = TermoBusca.like(search);
         if (termo != null) {
             return membroRepository.buscar(termo, TermoBusca.digitosLike(search), idPapel, idUnidade, pageable)
@@ -64,14 +65,17 @@ public class MembroService {
             Integer idUnidade, Membro membroLogado) {
         Membro solicitante = obterSolicitanteDaConsulta(membroLogado);
         if ("ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel())) {
-            return getAllMembros(pageable, idPapel, search, idUnidade);
+            return membroRepository.listarParaAdministrador(solicitante.getId(), idPapel, idUnidade,
+                    TermoBusca.like(search), TermoBusca.digitosLike(search), OrdenacaoPaginada.porCadastro(pageable))
+                    .map(MembroResponseDTO::new);
         }
         List<Integer> permitidas = solicitante.getUnidades().stream().map(Unidade::getId).toList();
         if (permitidas.isEmpty() || (idUnidade != null && !permitidas.contains(idUnidade))) {
             return Page.empty(pageable);
         }
-        return membroRepository.listarMonitoresDasUnidades(permitidas, idPapel, idUnidade,
-                TermoBusca.like(search), TermoBusca.digitosLike(search), pageable).map(MembroResponseDTO::new);
+        return membroRepository.listarParaCoordenador(solicitante.getId(), permitidas, idPapel, idUnidade,
+                TermoBusca.like(search), TermoBusca.digitosLike(search), OrdenacaoPaginada.porCadastro(pageable))
+                .map(MembroResponseDTO::new);
     }
 
     @Transactional(readOnly = true)

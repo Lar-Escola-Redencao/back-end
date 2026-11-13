@@ -33,6 +33,7 @@ public class DiretoriaService {
 	}
 
 	public Page<Diretoria> listarTodos(Pageable pageable, String search) {
+		pageable = OrdenacaoPaginada.porCadastro(pageable);
 		String termo = TermoBusca.like(search);
 		if (termo != null) {
 			return diretoriaRepository.buscar(termo, pageable);

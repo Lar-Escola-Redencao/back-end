@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +56,7 @@ public class EventoService {
     }
 
     public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo, String search) {
+        pageable = ordenarEventos(pageable);
         String termo = TermoBusca.like(search);
         if (termo != null) {
             return eventoRepository.buscar(termo, tipo, pageable).map(EventoResponseDTO::new);
@@ -93,7 +95,11 @@ public class EventoService {
         return eventoRepository.buscarComFiltros(TermoBusca.like(search), tipo,
                 dataInicial == null ? null : dataInicial.atStartOfDay(),
                 dataFinal == null ? null : dataFinal.plusDays(1).atStartOfDay(),
-                gratuito, pageable).map(EventoResponseDTO::new);
+                gratuito, ordenarEventos(pageable)).map(EventoResponseDTO::new);
+    }
+
+    private Pageable ordenarEventos(Pageable pageable) {
+        return OrdenacaoPaginada.comPadrao(pageable, Sort.by(Sort.Order.desc("dataEvento")));
     }
 
     @Transactional
