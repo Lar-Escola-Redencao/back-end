@@ -2,6 +2,8 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.HashSet;
+import java.util.HashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,6 +41,7 @@ public class PaginaService {
     private static final String GRUPO_TEXTO_SOBRE = "texto-sobre";
 
     private static final Long ID_PAGINA_GRAFICA = 3L;
+    private static final Long ID_PAGINA_TRANSPARENCIA = 1L;
     private static final Long ID_PAGINA_PIX = 4L;
     private static final String GRUPO_TELEFONE = "telefone";
     private static final String GRUPO_PRODUTOS = "produtos";
@@ -75,6 +78,13 @@ public class PaginaService {
     public List<Secao> listarSecoes(Long idPagina, String search) {
         buscarPaginaPorId(idPagina);
         String termo = TermoBusca.like(search);
+        if (ID_PAGINA_TRANSPARENCIA.equals(idPagina)) {
+            if (termo != null) {
+                return secaoRepository.buscar(idPagina, null, termo,
+                        Pageable.unpaged(Sort.by("ordem", "id"))).getContent();
+            }
+            return secaoRepository.findByPaginaIdOrderByOrdemAscIdAsc(idPagina);
+        }
         if (termo != null) {
             return secaoRepository.buscar(idPagina, null, termo,
                     Pageable.unpaged(Sort.by("grupo", "ordem"))).getContent();
@@ -134,6 +144,11 @@ public class PaginaService {
     public Secao criarSecao(Long idPagina, CriarSecaoDTO dto) {
         Pagina pagina = buscarPaginaPorId(idPagina);
 
+        Integer ordemTransparencia = null;
+        if (ID_PAGINA_TRANSPARENCIA.equals(idPagina)) {
+            ordemTransparencia = listarSecoesParaOrdenacao().size() + 1;
+        }
+
         String grupoDaPagina = validarGrupoDaPagina(idPagina, dto.getGrupo());
         if (grupoDaPagina != null) {
             return criarSecaoDeGrupo(pagina, grupoDaPagina, dto);
@@ -146,7 +161,8 @@ public class PaginaService {
         secao.setTitulo(resolverTituloSecao(dto.getTitulo(), grupo));
         secao.setConteudo(normalizarConteudo(dto.getConteudo()));
         secao.setGrupo(grupo);
-        secao.setOrdem(dto.getOrdem() == null ? proximaOrdem(idPagina, grupo) : dto.getOrdem());
+        secao.setOrdem(ordemTransparencia != null ? ordemTransparencia
+                : dto.getOrdem() == null ? proximaOrdem(idPagina, grupo) : dto.getOrdem());
         secao.setAtivo(true);
         secao.setPagina(pagina);
 
@@ -173,6 +189,13 @@ public class PaginaService {
     @Transactional
     public Secao atualizarSecao(Long idPagina, Long id, AtualizarSecaoDTO dto) {
         buscarPaginaPorId(idPagina);
+        if (ID_PAGINA_TRANSPARENCIA.equals(idPagina)) {
+            paginaRepository.findByIdComBloqueio(idPagina);
+            if (dto.getOrdem() != null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Utilize a reordenação para alterar a ordem das seções da Transparência.");
+            }
+        }
         if (Long.valueOf(2L).equals(idPagina)) paginaRepository.findByIdComBloqueio(idPagina);
         Secao secao = secaoRepository.findByIdAndPaginaId(id, idPagina)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Seção não encontrada nesta página."));
@@ -214,11 +237,41 @@ public class PaginaService {
 
     @Transactional
     public void reordenarSecoes(List<ReordenarSecaoDTO> secoes) {
-        for (ReordenarSecaoDTO item : secoes) {
-            Secao secao = buscarSecaoPorId(item.getId());
-            secao.setOrdem(item.getOrdem());
-            secaoRepository.save(secao);
+        paginaRepository.findByIdComBloqueio(ID_PAGINA_TRANSPARENCIA);
+        var atuais = secaoRepository.findByPaginaIdComBloqueio(ID_PAGINA_TRANSPARENCIA);
+        var porId = new HashMap<Long, Secao>();
+        atuais.forEach(secao -> porId.put(secao.getId(), secao));
+        if (secoes == null || secoes.size() != atuais.size()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "A lista de seções foi alterada. Cancele e abra a reordenação novamente.");
         }
+        var ids = new HashSet<Long>();
+        var posicoes = new HashSet<Integer>();
+        for (ReordenarSecaoDTO item : secoes) {
+            if (item == null || item.getId() == null || item.getOrdem() == null
+                    || !ids.add(item.getId()) || !posicoes.add(item.getOrdem())
+                    || item.getOrdem() < 1 || item.getOrdem() > atuais.size()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "IDs e posições devem ser únicos, com posições de 1 até o total de seções.");
+            }
+            if (!porId.containsKey(item.getId())) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "A seção não pertence à Transparência ou a lista foi alterada. Abra a reordenação novamente.");
+            }
+        }
+        // Só modifica entidades após validar a permutação inteira. A transação grava tudo ou nada.
+        secoes.forEach(item -> porId.get(item.getId()).setOrdem(item.getOrdem()));
+        secaoRepository.saveAll(atuais);
+    }
+
+    @Transactional
+    public List<Secao> listarSecoesParaOrdenacao() {
+        paginaRepository.findByIdComBloqueio(ID_PAGINA_TRANSPARENCIA);
+        var secoes = secaoRepository.findByPaginaIdComBloqueio(ID_PAGINA_TRANSPARENCIA);
+        // Renumeração idempotente preserva a sequência anterior (ordem, ID), inclusive legados.
+        for (int i = 0; i < secoes.size(); i++) {
+            secoes.get(i).setOrdem(i + 1);
+        }
+        return secoes;
     }
 
     /** Upload genérico de imagem: grava a nova e remove fisicamente a anterior, quando havia uma. */
@@ -243,12 +296,19 @@ public class PaginaService {
     @Transactional
     public void deletarSecao(Long id) {
         Secao secao = buscarSecaoPorId(id);
+        if (ID_PAGINA_TRANSPARENCIA.equals(secao.getPagina().getId())) {
+            paginaRepository.findByIdComBloqueio(ID_PAGINA_TRANSPARENCIA);
+        }
         if (documentoRepository.existsBySecaoId(id)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Exclua os documentos vinculados a esta seção antes de excluí-la.");
         }
         arquivoService.deletarArquivo(secao.getImagem());
         secaoRepository.delete(secao);
+        if (ID_PAGINA_TRANSPARENCIA.equals(secao.getPagina().getId())) {
+            // A consulta aplica o DELETE pendente e renumera as restantes sob o mesmo lock/transação.
+            listarSecoesParaOrdenacao();
+        }
     }
 
     @Transactional
