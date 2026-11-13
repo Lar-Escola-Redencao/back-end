@@ -191,4 +191,67 @@ class OcorrenciaRegrasTest {
         proibido(() -> service.deletarOcorrencia(1, monitor));
         verify(ocorrencias, never()).save(any()); verify(ocorrencias, never()).delete(any());
     }
+    @Test void novaDataRespeitaMatriculaEPeriodoDoMonitor() {
+        var oc = registro();
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(oc));
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            proibido(() -> service.atualizarOcorrencia(1, edicao(LocalDateTime.of(2026, 8, 31, 10, 0)), monitor));
+            var admin = colaborador(8, "ADMINISTRADOR");
+            assertThatThrownBy(() -> service.atualizarOcorrencia(1, edicao(LocalDateTime.of(2026, 7, 31, 10, 0)), admin))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("matrícula");
+            matricula.setDataDesligamento(LocalDate.of(2026, 10, 1));
+            assertThatThrownBy(() -> service.atualizarOcorrencia(1, edicao(agora.minusDays(1)), admin))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("matrícula");
+        }
+        verify(ocorrencias, never()).save(any());
+    }
+
+    @Test void trocaMatriculaDoMesmoUsuarioPreservandoAutorECriacao() {
+        Usuario usuario = new Usuario(); usuario.setId(1);
+        matricula.setUsuario(usuario);
+        Matricula destino = new Matricula(); destino.setId(20); destino.setUsuario(usuario);
+        destino.setTurma(matricula.getTurma()); destino.setDataIngresso(matricula.getDataIngresso());
+        var oc = registro();
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(oc));
+        when(matriculas.findById(20)).thenReturn(Optional.of(destino));
+        when(ocorrencias.save(oc)).thenReturn(oc);
+        var dto = edicao(oc.getDataOcorrencia()); dto.setIdMatricula(20);
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            var resposta = service.atualizarOcorrencia(1, dto, monitor);
+            assertThat(resposta.getIdMatricula()).isEqualTo(20);
+        }
+        assertThat(oc.getMatricula()).isSameAs(destino);
+        assertThat(oc.getMembro()).isSameAs(monitor);
+        assertThat(oc.getDataCriacao()).isEqualTo(agora);
+    }
+
+    @Test void trocaMatriculaValidaUsuarioUnidadeEVigenciaAntesDeAlterarRegistro() {
+        Usuario usuario = new Usuario(); usuario.setId(1); matricula.setUsuario(usuario);
+        Usuario outro = new Usuario(); outro.setId(2);
+        Matricula destino = new Matricula(); destino.setId(20); destino.setUsuario(outro);
+        destino.setTurma(matricula.getTurma()); destino.setDataIngresso(matricula.getDataIngresso());
+        var oc = registro();
+        when(ocorrencias.findById(1)).thenReturn(Optional.of(oc));
+        when(matriculas.findById(20)).thenReturn(Optional.of(destino));
+        var dto = edicao(oc.getDataOcorrencia()); dto.setIdMatricula(20);
+        try (var tempo = mockStatic(LocalDateTime.class, CALLS_REAL_METHODS)) {
+            tempo.when(() -> LocalDateTime.now(ZoneId.of("America/Sao_Paulo"))).thenReturn(agora);
+            assertThatThrownBy(() -> service.atualizarOcorrencia(1, dto, monitor))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("mesmo usuário");
+            destino.setUsuario(usuario);
+            destino.setDataIngresso(agora);
+            assertThatThrownBy(() -> service.atualizarOcorrencia(1, dto, monitor))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("matrícula");
+            Unidade outraUnidade = new Unidade(); outraUnidade.setId(2);
+            Turma outraTurma = new Turma(); outraTurma.setUnidade(outraUnidade);
+            destino.setTurma(outraTurma);
+            proibido(() -> service.atualizarOcorrencia(1, dto, monitor));
+        }
+        assertThat(oc.getMatricula()).isSameAs(matricula);
+        assertThat(oc.getDescricao()).isEqualTo("Original");
+        verify(ocorrencias, never()).save(any());
+    }
+
 }
