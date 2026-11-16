@@ -30,8 +30,10 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         if (tokenJWT != null) {
             try {
-                var subject = tokenService.getSubject(tokenJWT);
-                membroRepository.findByEmail(subject).ifPresent(membro -> {
+                var token = tokenService.verificar(tokenJWT);
+                membroRepository.findByEmail(token.getSubject())
+                        .filter(membro -> membro.isAtivo() && membro.getVersaoSessao() == tokenService.getVersaoSessao(token))
+                        .ifPresent(membro -> {
                     var authentication = new UsernamePasswordAuthenticationToken(membro, null, membro.getAuthorities());
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 });
