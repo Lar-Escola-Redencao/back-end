@@ -239,6 +239,31 @@ class MembroRepositoryTest {
     }
 
     @Test
+    void eventosPriorizamProximosEDepoisEncerradosAntesDaPaginacao() {
+        var agora = LocalDateTime.now();
+        var antigo = salvarEvento("antigo", agora.minusDays(20));
+        var distante = salvarEvento("distante", agora.plusDays(20));
+        var recente = salvarEvento("recente", agora.minusDays(1));
+        var proximo = salvarEvento("proximo", agora.plusDays(1));
+        var empate = salvarEvento("empate", agora.plusDays(1));
+        entityManager.flush();
+        var pagina = PageRequest.of(0, 2);
+
+        var primeira = eventos.getAllEventos(pagina, null, prefixo);
+        var segunda = eventos.getAllEventos(pagina.next(), null, prefixo);
+        var terceira = eventos.getAllEventos(pagina.withPage(2), null, prefixo);
+
+        assertThat(primeira.getContent()).extracting(dto -> dto.getId())
+                .containsExactly(empate.getId(), proximo.getId());
+        assertThat(segunda.getContent()).extracting(dto -> dto.getId())
+                .containsExactly(distante.getId(), recente.getId());
+        assertThat(terceira.getContent()).extracting(dto -> dto.getId()).containsExactly(antigo.getId());
+        assertThat(primeira.getTotalElements()).isEqualTo(5);
+        assertThat(segunda.getTotalElements()).isEqualTo(5);
+        assertThat(terceira.getTotalElements()).isEqualTo(5);
+    }
+
+    @Test
     void eventosUsamHorarioDoEventoEIdMesmoAposEdicao() {
         var dia = LocalDateTime.of(2026, 8, 20, 10, 30);
         var primeiro = salvarEvento("mais tarde", dia.plusHours(1));

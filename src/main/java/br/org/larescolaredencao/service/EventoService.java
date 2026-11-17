@@ -2,6 +2,7 @@ package br.org.larescolaredencao.service;
 
 import java.util.List;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -56,15 +57,7 @@ public class EventoService {
     }
 
     public Page<EventoResponseDTO> getAllEventos(Pageable pageable, TipoEvento tipo, String search) {
-        pageable = ordenarEventos(pageable);
-        String termo = TermoBusca.like(search);
-        if (termo != null) {
-            return eventoRepository.buscar(termo, tipo, pageable).map(EventoResponseDTO::new);
-        }
-        Page<Evento> eventos = tipo != null
-                ? eventoRepository.findByTipoEvento(tipo, pageable)
-                : eventoRepository.findAll(pageable);
-        return eventos.map(EventoResponseDTO::new);
+        return getAllEventos(pageable, tipo, search, null, null, null);
     }
 
     // Os parceiros NÃO são filtrados por ativo, de propósito: ver EventoRepository.findByIdComParceiros.
@@ -88,10 +81,13 @@ public class EventoService {
         } else if (valor != null && !valor.isBlank() && !"todos".equals(valor)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Filtro de valor inválido.");
         }
-        if (dataInicial == null && dataFinal == null && gratuito == null) {
-            return getAllEventos(pageable, tipo, search);
-        }
         // Limite superior exclusivo evita arredondamento de frações de segundo no banco.
+        if (pageable.getSort().isUnsorted()) {
+            return eventoRepository.buscarPorProximidade(TermoBusca.like(search), tipo,
+                    dataInicial == null ? null : dataInicial.atStartOfDay(),
+                    dataFinal == null ? null : dataFinal.plusDays(1).atStartOfDay(),
+                    gratuito, LocalDateTime.now(), pageable).map(EventoResponseDTO::new);
+        }
         return eventoRepository.buscarComFiltros(TermoBusca.like(search), tipo,
                 dataInicial == null ? null : dataInicial.atStartOfDay(),
                 dataFinal == null ? null : dataFinal.plusDays(1).atStartOfDay(),
