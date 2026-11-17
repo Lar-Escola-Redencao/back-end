@@ -16,6 +16,7 @@ import br.org.larescolaredencao.service.PixService;
 import br.org.larescolaredencao.service.AgradecimentoPixService;
 import br.org.larescolaredencao.dto.AgradecimentoPixDTO;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestController
 @RequestMapping("/pix")
@@ -43,8 +44,8 @@ public class PixController {
 
     @PostMapping("/codigo/{identificador}/agradecimento")
     public ResponseEntity<Void> agradecer(@PathVariable("identificador") String identificador,
-            @Valid @RequestBody AgradecimentoPixDTO dto) {
-        agradecimentoPixService.agradecer(identificador, dto.email());
+            @Valid @RequestBody AgradecimentoPixDTO dto, HttpServletRequest request) {
+        agradecimentoPixService.agradecer(identificador, dto.email(), dto.captchaToken(), request.getRemoteAddr());
         return ResponseEntity.noContent().cacheControl(CacheControl.noStore()).build();
     }
 }

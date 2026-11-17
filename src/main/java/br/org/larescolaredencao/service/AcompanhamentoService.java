@@ -59,7 +59,7 @@ public class AcompanhamentoService {
 
     @Transactional
     public EntrevistaResponseDTO salvarEntrevista(Integer usuario, Integer id, EntrevistaDTO dto, Membro membro) {
-        validarEntrevistas(usuario, membro);
+        var dadosUsuario = validarEntrevistas(usuario, membro);
         if (dto.dataEntrevista() == null || dto.relato() == null || dto.relato().isBlank()
                 || dto.relato().length() > 20000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe data, horário e descrição válidos.");
@@ -68,6 +68,11 @@ public class AcompanhamentoService {
         if (dto.dataEntrevista().isAfter(agora)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A data e o horário da entrevista não podem estar no futuro.");
+        }
+        var primeiraMatricula = dadosUsuario == null ? null : dadosUsuario.getDataPrimeiraMatricula();
+        if (primeiraMatricula != null && dto.dataEntrevista().toLocalDate().isBefore(primeiraMatricula.toLocalDate())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A data da entrevista não pode ser anterior à primeira matrícula do usuário.");
         }
         var entrevista = id == null ? new EntrevistaSocial() : buscarEntrevista(usuario, id);
         if (id == null) {
@@ -93,11 +98,11 @@ public class AcompanhamentoService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Entrevista não encontrada."));
     }
 
-    private void validarEntrevistas(Integer usuario, Membro membro) {
+    private UsuarioResponseDTO validarEntrevistas(Integer usuario, Membro membro) {
         if (perfil(membro) != Perfil.ADMINISTRADOR && perfil(membro) != Perfil.COORDENADOR) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Sem acesso às entrevistas sociais.");
         }
-        usuarios.buscarUsuarioPorId(usuario, membro);
+        return usuarios.buscarUsuarioPorId(usuario, membro);
     }
 
     private Perfil perfil(Membro membro) { return Perfil.fromNomePapel(membro.getPapel().getNomePapel()); }

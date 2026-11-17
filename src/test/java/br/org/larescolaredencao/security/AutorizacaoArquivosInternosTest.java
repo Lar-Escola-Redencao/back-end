@@ -6,6 +6,7 @@ import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.Papel;
 import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.service.UsuarioService;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -29,6 +30,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -83,7 +85,10 @@ class AutorizacaoArquivosInternosTest {
         Membro membro = new Membro();
         membro.setEmail(email);
         membro.setPapel(new Papel(1, papel, ""));
-        when(tokenService.getSubject(token)).thenReturn(email);
+        DecodedJWT tokenVerificado = mock(DecodedJWT.class);
+        when(tokenVerificado.getSubject()).thenReturn(email);
+        when(tokenService.verificar(token)).thenReturn(tokenVerificado);
+        when(tokenService.getVersaoSessao(tokenVerificado)).thenReturn(membro.getVersaoSessao());
         when(membroRepository.findByEmail(email)).thenReturn(Optional.of(membro));
     }
 
@@ -98,7 +103,7 @@ class AutorizacaoArquivosInternosTest {
 
     @Test
     void tokenInvalidoRecebe401() throws Exception {
-        when(tokenService.getSubject("adulterado")).thenThrow(new RuntimeException("inválido"));
+        when(tokenService.verificar("adulterado")).thenThrow(new RuntimeException("inválido"));
         mvc.perform(get("/usuarios/1/foto").header(HttpHeaders.AUTHORIZATION, "Bearer adulterado"))
                 .andExpect(status().isUnauthorized());
     }

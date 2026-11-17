@@ -67,4 +67,17 @@ class TokenServiceTest {
         assertThatThrownBy(() -> tokenService.gerarToken(membro, false))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void tokenCarregaAVersaoDaSessaoEAntigosValemComoZero() {
+        when(papelRepository.findByMembroId(1)).thenReturn(Optional.of(new Papel(3, "MONITOR", null)));
+        membro.invalidarSessoes();
+
+        var decodificado = tokenService.verificar(tokenService.gerarToken(membro, false));
+        var antigo = com.auth0.jwt.JWT.create().withIssuer("lar-redencao-api").withSubject("fulano@example.com")
+                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256("segredo-de-teste"));
+
+        assertThat(tokenService.getVersaoSessao(decodificado)).isEqualTo(1);
+        assertThat(tokenService.getVersaoSessao(tokenService.verificar(antigo))).isZero();
+    }
 }

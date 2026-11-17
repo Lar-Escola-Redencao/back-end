@@ -56,6 +56,44 @@ class MembroRepositoryTest {
     }
 
     @Test
+    void proprioCadastroVemPrimeiroSemDuplicacaoEInativosFicamNoFinalEntrePaginas() {
+        entityManager.find(Membro.class, monitorLocal.getId()).setAtivo(false);
+        entityManager.flush();
+        entityManager.clear();
+        String busca = "%" + prefixo.toLowerCase(java.util.Locale.ROOT) + "%";
+
+        var primeira = membros.listarComProprioPrimeiro(globalComVinculos.getId(), true, List.of(),
+                null, null, busca, null, null, PageRequest.of(0, 2));
+        var segunda = membros.listarComProprioPrimeiro(globalComVinculos.getId(), true, List.of(),
+                null, null, busca, null, null, PageRequest.of(1, 2));
+
+        assertThat(primeira.getContent()).extracting(Membro::getId)
+                .containsExactly(globalComVinculos.getId(), monitorExterno.getId());
+        assertThat(segunda.getContent()).extracting(Membro::getId)
+                .containsExactly(globalSemVinculo.getId(), monitorLocal.getId());
+        assertThat(primeira.getTotalElements()).isEqualTo(4);
+        assertThat(segunda.getTotalElements()).isEqualTo(4);
+        assertThat(membros.listarComProprioPrimeiro(globalComVinculos.getId(), true, List.of(),
+                null, null, busca, null, false, PageRequest.of(0, 10)).getContent())
+                .extracting(Membro::getId).containsExactly(monitorLocal.getId());
+    }
+
+    @Test
+    void coordenadorVeProprioCadastroEListaSomenteMonitoresDasUnidadesPermitidas() {
+        Membro coordenador = salvarMembro("Coordenador", papel("COORDENADOR"), unidade);
+        entityManager.flush();
+        entityManager.clear();
+
+        var pagina = membros.listarComProprioPrimeiro(coordenador.getId(), false, List.of(unidade.getId()),
+                null, null, "%" + prefixo.toLowerCase(java.util.Locale.ROOT) + "%", null, null,
+                PageRequest.of(0, 10));
+
+        assertThat(pagina.getContent()).extracting(Membro::getId)
+                .containsExactly(coordenador.getId(), monitorLocal.getId());
+        assertThat(pagina.getTotalElements()).isEqualTo(2);
+    }
+
+    @Test
     void filtroIncluiAdministradoresGlobaisSemDuplicarMembrosOuTotais() {
         var pagina = membros.filtrar(null, unidade.getId(), PageRequest.of(0, (int) totalAnterior + 10));
 

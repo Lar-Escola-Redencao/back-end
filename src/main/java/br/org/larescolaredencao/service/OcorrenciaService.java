@@ -61,10 +61,25 @@ public class OcorrenciaService {
         validarAcessoUnidade(membroLogado, ocorrencia.getMatricula().getTurma().getUnidade());
         LocalDateTime agora = agora();
         validarEdicaoOcorrencia(membroLogado, ocorrencia, agora);
-        validarMatriculaNaData(ocorrencia.getMatricula(), ocorrencia.getDataOcorrencia().toLocalDate());
+        Matricula matricula = ocorrencia.getMatricula();
+        boolean mudouMatricula = dto.getIdMatricula() != null && !dto.getIdMatricula().equals(matricula.getId());
+        if (mudouMatricula) {
+            Matricula destino = matriculaRepository.findById(dto.getIdMatricula())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Matrícula não encontrada."));
+            validarAcessoUnidade(membroLogado, destino.getTurma().getUnidade());
+            if (!matricula.getUsuario().getId().equals(destino.getUsuario().getId())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "A matrícula selecionada deve pertencer ao mesmo usuário da ocorrência.");
+            }
+            matricula = destino;
+        }
         LocalDateTime fato = dto.getDataOcorrencia() != null ? dto.getDataOcorrencia() : ocorrencia.getDataOcorrencia();
-        validarDataHoraOcorrencia(ocorrencia.getDataOcorrencia().toLocalDate(), fato);
         validarInstanteOcorrencia(fato, agora);
+        if (mudouMatricula || !fato.toLocalDate().equals(ocorrencia.getDataOcorrencia().toLocalDate())) {
+            PeriodoDiario.validar(membroLogado, fato.toLocalDate(), agora.toLocalDate());
+        }
+        validarMatriculaNaData(matricula, fato.toLocalDate());
+        ocorrencia.setMatricula(matricula);
         ocorrencia.setDataOcorrencia(fato);
 
         ocorrencia.setDescricao(dto.getDescricao());
@@ -110,13 +125,6 @@ public class OcorrenciaService {
                 || (matricula.getDataDesligamento() != null && matricula.getDataDesligamento().isBefore(data))) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "A matrícula não estava ativa na data informada.");
-        }
-    }
-
-    private void validarDataHoraOcorrencia(LocalDate dataDiario, LocalDateTime dataOcorrencia) {
-        if (!dataOcorrencia.toLocalDate().equals(dataDiario)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "O horário da ocorrência deve pertencer à data do diário.");
         }
     }
 

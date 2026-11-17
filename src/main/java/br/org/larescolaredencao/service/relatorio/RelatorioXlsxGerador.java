@@ -39,6 +39,111 @@ public class RelatorioXlsxGerador {
     private static final DateTimeFormatter DIA_MES = DateTimeFormatter.ofPattern("dd/MM");
     private static final String ABA_INFORMACOES = "Informações";
 
+    public byte[] acompanhamento(DadosAcompanhamento dados) throws IOException {
+        try (XSSFWorkbook workbook = new XSSFWorkbook()) {
+            Estilos estilos = new Estilos(workbook);
+            List<String[]> informacoes = new ArrayList<>();
+            informacoes.add(new String[] {"Relatório", "Dados de acompanhamento individual"});
+            informacoes.add(new String[] {"Usuário", dados.usuario()});
+            informacoes.addAll(periodo(dados.inicio(), dados.fim(), dados.geradoEm()));
+            informacoes.add(new String[] {"Exportado por", dados.responsavel()});
+            informacoes.add(new String[] {"Legenda", "P = presente; F = ausente; — = frequência não registrada"});
+            Set<String> nomesUsados = new HashSet<>(List.of("informações", "ocorrências", "entrevistas"));
+            Map<String, DadosAcompanhamento.MatriculaRelatorio> abasFrequencia = new LinkedHashMap<>();
+            for (var matricula : dados.matriculas()) {
+                String nome = nomeAbaUnico(matricula.unidade() + " - " + matricula.turma(), nomesUsados);
+                abasFrequencia.put(nome, matricula);
+                String periodo = (matricula.ingresso() == null ? "início não informado" : matricula.ingresso().format(DATA))
+                        + " a " + (matricula.desligamento() == null ? "hoje" : matricula.desligamento().format(DATA));
+                informacoes.add(new String[] {"Frequência — aba " + nome,
+                        matricula.unidade() + " - " + matricula.turma() + " (" + periodo + ")"});
+            }
+            abaInformacoes(workbook, estilos, informacoes);
+            workbook.getSheet(ABA_INFORMACOES).setColumnWidth(0, 60 * 256);
+            for (var aba : abasFrequencia.entrySet()) {
+                frequenciaAcompanhamento(workbook, estilos, dados.paraMatricula(aba.getValue()), aba.getKey());
+            }
+            List<String[]> ocorrencias = dados.ocorrencias().stream().map(o -> new String[] {
+                    o.dataHora().format(DATA_HORA), o.tipo(), o.descricao(), o.autor(), o.unidadeTurma()
+            }).toList();
+            tabelaAcompanhamento(workbook, estilos, "Ocorrências",
+                    new String[] {"Data e horário", "Tipo", "Descrição", "Responsável", "Unidade e turma"},
+                    ocorrencias, DadosAcompanhamento.SEM_OCORRENCIAS);
+            if (dados.incluiEntrevistas()) {
+                List<String[]> entrevistas = dados.entrevistas().stream().map(e -> new String[] {
+                        e.dataHora().format(DATA_HORA), e.descricao(), e.autor()
+                }).toList();
+                tabelaAcompanhamento(workbook, estilos, "Entrevistas",
+                        new String[] {"Data e horário", "Descrição", "Responsável"}, entrevistas, DadosAcompanhamento.SEM_ENTREVISTAS);
+            }
+            return escrever(workbook);
+        }
+    }
+
+    private void frequenciaAcompanhamento(Workbook workbook, Estilos estilos, DadosAcompanhamento dados, String nome) {
+        Sheet aba = workbook.createSheet(nome);
+        Row cabecalho = aba.createRow(0);
+        String[] colunas = {"Data", "Situação do dia"};
+        for (int c = 0; c < colunas.length; c++) texto(cabecalho, c, colunas[c], estilos.cabecalho);
+        CellStyle presenca = workbook.createCellStyle();
+        presenca.cloneStyleFrom(estilos.textoQuebrado);
+        presenca.setFillForegroundColor(IndexedColors.LIGHT_GREEN.getIndex());
+        presenca.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        CellStyle falta = workbook.createCellStyle();
+        falta.cloneStyleFrom(estilos.textoQuebrado);
+        falta.setFillForegroundColor(IndexedColors.ROSE.getIndex());
+        falta.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        CellStyle dataDia = workbook.createCellStyle();
+        dataDia.cloneStyleFrom(estilos.textoComBorda);
+        dataDia.setDataFormat(workbook.createDataFormat().getFormat("dd/mm/yyyy"));
+        dataDia.setQuotePrefixed(false);
+        int linha = 1;
+        for (LocalDate data = dados.inicio(); !data.isAfter(dados.fim()); data = data.plusDays(1)) {
+            if (!dados.matriculas().get(0).vigente(data)) continue;
+            Row row = aba.createRow(linha++);
+            Cell dataCelula = row.createCell(0);
+            dataCelula.setCellValue(data.atStartOfDay());
+            dataCelula.setCellStyle(dataDia);
+            var registros = dados.registros().getOrDefault(data, List.of());
+            String situacao = switch (dados.situacao(data)) {
+                case FORA_DO_PERIODO -> "Fora do período";
+                case SEM_MATRICULA -> "N/A";
+                case SEM_REGISTRO -> "—";
+                case COM_REGISTRO -> registros.stream()
+                        .map(r -> r.presente() ? "P" : "F").distinct()
+                        .collect(java.util.stream.Collectors.joining(" / "));
+            };
+            CellStyle estilo = estilos.textoQuebrado;
+            if (!registros.isEmpty() && registros.stream().allMatch(DadosAcompanhamento.RegistroDia::presente)) estilo = presenca;
+            if (!registros.isEmpty() && registros.stream().noneMatch(DadosAcompanhamento.RegistroDia::presente)) estilo = falta;
+            texto(row, 1, situacao, estilo);
+            if (registros.size() > 1) row.setHeightInPoints(15 * registros.size());
+        }
+        aba.setColumnWidth(0, 18 * 256);
+        aba.setColumnWidth(1, 42 * 256);
+        aba.createFreezePane(0, 1);
+        aba.setAutoFilter(new CellRangeAddress(0, linha - 1, 0, 1));
+        aba.setRepeatingRows(new CellRangeAddress(0, 0, -1, -1));
+    }
+
+    private void tabelaAcompanhamento(Workbook workbook, Estilos estilos, String nome, String[] colunas,
+            List<String[]> registros, String mensagemVazia) {
+        Sheet aba = workbook.createSheet(nome);
+        Row cabecalho = aba.createRow(0);
+        for (int c = 0; c < colunas.length; c++) {
+            texto(cabecalho, c, colunas[c], estilos.cabecalho);
+            aba.setColumnWidth(c, (colunas[c].equals("Descrição") ? 80 : 28) * 256);
+        }
+        int linha = 1;
+        for (String[] registro : registros) {
+            Row row = aba.createRow(linha++);
+            for (int c = 0; c < registro.length; c++) texto(row, c, registro[c], estilos.textoQuebrado);
+        }
+        if (registros.isEmpty()) texto(aba.createRow(linha), 0, mensagemVazia, estilos.texto);
+        aba.createFreezePane(0, 1);
+        aba.setRepeatingRows(new CellRangeAddress(0, 0, -1, -1));
+    }
+
     public byte[] presencas(DadosRelatorio.Presencas dados) throws IOException {
         try (XSSFWorkbook workbook = new XSSFWorkbook()) {
             Estilos estilos = new Estilos(workbook);

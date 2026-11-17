@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.service;
 
+import br.org.larescolaredencao.dto.RecuperacaoSenhaRespostaDTO;
 import br.org.larescolaredencao.model.Membro;
 import br.org.larescolaredencao.model.TokenRecuperacao;
 import br.org.larescolaredencao.repository.MembroRepository;
@@ -22,23 +23,40 @@ public class RecuperacaoSenhaService {
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final SecureRandom secureRandom;
+    private final ProtecaoAutenticacaoService protecao;
 
     public RecuperacaoSenhaService(MembroRepository membroRepository,
                                    TokenRecuperacaoRepository tokenRecuperacaoRepository,
                                    EmailService emailService,
-                                   PasswordEncoder passwordEncoder) {
+                                   PasswordEncoder passwordEncoder,
+                                   ProtecaoAutenticacaoService protecao) {
         this.membroRepository = membroRepository;
         this.tokenRecuperacaoRepository = tokenRecuperacaoRepository;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.secureRandom = new SecureRandom();
+        this.protecao = protecao;
     }
 
     @Transactional
-    public void solicitarRecuperacao(String email) {
+    public RecuperacaoSenhaRespostaDTO solicitarRecuperacao(String email, String captchaToken, String ip) {
+        email = email.trim().toLowerCase(java.util.Locale.ROOT);
+        var tentativa = protecao.iniciarRecuperacao(email, captchaToken, ip);
+        try {
+            enviarCodigo(email);
+            return protecao.respostaRecuperacao(tentativa);
+        } catch (RuntimeException erro) {
+            throw new ProtecaoAutenticacaoException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "Não foi possível solicitar a recuperação. Aguarde e tente novamente.", true, protecao.esperaRecuperacao(tentativa));
+        } finally {
+            protecao.concluir(tentativa, false);
+        }
+    }
+
+    private void enviarCodigo(String email) {
         Optional<Membro> membroOpt = membroRepository.findByEmail(email);
 
-        if (membroOpt.isEmpty()) {
+        if (membroOpt.isEmpty() || !membroOpt.get().isAtivo()) {
             return;
         }
 
@@ -46,10 +64,6 @@ public class RecuperacaoSenhaService {
 
         Optional<TokenRecuperacao> tokenExistente = tokenRecuperacaoRepository.findByMembro(membro);
         if (tokenExistente.isPresent()) {
-            LocalDateTime dataCriacao = tokenExistente.get().getDataExpiracao().minusMinutes(15);
-            if (LocalDateTime.now().isBefore(dataCriacao.plusSeconds(30))) {
-                throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "Aguarde antes de solicitar um novo código.");
-            }
             tokenRecuperacaoRepository.delete(tokenExistente.get());
         }
 
@@ -78,6 +92,9 @@ public class RecuperacaoSenhaService {
         if (tokenRecuperacao.getDataExpiracao().isBefore(LocalDateTime.now())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "O código fornecido expirou.");
         }
+        if (!tokenRecuperacao.getMembro().isAtivo()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou não encontrado.");
+        }
     }
 
     @Transactional
@@ -91,6 +108,10 @@ public class RecuperacaoSenhaService {
         }
 
         Membro membro = tokenRecuperacao.getMembro();
+        if (!membro.isAtivo()) {
+            tokenRecuperacaoRepository.delete(tokenRecuperacao);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Código inválido ou não encontrado.");
+        }
         membro.setSenha(passwordEncoder.encode(novaSenha));
         membroRepository.save(membro);
 
