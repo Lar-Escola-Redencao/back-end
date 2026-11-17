@@ -73,6 +73,44 @@ class MembroRepositoryTest {
     }
 
     @Test
+    void proprioCadastroVemPrimeiroSemDuplicacaoEFiltraSituacaoEntrePaginas() {
+        entityManager.find(Membro.class, monitorLocal.getId()).setAtivo(false);
+        entityManager.flush();
+        entityManager.clear();
+        String busca = "%" + prefixo.toLowerCase(java.util.Locale.ROOT) + "%";
+
+        var primeira = membros.listarParaAdministrador(globalComVinculos.getId(),
+                null, null, busca, null, null, PageRequest.of(0, 2, Sort.by(Sort.Order.desc("id"))));
+        var segunda = membros.listarParaAdministrador(globalComVinculos.getId(),
+                null, null, busca, null, null, PageRequest.of(1, 2, Sort.by(Sort.Order.desc("id"))));
+
+        assertThat(primeira.getContent()).extracting(Membro::getId)
+                .containsExactly(globalComVinculos.getId(), monitorExterno.getId());
+        assertThat(segunda.getContent()).extracting(Membro::getId)
+                .containsExactly(monitorLocal.getId(), globalSemVinculo.getId());
+        assertThat(primeira.getTotalElements()).isEqualTo(4);
+        assertThat(segunda.getTotalElements()).isEqualTo(4);
+        assertThat(membros.listarParaAdministrador(globalComVinculos.getId(),
+                null, null, busca, null, false, PageRequest.of(0, 10)).getContent())
+                .extracting(Membro::getId).containsExactly(monitorLocal.getId());
+    }
+
+    @Test
+    void coordenadorVeProprioCadastroEListaSomenteMonitoresDasUnidadesPermitidas() {
+        Membro coordenador = salvarMembro("Coordenador", papel("COORDENADOR"), unidade);
+        entityManager.flush();
+        entityManager.clear();
+
+        var pagina = membros.listarParaCoordenador(coordenador.getId(), List.of(unidade.getId()),
+                null, null, "%" + prefixo.toLowerCase(java.util.Locale.ROOT) + "%", null, null,
+                PageRequest.of(0, 10));
+
+        assertThat(pagina.getContent()).extracting(Membro::getId)
+                .containsExactly(coordenador.getId(), monitorLocal.getId());
+        assertThat(pagina.getTotalElements()).isEqualTo(2);
+    }
+
+    @Test
     void filtroIncluiAdministradoresGlobaisSemDuplicarMembrosOuTotais() {
         var pagina = membros.filtrar(null, unidade.getId(), PageRequest.of(0, (int) totalAnterior + 10));
 
@@ -121,7 +159,7 @@ class MembroRepositoryTest {
     @Test
     void consultaDoCoordenadorPermaneceRestritaAosMonitoresDaUnidade() {
         var pagina = membros.listarParaCoordenador(monitorExterno.getId(), List.of(unidade.getId()), null,
-                unidade.getId(), null, null, PageRequest.of(0, 10));
+                unidade.getId(), null, null, null, PageRequest.of(0, 10));
 
         assertThat(pagina.getContent()).extracting(Membro::getId).containsExactly(monitorLocal.getId());
         assertThat(pagina.getTotalElements()).isEqualTo(1);
@@ -134,9 +172,9 @@ class MembroRepositoryTest {
         var paginacao = PageRequest.of(0, 1, Sort.by(Sort.Order.desc("id")));
 
         var primeira = membros.listarParaCoordenador(coordenador.getId(), List.of(unidade.getId()), null,
-                unidade.getId(), termo, null, paginacao);
+                unidade.getId(), termo, null, null, paginacao);
         var segunda = membros.listarParaCoordenador(coordenador.getId(), List.of(unidade.getId()), null,
-                unidade.getId(), termo, null, paginacao.next());
+                unidade.getId(), termo, null, null, paginacao.next());
 
         assertThat(primeira.getContent()).extracting(Membro::getId).containsExactly(coordenador.getId());
         assertThat(segunda.getContent()).extracting(Membro::getId).containsExactly(monitorLocal.getId());
@@ -144,7 +182,7 @@ class MembroRepositoryTest {
         assertThat(segunda.getTotalElements()).isEqualTo(2);
 
         var filtrada = membros.listarParaCoordenador(coordenador.getId(), List.of(unidade.getId()), monitor.getId(),
-                unidade.getId(), termo, null, paginacao);
+                unidade.getId(), termo, null, null, paginacao);
         assertThat(filtrada.getContent()).extracting(Membro::getId).containsExactly(monitorLocal.getId());
         assertThat(filtrada.getTotalElements()).isEqualTo(1);
     }

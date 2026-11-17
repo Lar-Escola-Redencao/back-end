@@ -59,7 +59,7 @@ class MembroConsultaPermissoesTest {
     @Test
     void coordenadorUsaConsultaRestritaAsPropriasUnidadesAntesDaPaginacao() {
         autenticar();
-        when(membros.listarParaCoordenador(10, List.of(1, 2), null, null, null, null, paginaOrdenada))
+        when(membros.listarParaCoordenador(10, List.of(1, 2), null, null, null, null, null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(membro(20, "MONITOR", 1)), pagina, 15));
         var resposta = service.getAllMembros(pagina, null, null, null, coordenador);
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(20);
@@ -71,10 +71,10 @@ class MembroConsultaPermissoesTest {
     @Test
     void buscaEParametrosDaUrlNaoRetiramRestricaoDasUnidades() {
         autenticar();
-        when(membros.listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", paginaOrdenada))
+        when(membros.listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", null, paginaOrdenada))
                 .thenReturn(Page.empty(pagina));
         assertThat(service.getAllMembros(pagina, 1, "123", 2, coordenador).getContent()).isEmpty();
-        verify(membros).listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", paginaOrdenada);
+        verify(membros).listarParaCoordenador(10, List.of(1, 2), 1, 2, "%123%", "%123%", null, paginaOrdenada);
     }
 
     @Test
@@ -98,7 +98,7 @@ class MembroConsultaPermissoesTest {
     void administradorMantemListagemDeTodosOsColaboradores() {
         coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
         autenticar();
-        when(membros.listarParaAdministrador(10, null, null, null, null, paginaOrdenada)).thenReturn(new PageImpl<>(List.of(membro(30, "MONITOR", 3))));
+        when(membros.listarParaAdministrador(10, null, null, null, null, null, paginaOrdenada)).thenReturn(new PageImpl<>(List.of(membro(30, "MONITOR", 3))));
         assertThat(service.getAllMembros(pagina, null, null, null, coordenador).getContent())
                 .extracting(dto -> dto.getId()).containsExactly(30);
     }
@@ -109,7 +109,7 @@ class MembroConsultaPermissoesTest {
         coordenador.setUnidades(List.of());
         autenticar();
         Membro global = membro(30, "ADMINISTRADOR");
-        when(membros.listarParaAdministrador(10, null, 3, null, null, paginaOrdenada))
+        when(membros.listarParaAdministrador(10, null, 3, null, null, null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(global), pagina, 15));
 
         var resposta = service.getAllMembros(pagina, null, null, 3, coordenador);
@@ -117,8 +117,8 @@ class MembroConsultaPermissoesTest {
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
         assertThat(resposta.getContent().get(0).getUnidades()).isEmpty();
         assertThat(resposta.getTotalElements()).isEqualTo(15);
-        verify(membros).listarParaAdministrador(10, null, 3, null, null, paginaOrdenada);
-        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any());
+        verify(membros).listarParaAdministrador(10, null, 3, null, null, null, paginaOrdenada);
+        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
@@ -126,14 +126,14 @@ class MembroConsultaPermissoesTest {
         coordenador.setPapel(new Papel(1, "ADMINISTRADOR", ""));
         coordenador.setUnidades(List.of());
         autenticar();
-        when(membros.listarParaAdministrador(10, 1, 3, "%membro%", null, paginaOrdenada))
+        when(membros.listarParaAdministrador(10, 1, 3, "%membro%", null, null, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(membro(30, "ADMINISTRADOR")), pagina, 1));
 
         var resposta = service.getAllMembros(pagina, 1, "Membro", 3, coordenador);
 
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(30);
-        verify(membros).listarParaAdministrador(10, 1, 3, "%membro%", null, paginaOrdenada);
-        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any());
+        verify(membros).listarParaAdministrador(10, 1, 3, "%membro%", null, null, paginaOrdenada);
+        verify(membros, never()).listarParaCoordenador(any(), any(), any(), any(), any(), any(), any(), any());
     }
 
     @Test
