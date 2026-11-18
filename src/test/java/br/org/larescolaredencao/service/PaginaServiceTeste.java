@@ -14,6 +14,9 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -64,6 +67,55 @@ class PaginaServiceTeste {
         pagina.setAtivo(true);
 
         pageable = PageRequest.of(0, 10);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"historia"})
+    void listaHistoriaPublicaPorAnoPreservandoAsOutrasSecoes(String busca) {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        Secao texto = new Secao();
+        texto.setId(1L);
+        texto.setGrupo("texto-sobre");
+        Secao recente = new Secao();
+        recente.setId(2L);
+        recente.setGrupo("historia");
+        recente.setTitulo("2026");
+        Secao antiga = new Secao();
+        antiga.setId(3L);
+        antiga.setGrupo("historia");
+        antiga.setTitulo("1978");
+        List<Secao> secoes = List.of(texto, recente, antiga);
+        if (busca == null) {
+            when(secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(2L)).thenReturn(secoes);
+        } else {
+            when(secaoRepository.buscar(2L, null, TermoBusca.like(busca),
+                    Pageable.unpaged(Sort.by("grupo", "ordem")))).thenReturn(new PageImpl<>(secoes));
+        }
+
+        assertThat(paginaService.listarSecoes(2L, busca)).containsExactly(texto, antiga, recente);
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"relatorio"})
+    void listaTransparenciaPelaOrdemManualComDesempatePorId(String busca) {
+        when(paginaRepository.findById(1L)).thenReturn(Optional.of(pagina));
+        Secao primeira = new Secao();
+        primeira.setId(20L);
+        Secao segunda = new Secao();
+        segunda.setId(10L);
+        List<Secao> secoes = List.of(primeira, segunda);
+        if (busca == null) {
+            when(secaoRepository.findByPaginaIdOrderByOrdemAscIdAsc(1L)).thenReturn(secoes);
+        } else {
+            when(secaoRepository.buscar(1L, null, TermoBusca.like(busca),
+                    Pageable.unpaged(Sort.by("ordem", "id")))).thenReturn(new PageImpl<>(secoes));
+        }
+
+        assertThat(paginaService.listarSecoes(1L, busca)).containsExactly(primeira, segunda);
+        verify(secaoRepository, never()).findByPaginaIdOrderByGrupoAscOrdemAsc(any());
     }
 
     @Test
