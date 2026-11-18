@@ -40,7 +40,7 @@ public class MembroController {
 
     @GetMapping("/todos")
     public PagedModel<MembroResponseDTO> listarMembros(
-            @PageableDefault(size = 10, sort = {"ativo", "id"}, direction = Sort.Direction.DESC) Pageable pageable,
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @RequestParam(name = "idPapel", required = false) Integer idPapel,
             @RequestParam(name = "idUnidade", required = false) Integer idUnidade,
             @RequestParam(name = "search", required = false) String search,

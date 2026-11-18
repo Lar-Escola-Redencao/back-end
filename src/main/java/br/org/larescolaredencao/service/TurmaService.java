@@ -64,6 +64,7 @@ public class TurmaService {
     }
 
     public Page<TurmaResponseDTO> listarTurmas(Pageable pageable, Integer unidadeId, String search) {
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         String termo = TermoBusca.like(search);
         if (termo != null) {
             return turmaRepository.buscar(termo, unidadeId, pageable).map(TurmaResponseDTO::new);

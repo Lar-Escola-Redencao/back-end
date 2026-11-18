@@ -259,12 +259,13 @@ class MembroDesativacaoTest {
     @Test
     void filtroPorSituacaoUsaConsultaDeSituacaoEPreservaRestricaoDoCoordenador() {
         when(membros.findById(10)).thenReturn(Optional.of(coordenador));
-        when(membros.listarMonitoresDasUnidadesPorSituacao(List.of(1, 2), null, null, null, null, true, pagina))
+        var paginaOrdenada = pagina.withSort(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("id")));
+        when(membros.listarParaCoordenador(10, List.of(1, 2), null, null, null, null, true, paginaOrdenada))
                 .thenReturn(new PageImpl<>(List.of(membro(20, "MONITOR", 1)), pagina, 1));
 
         var resposta = service.getAllMembros(pagina, null, null, null, true, coordenador);
 
         assertThat(resposta.getContent()).extracting(dto -> dto.getId()).containsExactly(20);
-        verify(membros, never()).listarMonitoresDasUnidades(any(), any(), any(), any(), any(), any());
+        verify(membros).listarParaCoordenador(10, List.of(1, 2), null, null, null, null, true, paginaOrdenada);
     }
 }

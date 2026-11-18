@@ -36,8 +36,7 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
            ")")
     Page<Evento> buscar(@Param("search") String search, @Param("tipo") TipoEvento tipo, Pageable pageable);
 
-    @Query("SELECT e FROM Evento e WHERE " +
-           "(:tipo IS NULL OR e.tipoEvento = :tipo) " +
+    String FILTROS_EVENTOS = "(:tipo IS NULL OR e.tipoEvento = :tipo) " +
            "AND (:inicio IS NULL OR e.dataEvento >= :inicio) " +
            "AND (:fimExclusivo IS NULL OR e.dataEvento < :fimExclusivo) " +
            "AND (:gratuito IS NULL OR (:gratuito = true AND COALESCE(e.valor, 0) = 0) " +
@@ -48,8 +47,19 @@ public interface EventoRepository extends JpaRepository<Evento, Integer> {
            "OR LOWER(e.endereco) LIKE :search ESCAPE '!' " +
            "OR LOWER(e.imagem) LIKE :search ESCAPE '!' " +
            "OR LOWER(cast(e.valor as String)) LIKE :search ESCAPE '!' " +
-           "OR LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!')")
+           "OR LOWER(cast(e.tipoEvento as String)) LIKE :search ESCAPE '!')";
+
+    @Query("SELECT e FROM Evento e WHERE " + FILTROS_EVENTOS)
     Page<Evento> buscarComFiltros(@Param("search") String search, @Param("tipo") TipoEvento tipo,
             @Param("inicio") LocalDateTime inicio, @Param("fimExclusivo") LocalDateTime fimExclusivo,
             @Param("gratuito") Boolean gratuito, Pageable pageable);
+
+    @Query(value = "SELECT e FROM Evento e WHERE " + FILTROS_EVENTOS +
+            " ORDER BY CASE WHEN e.dataEvento >= :agora THEN 0 ELSE 1 END, " +
+            "CASE WHEN e.dataEvento >= :agora THEN e.dataEvento END ASC, " +
+            "CASE WHEN e.dataEvento < :agora THEN e.dataEvento END DESC, e.id DESC",
+            countQuery = "SELECT COUNT(e) FROM Evento e WHERE " + FILTROS_EVENTOS)
+    Page<Evento> buscarPorProximidade(@Param("search") String search, @Param("tipo") TipoEvento tipo,
+            @Param("inicio") LocalDateTime inicio, @Param("fimExclusivo") LocalDateTime fimExclusivo,
+            @Param("gratuito") Boolean gratuito, @Param("agora") LocalDateTime agora, Pageable pageable);
 }

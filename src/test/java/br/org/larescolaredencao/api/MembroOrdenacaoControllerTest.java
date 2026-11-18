@@ -33,11 +33,11 @@ class MembroOrdenacaoControllerTest {
     }
 
     @Test
-    void consultaInicialIncluiTodosComAtivosPrimeiroECadastrosRecentesAntesDaPaginacao() throws Exception {
+    void consultaInicialIncluiTodosComCadastrosRecentesAntesDaPaginacao() throws Exception {
         criarMvc().perform(get("/membro/todos").param("page", "1").param("size", "5"))
                 .andExpect(status().isOk());
 
-        var pagina = PageRequest.of(1, 5, Sort.by(Sort.Direction.DESC, "ativo", "id"));
+        var pagina = PageRequest.of(1, 5, Sort.by(Sort.Direction.DESC, "id"));
         verify(service).getAllMembros(pagina, null, null, null, null, null);
     }
 

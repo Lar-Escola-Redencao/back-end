@@ -5,6 +5,7 @@ import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.security.*;
 import br.org.larescolaredencao.service.ArquivoService;
 import br.org.larescolaredencao.service.PaginaService;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,7 +48,10 @@ class TransparenciaOrdemSegurancaTest {
     private void autenticar(String papel) {
         var membro = mock(Membro.class);
         doReturn(List.of(new SimpleGrantedAuthority("ROLE_" + papel))).when(membro).getAuthorities();
-        when(tokens.getSubject("token-teste")).thenReturn("admin@teste.local");
+        when(membro.isAtivo()).thenReturn(true);
+        var token = mock(DecodedJWT.class);
+        when(tokens.verificar("token-teste")).thenReturn(token);
+        when(token.getSubject()).thenReturn("admin@teste.local");
         when(membros.findByEmail("admin@teste.local")).thenReturn(Optional.of(membro));
     }
     @Test void anonimatoNaoPodeConsultarNemSalvarOrdem() throws Exception {
