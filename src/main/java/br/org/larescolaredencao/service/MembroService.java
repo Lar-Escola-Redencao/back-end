@@ -6,8 +6,6 @@ import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -56,6 +54,7 @@ public class MembroService {
 
     private Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
             Integer idUnidade, Boolean ativo) {
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         String termo = TermoBusca.like(search);
         if (termo != null) {
             Page<Membro> encontrados = ativo == null
@@ -82,30 +81,19 @@ public class MembroService {
     public Page<MembroResponseDTO> getAllMembros(Pageable pageable, Integer idPapel, String search,
             Integer idUnidade, Boolean ativo, Membro membroLogado) {
         Membro solicitante = obterSolicitanteDaConsulta(membroLogado);
-        if (pageable.getSort().equals(Sort.by(Sort.Direction.DESC, "ativo", "id"))) {
-            boolean administrador = "ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel());
-            var idsUnidades = solicitante.getUnidades().stream().map(Unidade::getId).toList();
-            if (!administrador && idUnidade != null && !idsUnidades.contains(idUnidade)) {
-                return Page.empty(pageable);
-            }
-            return membroRepository.listarComProprioPrimeiro(solicitante.getId(), administrador, idsUnidades,
-                    idPapel, idUnidade, TermoBusca.like(search), TermoBusca.digitosLike(search), ativo,
-                    PageRequest.of(pageable.getPageNumber(), pageable.getPageSize()))
-                    .map(MembroResponseDTO::new);
-        }
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         if ("ADMINISTRADOR".equals(solicitante.getPapel().getNomePapel())) {
-            return getAllMembros(pageable, idPapel, search, idUnidade, ativo);
+            return membroRepository.listarParaAdministrador(solicitante.getId(), idPapel, idUnidade,
+                    TermoBusca.like(search), TermoBusca.digitosLike(search), ativo, pageable)
+                    .map(MembroResponseDTO::new);
         }
         List<Integer> permitidas = solicitante.getUnidades().stream().map(Unidade::getId).toList();
         if (permitidas.isEmpty() || (idUnidade != null && !permitidas.contains(idUnidade))) {
             return Page.empty(pageable);
         }
-        Page<Membro> monitores = ativo == null
-                ? membroRepository.listarMonitoresDasUnidades(permitidas, idPapel, idUnidade,
-                        TermoBusca.like(search), TermoBusca.digitosLike(search), pageable)
-                : membroRepository.listarMonitoresDasUnidadesPorSituacao(permitidas, idPapel, idUnidade,
-                        TermoBusca.like(search), TermoBusca.digitosLike(search), ativo, pageable);
-        return monitores.map(MembroResponseDTO::new);
+        return membroRepository.listarParaCoordenador(solicitante.getId(), permitidas, idPapel, idUnidade,
+                TermoBusca.like(search), TermoBusca.digitosLike(search), ativo, pageable)
+                .map(MembroResponseDTO::new);
     }
 
     @Transactional(readOnly = true)

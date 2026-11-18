@@ -1,5 +1,8 @@
 package br.org.larescolaredencao.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 
@@ -38,6 +41,8 @@ public class PaginaService {
 
     private static final String GRUPO_TEXTO_SOBRE = "texto-sobre";
 
+    private static final Long ID_PAGINA_SOBRE = 2L;
+    private static final String GRUPO_HISTORIA = "historia";
     private static final Long ID_PAGINA_GRAFICA = 3L;
     private static final Long ID_PAGINA_PIX = 4L;
     private static final String GRUPO_TELEFONE = "telefone";
@@ -67,6 +72,33 @@ public class PaginaService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Página não encontrada."));
     }
 
+    @Transactional
+    public Pagina obterPaginaPublica(Long idPagina) {
+        Pagina pagina = buscarPaginaPorId(idPagina);
+        if (!ID_PAGINA_SOBRE.equals(idPagina)) {
+            return pagina;
+        }
+        Pagina resposta = new Pagina();
+        resposta.setId(pagina.getId());
+        resposta.setNome(pagina.getNome());
+        resposta.setAtivo(pagina.getAtivo());
+        resposta.setSecoes(ordenarHistoriaPublica(pagina.getSecoes()));
+        return resposta;
+    }
+
+    private List<Secao> ordenarHistoriaPublica(List<Secao> secoes) {
+        Iterator<Secao> historia = secoes.stream()
+                .filter(secao -> GRUPO_HISTORIA.equals(secao.getGrupo()))
+                .sorted(Comparator.comparing(Secao::getTitulo, Comparator.nullsLast(Comparator.naturalOrder()))
+                        .thenComparing(Secao::getId))
+                .iterator();
+        List<Secao> resultado = new ArrayList<>(secoes.size());
+        for (Secao secao : secoes) {
+            resultado.add(GRUPO_HISTORIA.equals(secao.getGrupo()) ? historia.next() : secao);
+        }
+        return resultado;
+    }
+
     public List<Secao> listarSecoes(Long idPagina) {
         return listarSecoes(idPagina, null);
     }
@@ -75,11 +107,10 @@ public class PaginaService {
     public List<Secao> listarSecoes(Long idPagina, String search) {
         buscarPaginaPorId(idPagina);
         String termo = TermoBusca.like(search);
-        if (termo != null) {
-            return secaoRepository.buscar(idPagina, null, termo,
-                    Pageable.unpaged(Sort.by("grupo", "ordem"))).getContent();
-        }
-        return secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(idPagina);
+        List<Secao> secoes = termo != null
+                ? secaoRepository.buscar(idPagina, null, termo, Pageable.unpaged(Sort.by("grupo", "ordem"))).getContent()
+                : secaoRepository.findByPaginaIdOrderByGrupoAscOrdemAsc(idPagina);
+        return ID_PAGINA_SOBRE.equals(idPagina) ? ordenarHistoriaPublica(secoes) : secoes;
     }
 
     public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable, String grupo) {
@@ -87,6 +118,11 @@ public class PaginaService {
     }
 
     public Page<Secao> listarSecoesPaginado(Long idPagina, Pageable pageable, String grupo, String search) {
+        if (ID_PAGINA_SOBRE.equals(idPagina) && GRUPO_HISTORIA.equals(grupo)) {
+            pageable = OrdenacaoPaginada.comPadrao(pageable, Sort.by(Sort.Order.desc("titulo")));
+        } else if (ID_PAGINA_GRAFICA.equals(idPagina) && GRUPO_PRODUTOS.equals(grupo)) {
+            pageable = OrdenacaoPaginada.porCadastro(pageable);
+        }
         String termo = TermoBusca.like(search);
         if (termo != null) {
             return secaoRepository.buscar(idPagina, grupo == null || grupo.isBlank() ? null : grupo, termo, pageable);
@@ -110,6 +146,7 @@ public class PaginaService {
     }
 
     public Page<DocumentoResponseDTO> listarDocumentosPaginado(Long idPagina, Pageable pageable, String search, Long secaoId) {
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         String termo = TermoBusca.like(search);
         if (secaoId != null) {
             return documentoRepository.buscarPorSecao(idPagina, secaoId, termo, pageable).map(DocumentoResponseDTO::new);
@@ -475,7 +512,7 @@ public class PaginaService {
      * @Size dos DTOs, que rodava antes do mapeamento e recusava o pix com titulo="".
      */
     private void validarAnoHistoria(Long idPagina, String grupo, String titulo, Long id) {
-        if (!Long.valueOf(2L).equals(idPagina) || !"historia".equals(grupo)) return;
+        if (!ID_PAGINA_SOBRE.equals(idPagina) || !GRUPO_HISTORIA.equals(grupo)) return;
         String ano = titulo == null ? "" : titulo.trim();
         if (!ano.matches("[1-9][0-9]{3}")) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe um ano válido com quatro dígitos.");

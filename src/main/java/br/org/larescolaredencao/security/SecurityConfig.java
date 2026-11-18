@@ -97,7 +97,7 @@ public class SecurityConfig {
                     req.requestMatchers(HttpMethod.POST, "/membro/me/senha/validar").authenticated();
                     
                     req.requestMatchers("/membro/**", "/papel/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");
-                    req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/{id:[0-9]+}",
+                    req.requestMatchers(HttpMethod.GET, "/usuarios", "/usuarios/paginados", "/usuarios/{id:[0-9]+}",
                             "/usuarios/{id:[0-9]+}/arquivos-saude",
                             "/usuarios/{id:[0-9]+}/foto").hasAnyRole("ADMINISTRADOR", "COORDENADOR", "MONITOR");
                     req.requestMatchers("/usuarios/**").hasAnyRole("ADMINISTRADOR", "COORDENADOR");

@@ -22,6 +22,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.web.multipart.MultipartFile;
@@ -207,6 +208,40 @@ class PaginaServiceTeste {
         verify(secaoRepository, never()).findAll(pageable);
     }
 
+    @Test
+    void ordenaNossaHistoriaPorAnoDecrescenteNoCmsEPreservaOrdenacaoManual() {
+        var padrao = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("titulo"), Sort.Order.desc("id")));
+        var manual = PageRequest.of(0, 10, Sort.by("titulo"));
+        var manualComDesempate = manual.withSort(Sort.by(Sort.Order.asc("titulo"), Sort.Order.desc("id")));
+        when(secaoRepository.findByPaginaIdAndGrupo(2L, "historia", padrao)).thenReturn(Page.empty(padrao));
+        when(secaoRepository.findByPaginaIdAndGrupo(2L, "historia", manualComDesempate))
+                .thenReturn(Page.empty(manualComDesempate));
+
+        paginaService.listarSecoesPaginado(2L, pageable, "historia");
+        paginaService.listarSecoesPaginado(2L, manual, "historia");
+
+        verify(secaoRepository).findByPaginaIdAndGrupo(2L, "historia", padrao);
+        verify(secaoRepository).findByPaginaIdAndGrupo(2L, "historia", manualComDesempate);
+    }
+
+    @Test
+    void ordenaNossaHistoriaPublicaPorAnoCrescente() {
+        pagina.setId(2L);
+        Secao maisRecente = secaoExistente(null);
+        maisRecente.setGrupo("historia");
+        maisRecente.setTitulo("2026");
+        Secao texto = secaoExistente(null);
+        texto.setGrupo("texto-sobre");
+        Secao maisAntiga = secaoExistente(null);
+        maisAntiga.setGrupo("historia");
+        maisAntiga.setTitulo("1990");
+        pagina.setSecoes(List.of(maisRecente, texto, maisAntiga));
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+
+        assertThat(paginaService.obterPaginaPublica(2L).getSecoes()).containsExactly(maisAntiga, texto, maisRecente);
+        assertThat(pagina.getSecoes()).containsExactly(maisRecente, texto, maisAntiga);
+    }
+
     private Secao secaoExistente(String imagem) {
         Secao secao = new Secao();
         secao.setId(10L);
@@ -242,17 +277,19 @@ class PaginaServiceTeste {
 
     @Test
     void deveCombinarFiltroDeSecaoComBuscaEPaginacao() {
-        when(documentoRepository.buscarPorSecao(1L, 3L, "%ata%", pageable)).thenReturn(Page.empty(pageable));
+        var ordenada = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("id")));
+        when(documentoRepository.buscarPorSecao(1L, 3L, "%ata%", ordenada)).thenReturn(Page.empty(ordenada));
         assertThat(paginaService.listarDocumentosPaginado(1L, pageable, "Ata", 3L).getTotalElements()).isZero();
-        verify(documentoRepository).buscarPorSecao(1L, 3L, "%ata%", pageable);
+        verify(documentoRepository).buscarPorSecao(1L, 3L, "%ata%", ordenada);
         verify(documentoRepository, never()).buscar(any(), any(), any());
     }
 
     @Test
     void deveFiltrarSecaoMesmoSemTermoDeBusca() {
-        when(documentoRepository.buscarPorSecao(1L, 3L, null, pageable)).thenReturn(Page.empty(pageable));
+        var ordenada = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("id")));
+        when(documentoRepository.buscarPorSecao(1L, 3L, null, ordenada)).thenReturn(Page.empty(ordenada));
         paginaService.listarDocumentosPaginado(1L, pageable, null, 3L);
-        verify(documentoRepository).buscarPorSecao(1L, 3L, null, pageable);
+        verify(documentoRepository).buscarPorSecao(1L, 3L, null, ordenada);
     }
 
     private MultipartFile imagemFake() {
