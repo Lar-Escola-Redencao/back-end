@@ -48,6 +48,16 @@ class AgradecimentoPixServiceTest {
     }
 
     @Test
+    void rejeitaIdentificadorForaDoFormatoMesmoComRegistroEmMemoria() {
+        for (String identificador : java.util.List.of("LER-123", "LER/123", "A".repeat(26))) {
+            registrar(identificador);
+            assertThatThrownBy(() -> service.agradecer(identificador, "a@b.org", "token", "ip"))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
+        }
+        verifyNoInteractions(captcha, emailService);
+    }
+
+    @Test
     void rejeitaCodigoDesconhecidoExpiradoECaptchaAusente() {
         assertThatThrownBy(() -> service.agradecer("inexistente", "a@b.org", "token", "ip"))
                 .hasMessageContaining("404");
@@ -56,6 +66,18 @@ class AgradecimentoPixServiceTest {
         avancar(901);
         assertThatThrownBy(() -> service.agradecer("LER123", "a@b.org", "token", "ip"))
                 .hasMessageContaining("410");
+        verifyNoInteractions(captcha, emailService);
+    }
+
+    @Test
+    void rejeitaIdentificadorForaDoFormatoMesmoQuandoExisteRegistro() {
+        for (String identificador : java.util.List.of("LER-123", "../LER123", "A".repeat(26))) {
+            registrar(identificador);
+            assertThatThrownBy(() -> service.agradecer(identificador, "a@b.org", "token", "ip"))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
+        }
+        assertThatThrownBy(() -> service.agradecer(null, "a@b.org", "token", "ip"))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("404");
         verifyNoInteractions(captcha, emailService);
     }
 

@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.service.FotoPerfilUsuario;
 import br.org.larescolaredencao.model.ComposicaoFamiliar;
 import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.FichaSocioeconomica;
@@ -68,7 +69,7 @@ public class UsuarioResponseDTO {
         this.periodoEscolar = usuario.getPeriodoEscolar();
         this.serieEscolar = usuario.getSerieEscolar();
         this.raEscolar = usuario.getRaEscolar();
-        this.imagemPerfil = usuario.getImagemPerfil();
+        this.imagemPerfil = FotoPerfilUsuario.urlProtegida(usuario.getId(), usuario.getImagemPerfil());
 
         if (matriculaAtiva != null) {
             this.idTurma = matriculaAtiva.getTurma().getId();

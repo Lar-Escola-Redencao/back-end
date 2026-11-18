@@ -91,7 +91,12 @@ public class ArquivoService {
             String caminhoRelativo = caminhoNoBanco.startsWith("/uploads/")
                                      ? caminhoNoBanco.substring(9)
                                      : caminhoNoBanco;
-            Path caminhoArquivo = Paths.get(uploadDir, caminhoRelativo);
+            Path diretorioBase = Paths.get(uploadDir).toAbsolutePath().normalize();
+            Path caminhoArquivo = diretorioBase.resolve(caminhoRelativo).normalize();
+            if (!caminhoArquivo.startsWith(diretorioBase) || caminhoArquivo.equals(diretorioBase)) {
+                logger.warn("Exclusão ignorada: caminho fora do diretório de uploads: {}", caminhoNoBanco);
+                return;
+            }
             Files.deleteIfExists(caminhoArquivo);
         } catch (IOException e) {
             logger.warn("Falha ao deletar o arquivo físico: {}", caminhoNoBanco, e);
