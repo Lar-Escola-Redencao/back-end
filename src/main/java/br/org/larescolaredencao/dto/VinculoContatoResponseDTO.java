@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.service.FotoPerfilUsuario;
 import br.org.larescolaredencao.model.ContatoUsuario;
 import br.org.larescolaredencao.model.Matricula;
 import br.org.larescolaredencao.model.enums.Parentesco;
@@ -21,7 +22,7 @@ public class VinculoContatoResponseDTO {
     public VinculoContatoResponseDTO(ContatoUsuario ca, Matricula matriculaAtiva) {
         this.idUsuario = ca.getUsuario().getId();
         this.nomeUsuario = ca.getUsuario().getNomeCompleto();
-        this.imagemPerfil = ca.getUsuario().getImagemPerfil();
+        this.imagemPerfil = FotoPerfilUsuario.urlProtegida(ca.getUsuario().getId(), ca.getUsuario().getImagemPerfil());
         this.parentesco = ca.getParentesco();
         this.principal = ca.getPrincipal();
 

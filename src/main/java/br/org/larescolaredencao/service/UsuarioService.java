@@ -661,14 +661,27 @@ public class UsuarioService {
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
         String fotoAntiga = usuario.getImagemPerfil();
-        String caminhoFoto = arquivoService.salvarArquivo(foto, "usuarios/", TipoArquivo.FOTO);
+        String caminhoFoto = arquivoService.salvarArquivo(foto, FotoPerfilUsuario.SUBPASTA, TipoArquivo.FOTO);
         usuario.setImagemPerfil(caminhoFoto);
-        
+
         usuarioRepository.save(usuario);
 
         if (fotoAntiga != null) {
             arquivoService.deletarArquivo(fotoAntiga);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Resource carregarFotoPerfil(Integer id, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+
+        String caminho = usuario.getImagemPerfil();
+        if (!FotoPerfilUsuario.caminhoPermitido(caminho)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto de perfil não encontrada.");
+        }
+        return arquivoService.carregarComoRecurso(caminho);
     }
 
     @Transactional

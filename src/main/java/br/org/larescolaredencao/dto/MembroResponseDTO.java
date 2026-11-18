@@ -15,6 +15,7 @@ public class MembroResponseDTO {
     private Integer idPapel;
     private String nomePapel;
     private List<Unidade> unidades;
+    private boolean ativo;
 
     public MembroResponseDTO(Membro membro) {
         this.id = membro.getId();
@@ -26,6 +27,11 @@ public class MembroResponseDTO {
         this.idPapel = membro.getPapel().getId();
         this.nomePapel = membro.getPapel().getNomePapel();
         this.unidades = membro.getUnidades();
+        this.ativo = membro.isAtivo();
+    }
+
+    public boolean isAtivo() {
+        return ativo;
     }
 
     public Integer getId() {
