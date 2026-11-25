@@ -109,7 +109,8 @@ public class HistoricoHibernateListener implements PostInsertEventListener, Post
         var tipos = persister.getPropertyTypes();
 
         for (int indice = 0; indice < nomes.length; indice++) {
-            if (nomes[indice].equals("senha") || tipos[indice].isCollectionType()) {
+            if (nomes[indice].equals("senha") || nomes[indice].equals("versaoSessao")
+                    || tipos[indice].isCollectionType()) {
                 continue;
             }
 

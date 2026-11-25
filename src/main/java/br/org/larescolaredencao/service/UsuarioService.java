@@ -35,6 +35,10 @@ import br.org.larescolaredencao.repository.MembroRepository;
 import br.org.larescolaredencao.repository.OcorrenciaRepository;
 import br.org.larescolaredencao.repository.TurmaRepository;
 import br.org.larescolaredencao.repository.UsuarioRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.JpaSort;
 import org.springframework.http.HttpStatus;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
@@ -185,13 +189,9 @@ public class UsuarioService {
                                                           Integer idUnidade,
                                                           Integer idTurma,
                                                           StatusMatricula statusMatricula) {
-        Membro membro = membroRepository.findById(membroId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
-
+        Integer membroFiltro = membroFiltroListagem(membroId);
         String termo = TermoBusca.like(search);
         String digitos = TermoBusca.digitosLike(search);
-        boolean administrador = Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel());
-        Integer membroFiltro = administrador ? null : membroId;
 
         List<Usuario> usuarios = usuarioRepository.buscarListagem(
                 membroFiltro,
@@ -205,6 +205,39 @@ public class UsuarioService {
         return usuarios.stream()
                 .map(u -> new UsuarioResponseDTO(u, null, obterMatriculaParaListagem(u, idUnidade, idTurma, statusMatricula)))
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UsuarioResponseDTO> listarUsuariosPaginados(Integer membroId, String search,
+            Integer idUnidade, Integer idTurma, StatusMatricula statusMatricula, Pageable pageable) {
+        Sort ordem = Sort.unsorted();
+        for (Sort.Order campo : pageable.getSort()) {
+            Sort ordenacaoCampo = switch (campo.getProperty()) {
+                case "id" -> Sort.by(campo.getDirection(), "usuario.id");
+                case "nomeCompleto" -> JpaSort.unsafe(campo.getDirection(), "lower(u.nomeCompleto)");
+                case "dataNascimento" -> Sort.by(campo.getDirection(), "usuario.dataNascimento");
+                case "nomeTurma" -> JpaSort.unsafe(campo.getDirection(),
+                        "lower(concat(un.nome, ' - ', cast(t.periodo as String)))");
+                case "cpf" -> JpaSort.unsafe(campo.getDirection(),
+                        "lower(coalesce(nullif(u.cpf, ''), u.documentoAuxiliar, ''))");
+                default -> throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Campo de ordenação inválido.");
+            };
+            ordem = ordem.and(ordenacaoCampo);
+        }
+        if (pageable.getSort().getOrderFor("id") == null) {
+            ordem = ordem.and(Sort.by(Sort.Order.desc("usuario.id")));
+        }
+
+        return usuarioRepository.buscarListagemPaginada(membroFiltroListagem(membroId), TermoBusca.like(search),
+                TermoBusca.digitosLike(search), idUnidade, idTurma, statusMatricula,
+                OrdenacaoPaginada.comOrdem(pageable, ordem))
+                .map(matricula -> new UsuarioResponseDTO(matricula.getUsuario(), null, matricula));
+    }
+
+    private Integer membroFiltroListagem(Integer membroId) {
+        Membro membro = membroRepository.findById(membroId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Membro não encontrado."));
+        return Perfil.ADMINISTRADOR.name().equals(membro.getPapel().getNomePapel()) ? null : membroId;
     }
 
     private Matricula obterMatriculaParaListagem(Usuario usuario,
@@ -674,14 +707,27 @@ public class UsuarioService {
         arquivoService.validarTipoArquivo(foto, TipoArquivo.FOTO);
 
         String fotoAntiga = usuario.getImagemPerfil();
-        String caminhoFoto = arquivoService.salvarArquivo(foto, "usuarios/", TipoArquivo.FOTO);
+        String caminhoFoto = arquivoService.salvarArquivo(foto, FotoPerfilUsuario.SUBPASTA, TipoArquivo.FOTO);
         usuario.setImagemPerfil(caminhoFoto);
-        
+
         usuarioRepository.save(usuario);
 
         if (fotoAntiga != null) {
             arquivoService.deletarArquivo(fotoAntiga);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public Resource carregarFotoPerfil(Integer id, Membro membroLogado) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Usuário não encontrado."));
+        validarAcessoAoUsuario(usuario, membroLogado);
+
+        String caminho = usuario.getImagemPerfil();
+        if (!FotoPerfilUsuario.caminhoPermitido(caminho)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Foto de perfil não encontrada.");
+        }
+        return arquivoService.carregarComoRecurso(caminho);
     }
 
     @Transactional

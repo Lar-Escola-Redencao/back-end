@@ -81,13 +81,13 @@ class CpfValidacaoTest {
     @ParameterizedTest
     @ValueSource(strings = {"52998224725", "529.982.247-25", "admin@exemplo.com"})
     void loginAceitaCpfValidoOuEmail(String identificador) {
-        assertThat(VALIDATOR.validate(new LoginRequestDTO(identificador, "senha", false))).isEmpty();
+        assertThat(VALIDATOR.validate(new LoginRequestDTO(identificador, "senha", false, null))).isEmpty();
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"000.000.000-00", "52998224724", "5299822472", "abc52998224725"})
     void loginRejeitaCpfInvalido(String identificador) {
-        assertThat(VALIDATOR.validate(new LoginRequestDTO(identificador, "senha", false)))
+        assertThat(VALIDATOR.validate(new LoginRequestDTO(identificador, "senha", false, null)))
                 .anyMatch(erro -> erro.getPropertyPath().toString().equals("identificador"));
     }
 }

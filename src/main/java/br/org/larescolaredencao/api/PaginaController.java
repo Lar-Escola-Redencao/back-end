@@ -54,7 +54,7 @@ public class PaginaController {
     /** O padrão numérico evita ambiguidade com as rotas literais /paginas/secoes e /paginas/documentos. */
     @GetMapping("/{idPagina:\\d+}")
     public Pagina obterPagina(@PathVariable("idPagina") Long idPagina) {
-        return paginaService.buscarPaginaPorId(idPagina);
+        return paginaService.obterPaginaPublica(idPagina);
     }
 
     @GetMapping("/{idPagina:\\d+}/secoes")
@@ -108,8 +108,14 @@ public class PaginaController {
 
     @PutMapping("/secoes/reordenar")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void reordenarSecoes(@Valid @RequestBody List<ReordenarSecaoDTO> secoes) {
+    public void reordenarSecoes(@Valid @RequestBody List<@Valid ReordenarSecaoDTO> secoes) {
         paginaService.reordenarSecoes(secoes);
+    }
+
+    /** Rota administrativa com a sequência completa, inclusive seções inativas. */
+    @GetMapping("/1/secoes/ordenacao")
+    public List<Secao> listarSecoesParaOrdenacao() {
+        return paginaService.listarSecoesParaOrdenacao();
     }
 
     @PutMapping("/secoes/{id}/imagem")

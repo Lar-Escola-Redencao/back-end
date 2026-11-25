@@ -42,35 +42,36 @@ public class RelatorioPdfGerador {
     static final int ULTIMO_DIA_PRIMEIRO_BLOCO = 16;
 
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
-    private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-    private static final DateTimeFormatter DATA_EXTENSO = DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", PT_BR);
-    private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+    static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+    static final DateTimeFormatter DATA_EXTENSO = DateTimeFormatter.ofPattern("dd 'de' MMMM 'de' yyyy", PT_BR);
+    static final DateTimeFormatter HORA = DateTimeFormatter.ofPattern("HH:mm");
+    static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private static final Color CINZA_BORDA = new Color(150, 150, 150);
-    private static final Color CINZA_CABECALHO = new Color(225, 225, 225);
-    private static final Color VERDE_PRESENCA = new Color(27, 94, 32);
-    private static final Color FUNDO_PRESENCA = new Color(232, 245, 233);
-    private static final Color VERMELHO_FALTA = new Color(183, 28, 28);
-    private static final Color FUNDO_FALTA = new Color(198, 40, 40);
-    private static final Color CINZA_TEXTO = new Color(80, 80, 80);
-    private static final Color FAIXA_ALTA = new Color(180, 216, 172);
-    private static final Color FAIXA_MEDIA = new Color(184, 128, 24);
-    private static final Color FAIXA_BAIXA = new Color(112, 20, 27);
-    private static final Color TRILHA_BARRA = new Color(235, 235, 235);
+    static final Color CINZA_BORDA = new Color(150, 150, 150);
+    static final Color CINZA_CABECALHO = new Color(225, 225, 225);
+    static final Color VERDE_PRESENCA = new Color(27, 94, 32);
+    static final Color FUNDO_PRESENCA = new Color(232, 245, 233);
+    static final Color VERMELHO_FALTA = new Color(183, 28, 28);
+    static final Color FUNDO_FALTA = new Color(198, 40, 40);
+    static final Color CINZA_TEXTO = new Color(80, 80, 80);
+    static final Color FAIXA_ALTA = new Color(180, 216, 172);
+    static final Color FAIXA_MEDIA = new Color(184, 128, 24);
+    static final Color FAIXA_BAIXA = new Color(112, 20, 27);
+    static final Color TRILHA_BARRA = new Color(235, 235, 235);
 
-    private static final Font TITULO = new Font(Font.HELVETICA, 11, Font.BOLD);
-    private static final Font TITULO_PERIODO = new Font(Font.HELVETICA, 11, Font.NORMAL);
-    private static final Font INFO = new Font(Font.HELVETICA, 8.5f, Font.NORMAL, CINZA_TEXTO);
-    private static final Font CABECALHO = new Font(Font.HELVETICA, 9, Font.BOLD);
-    private static final Font TEXTO = new Font(Font.HELVETICA, 9, Font.NORMAL);
-    private static final Font INDICADOR = new Font(Font.HELVETICA, 10, Font.BOLD);
-    private static final Font INDICADOR_PRESENCA = new Font(Font.HELVETICA, 10, Font.BOLD, VERDE_PRESENCA);
-    private static final Font INDICADOR_FALTA = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
-    private static final Font TEXTO_PRESENCA = new Font(Font.HELVETICA, 9, Font.BOLD, new Color(16, 164, 79));
-    private static final Font TEXTO_FALTA = new Font(Font.HELVETICA, 9, Font.BOLD, new Color(224, 0, 0));
-    private static final Font INDICADOR_SECUNDARIO = new Font(Font.HELVETICA, 8, Font.NORMAL, CINZA_TEXTO);
-    private static final Font RODAPE = new Font(Font.HELVETICA, 7.5f, Font.NORMAL, CINZA_TEXTO);
-    private static final Font DESTAQUE = new Font(Font.HELVETICA, 9, Font.ITALIC, CINZA_TEXTO);
+    static final Font TITULO = new Font(Font.HELVETICA, 11, Font.BOLD);
+    static final Font TITULO_PERIODO = new Font(Font.HELVETICA, 11, Font.NORMAL);
+    static final Font INFO = new Font(Font.HELVETICA, 8.5f, Font.NORMAL, CINZA_TEXTO);
+    static final Font CABECALHO = new Font(Font.HELVETICA, 9, Font.BOLD);
+    static final Font TEXTO = new Font(Font.HELVETICA, 9, Font.NORMAL);
+    static final Font INDICADOR = new Font(Font.HELVETICA, 10, Font.BOLD);
+    static final Font INDICADOR_PRESENCA = new Font(Font.HELVETICA, 10, Font.BOLD, VERDE_PRESENCA);
+    static final Font INDICADOR_FALTA = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+    static final Font TEXTO_PRESENCA = new Font(Font.HELVETICA, 9, Font.BOLD, new Color(16, 164, 79));
+    static final Font TEXTO_FALTA = new Font(Font.HELVETICA, 9, Font.BOLD, new Color(224, 0, 0));
+    static final Font INDICADOR_SECUNDARIO = new Font(Font.HELVETICA, 8, Font.NORMAL, CINZA_TEXTO);
+    static final Font RODAPE = new Font(Font.HELVETICA, 7.5f, Font.NORMAL, CINZA_TEXTO);
+    static final Font DESTAQUE = new Font(Font.HELVETICA, 9, Font.ITALIC, CINZA_TEXTO);
 
     private static final String CAMINHO_LOGO = "static/images/logo_colorida_texto.png";
     private static final float ALTURA_LOGO = 38;
@@ -274,6 +275,10 @@ public class RelatorioPdfGerador {
     }
 
     private Phrase legendaPresencas(DadosRelatorio.Presencas dados) {
+        return legendaPresencas(dados.possuiRegistroForaDaMatricula());
+    }
+
+    static Phrase legendaPresencas(boolean possuiRegistroForaDaMatricula) {
         Phrase legenda = new Phrase("Legenda: ", RODAPE);
         Chunk presente = new Chunk(" P ", new Font(Font.HELVETICA, 10.5f, Font.BOLD, VERDE_PRESENCA));
         presente.setBackground(FUNDO_PRESENCA, 1.5f, 2, 1.5f, 3);
@@ -283,7 +288,7 @@ public class RelatorioPdfGerador {
         falta.setBackground(FUNDO_FALTA, 1.5f, 2, 1.5f, 3);
         legenda.add(falta);
         legenda.add(new Chunk(" = ausente  ·  — = frequência não registrada  ·  N/A = não matriculado na data", RODAPE));
-        if (dados.possuiRegistroForaDaMatricula()) {
+        if (possuiRegistroForaDaMatricula) {
             legenda.add(new Chunk("  ·  * = registro fora da vigência da matrícula, mantido como salvo", RODAPE));
         }
         return legenda;
@@ -327,7 +332,7 @@ public class RelatorioPdfGerador {
         }
     }
 
-    private Image imagemLogo() {
+    Image imagemLogo() {
         try {
             Image imagem = Image.getInstance(logo, null);
             imagem.scaleToFit(ALTURA_LOGO * logo.getWidth() / logo.getHeight(), ALTURA_LOGO);
@@ -344,7 +349,7 @@ public class RelatorioPdfGerador {
                 + "\nGerado em " + geradoEm.format(DATA_HORA) + " (horário de Brasília)";
     }
 
-    private static PdfPCell celula(String texto, Font fonte, int alinhamento) {
+    static PdfPCell celula(String texto, Font fonte, int alinhamento) {
         PdfPCell celula = new PdfPCell(new Phrase(texto, fonte));
         celula.setHorizontalAlignment(alinhamento);
         celula.setVerticalAlignment(Element.ALIGN_MIDDLE);
@@ -354,13 +359,13 @@ public class RelatorioPdfGerador {
         return celula;
     }
 
-    private static PdfPCell cabecalho(String texto, int alinhamento) {
+    static PdfPCell cabecalho(String texto, int alinhamento) {
         PdfPCell celula = new PdfPCell(new Phrase(texto, CABECALHO));
         estiloCabecalho(celula, alinhamento);
         return celula;
     }
 
-    private static void estiloCabecalho(PdfPCell celula, int alinhamento) {
+    static void estiloCabecalho(PdfPCell celula, int alinhamento) {
         celula.setHorizontalAlignment(alinhamento);
         celula.setVerticalAlignment(Element.ALIGN_MIDDLE);
         celula.setPadding(4);
@@ -393,7 +398,7 @@ public class RelatorioPdfGerador {
         }
     }
 
-    private static final class CabecalhoRodape extends PdfPageEventHelper {
+    static final class CabecalhoRodape extends PdfPageEventHelper {
         private final Image logo;
         private final String relatorio;
         private final Phrase rodape;

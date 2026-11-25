@@ -16,5 +16,15 @@ public interface EntrevistaSocialRepository extends JpaRepository<EntrevistaSoci
             @org.springframework.data.repository.query.Param("search") String search,
             org.springframework.data.domain.Pageable pageable);
 
+    @org.springframework.data.jpa.repository.Query("""
+            select e from EntrevistaSocial e
+            where e.idUsuario = :usuario and e.dataEntrevista >= :inicio and e.dataEntrevista < :fimExclusivo
+            order by e.dataEntrevista desc, e.id desc
+            """)
+    java.util.List<EntrevistaSocial> listarParaRelatorio(
+            @org.springframework.data.repository.query.Param("usuario") Integer usuario,
+            @org.springframework.data.repository.query.Param("inicio") java.time.LocalDateTime inicio,
+            @org.springframework.data.repository.query.Param("fimExclusivo") java.time.LocalDateTime fimExclusivo);
+
     void deleteByIdUsuario(Integer idUsuario);
 }

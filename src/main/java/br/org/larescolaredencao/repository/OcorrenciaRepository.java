@@ -25,6 +25,15 @@ public interface OcorrenciaRepository extends JpaRepository<Ocorrencia, Integer>
             @Param("unidades") List<Integer> unidades, @Param("search") String search,
             org.springframework.data.domain.Pageable pageable);
 
+    @Query("""
+            select o from Ocorrencia o join fetch o.matricula m join fetch m.turma t join fetch t.unidade
+                join fetch o.membro
+            where m.id in :matriculas and o.dataOcorrencia >= :inicio and o.dataOcorrencia < :fimExclusivo
+            order by o.dataOcorrencia desc, o.id desc
+            """)
+    List<Ocorrencia> listarParaRelatorioAcompanhamento(@Param("matriculas") List<Integer> matriculas,
+            @Param("inicio") LocalDateTime inicio, @Param("fimExclusivo") LocalDateTime fimExclusivo);
+
     @Query("select o from Ocorrencia o where o.matricula.turma.id = :turmaId and cast(o.dataOcorrencia as LocalDate) = :dataOcorrencia")
     List<Ocorrencia> findByMatriculaTurmaIdAndDataOcorrencia(
             @Param("turmaId") Integer turmaId,
