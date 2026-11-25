@@ -81,6 +81,19 @@ class AcompanhamentoServiceTest {
         verifyNoInteractions(entrevistas);
     }
 
+    @Test void preservaParagrafosAoCadastrarEEditarEntrevista() {
+        when(entrevistas.save(any())).thenAnswer(i -> i.getArgument(0));
+        String texto = "Observações da entrevista.\n\nEncaminhamento à equipe.\nRetorno agendado.";
+        var dto = new EntrevistaDTO(dados().dataEntrevista(), texto);
+        var criada = service.salvarEntrevista(10, null, dto, membro("ADMINISTRADOR"));
+        assertThat(criada.relato()).isEqualTo(texto);
+        var existente = new EntrevistaSocial();
+        existente.setId(3); existente.setIdUsuario(10); existente.setIdMembro(7);
+        when(entrevistas.findById(3)).thenReturn(Optional.of(existente));
+        var editada = service.salvarEntrevista(10, 3, dto, membro("ADMINISTRADOR"));
+        assertThat(editada.relato()).isEqualTo(texto);
+    }
+
     EntrevistaDTO dados() { return new EntrevistaDTO(LocalDateTime.of(2026, 10, 29, 9, 30), " Relato "); }
 
     @Test void rejeitaDiaOuHorarioFuturoNoCadastroENaEdicaoParaAmbosOsPerfis() {

@@ -219,6 +219,41 @@ public class UsuarioServiceTest {
         verify(usuarioRepository).save(usuario);
     }
 
+    @Test
+    void removeFotoSomenteDepoisDoCommit() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setRemoverFotoPerfil(true);
+        String foto = usuario.getImagemPerfil();
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            UsuarioResponseDTO resposta = usuarioService.atualizarUsuario(1, dto, adminLogado);
+            assertNull(resposta.getImagemPerfil());
+            verify(arquivoService, never()).deletarArquivo(foto);
+            var sincronizacoes = org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations();
+            assertEquals(1, sincronizacoes.size());
+            sincronizacoes.forEach(sincronizacao -> sincronizacao.afterCommit());
+            verify(arquivoService).deletarArquivo(foto);
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void rollbackDaEdicaoPreservaArquivoDaFoto() {
+        AtualizarUsuarioDTO dto = prepararAtualizacaoDocumento();
+        dto.setRemoverFotoPerfil(true);
+        String foto = usuario.getImagemPerfil();
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        try {
+            usuarioService.atualizarUsuario(1, dto, adminLogado);
+            org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()
+                    .forEach(sincronizacao -> sincronizacao.afterCompletion(1));
+            verify(arquivoService, never()).deletarArquivo(foto);
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     private AtualizarUsuarioDTO prepararAtualizacaoDocumento() {
         AtualizarUsuarioDTO dto = new AtualizarUsuarioDTO();
         dto.setNomeCompleto(cadastroDTO.getNomeCompleto());

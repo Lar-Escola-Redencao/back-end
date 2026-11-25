@@ -19,10 +19,14 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
-import br.org.larescolaredencao.model.Parceiro;
 
 @Audited
 @Entity
@@ -50,9 +54,14 @@ public class Evento {
 
     private BigDecimal valor = BigDecimal.ZERO;
 
-    @NotNull
+    @NotEmpty(message = "Selecione pelo menos uma categoria.")
+    @ElementCollection
+    @CollectionTable(name = "evento_categoria", joinColumns = @JoinColumn(name = "id_evento"))
+    @AuditJoinTable(name = "evento_categoria_aud")
     @Enumerated(EnumType.STRING)
-    private TipoEvento tipoEvento;
+    @Column(name = "categoria", nullable = false,
+            columnDefinition = "ENUM('BENEFICENTE','CULTURAL','COMEMORATIVO','ESPORTIVO','OUTRO')")
+    private Set<TipoEvento> categorias = new TreeSet<>();
 
     @AuditJoinTable(name = "parceiro_evento_aud")
     @ManyToMany
@@ -119,12 +128,13 @@ public class Evento {
         this.valor = valor;
     }
 
-    public TipoEvento getTipoEvento() {
-        return tipoEvento;
+    public Set<TipoEvento> getCategorias() {
+        return categorias;
     }
 
-    public void setTipoEvento(TipoEvento tipoEvento) {
-        this.tipoEvento = tipoEvento;
+    public void setCategorias(Set<TipoEvento> categorias) {
+        this.categorias.clear();
+        this.categorias.addAll(categorias);
     }
 
     public List<Parceiro> getParceiros() {

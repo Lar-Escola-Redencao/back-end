@@ -329,7 +329,7 @@ class MembroRepositoryTest {
         evento.setDescricao("Evento de teste");
         evento.setDataEvento(data);
         evento.setEndereco("Endereço de teste");
-        evento.setTipoEvento(TipoEvento.CULTURAL);
+        evento.setCategorias(java.util.Set.of(TipoEvento.CULTURAL));
         entityManager.persist(evento);
         return evento;
     }

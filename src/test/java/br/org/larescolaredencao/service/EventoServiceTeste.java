@@ -106,7 +106,7 @@ class EventoServiceTeste {
         Evento evento = new Evento();
         evento.setId(1);
         evento.setTitulo("Bazar Beneficente");
-        evento.setTipoEvento(TipoEvento.ARRECADACAO);
+        evento.setCategorias(java.util.Set.of(TipoEvento.BENEFICENTE));
 
         Page<Evento> paginaEsperada = new PageImpl<>(List.of(evento), pageable, 1);
         when(eventoRepository.buscarPorProximidade(isNull(), isNull(), isNull(), isNull(), isNull(), any(LocalDateTime.class), eq(pageable))).thenReturn(paginaEsperada);
@@ -116,7 +116,7 @@ class EventoServiceTeste {
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getTitulo()).isEqualTo("Bazar Beneficente");
         verify(eventoRepository).buscarPorProximidade(isNull(), isNull(), isNull(), isNull(), isNull(), any(LocalDateTime.class), eq(pageable));
-        verify(eventoRepository, never()).findByTipoEvento(any(), any());
+        verify(eventoRepository, never()).findByCategoriasContaining(any(), any());
     }
 
     @Test
@@ -124,7 +124,7 @@ class EventoServiceTeste {
         Evento evento = new Evento();
         evento.setId(2);
         evento.setTitulo("Festa Junina");
-        evento.setTipoEvento(TipoEvento.CULTURAL);
+        evento.setCategorias(java.util.Set.of(TipoEvento.CULTURAL));
 
         Page<Evento> paginaEsperada = new PageImpl<>(List.of(evento), pageable, 1);
         when(eventoRepository.buscarPorProximidade(isNull(), eq(TipoEvento.CULTURAL), isNull(), isNull(), isNull(), any(LocalDateTime.class), eq(pageable))).thenReturn(paginaEsperada);
@@ -132,7 +132,7 @@ class EventoServiceTeste {
         Page<EventoResponseDTO> resultado = eventoService.getAllEventos(pageable, TipoEvento.CULTURAL);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
-        assertThat(resultado.getContent().get(0).getTipoEvento()).isEqualTo(TipoEvento.CULTURAL);
+        assertThat(resultado.getContent().get(0).getCategorias()).containsExactly(TipoEvento.CULTURAL);
         verify(eventoRepository).buscarPorProximidade(isNull(), eq(TipoEvento.CULTURAL), isNull(), isNull(), isNull(), any(LocalDateTime.class), eq(pageable));
         verify(eventoRepository, never()).findAll(any(Pageable.class));
     }

@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import br.org.larescolaredencao.validacao.CpfValido;
+
 import jakarta.validation.constraints.NotBlank;
 
 public class AtualizarContatoDTO {
@@ -14,6 +16,7 @@ public class AtualizarContatoDTO {
     
     private String endereco;
 
+    @CpfValido
     private String cpf;
 
     private String localTrabalho;
@@ -23,7 +26,7 @@ public class AtualizarContatoDTO {
     }
 
     public void setCpf(String cpf) {
-        this.cpf = cpf;
+        this.cpf = cpf == null || cpf.isBlank() ? null : cpf.trim();
     }
 
     public String getLocalTrabalho() {
