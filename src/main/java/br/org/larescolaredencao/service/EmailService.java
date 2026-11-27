@@ -7,7 +7,6 @@ import java.util.Locale;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -23,6 +22,7 @@ import jakarta.mail.internet.MimeMessage;
 public class EmailService {
     
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+    private static final String LOGO_URL = "https://larescolaredencao.org.br/images/logo_branca_texto.png";
 
     private final JavaMailSender mailSender;
 
@@ -35,7 +35,6 @@ public class EmailService {
 
     public void enviarAgradecimentoPix(String destinatario, BigDecimal valor) {
         String valorFormatado = NumberFormat.getCurrencyInstance(Locale.forLanguageTag("pt-BR")).format(valor);
-        ClassPathResource logo = new ClassPathResource("static/images/logo.png");
 
         try {
             MimeMessage mensagem = mailSender.createMimeMessage();
@@ -43,10 +42,7 @@ public class EmailService {
             helper.setFrom(remetente);
             helper.setTo(destinatario);
             helper.setSubject("Obrigado pelo apoio — Lar Escola Redenção");
-            helper.setText(montarTextoAgradecimento(valorFormatado), montarHtmlAgradecimento(valorFormatado, logo));
-            if (logo.exists()) {
-                helper.addInline("logoImage", logo);
-            }
+            helper.setText(montarTextoAgradecimento(valorFormatado), montarHtmlAgradecimento(valorFormatado));
             mailSender.send(mensagem);
         } catch (MessagingException | MailException e) {
             logger.error("Falha ao enviar agradecimento Pix", e);
@@ -63,10 +59,9 @@ public class EmailService {
                 + "Lar Escola Redenção";
     }
 
-    private String montarHtmlAgradecimento(String valorFormatado, ClassPathResource logo) {
-        String marca = logo.exists()
-                ? "<img src=\"cid:logoImage\" alt=\"Lar Escola Redenção\" width=\"96\" style=\"display:block;margin:0 auto;background:#ffffff;padding:6px;border-radius:8px;\">"
-                : "<span style=\"color:#ffffff;font-size:20px;font-weight:600;\">Lar Escola Redenção</span>";
+    private String montarHtmlAgradecimento(String valorFormatado) {
+        String marca = "<img src=\"" + LOGO_URL
+                + "\" alt=\"Lar Escola Redenção\" width=\"180\" style=\"display:block;margin:0 auto;max-width:100%;height:auto;\">";
         return """
                     <!DOCTYPE html>
                     <html lang="pt-BR">
@@ -79,7 +74,7 @@ public class EmailService {
                         <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="background-color:#eef1f6;">
                             <tr><td align="center" style="padding:32px 16px;">
                                 <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:480px;background-color:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(9,46,94,0.08);">
-                                    <tr><td align="center" style="padding:28px 24px;background-color:#2A4FCC;border-radius:16px 16px 0 0;">
+                                    <tr><td align="center" style="padding:28px 24px;background-color:#3682dc;border-radius:16px 16px 0 0;">
                                         %s
                                     </td></tr>
                                     <tr><td align="center" style="padding:32px 24px 24px;color:#33373d;">
@@ -127,8 +122,8 @@ public class EmailService {
                             body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #eef1f6; margin: 0; padding: 0; }
                             .wrapper { width: 100%%; background-color: #eef1f6; padding: 32px 16px; }
                             .container { max-width: 480px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(9, 46, 94, 0.08); }
-                            .header { background-color: #2A4FCC; padding: 28px 0; text-align: center; }
-                            .header img { max-width: 96px; max-height: 96px; object-fit: contain; display: block; margin: 0 auto; border-radius: 8px; background-color: #ffffff; padding: 6px; }
+                            .header { background-color: #3682dc; padding: 28px 0; text-align: center; }
+                            .header img { width: 180px; max-width: 100%%; height: auto; display: block; margin: 0 auto; }
                             .content { padding: 36px 32px 28px 32px; color: #33373d; text-align: center; }
                             .content h1 { font-size: 20px; font-weight: 600; color: #14213d; margin: 0 0 12px 0; }
                             .content p { margin: 0 0 4px 0; font-size: 15px; line-height: 1.6; color: #5c6270; }
@@ -148,7 +143,7 @@ public class EmailService {
                         <div class="wrapper">
                             <div class="container">
                                 <div class="header">
-                                    <img src="cid:logoImage" alt="Lar Escola Redenção">
+                                    <img src="%s" alt="Lar Escola Redenção" width="180" style="display:block;margin:0 auto;max-width:100%%;height:auto;">
                                 </div>
                                 <div class="content">
                                     <h1>Recuperação de senha</h1>
@@ -171,14 +166,9 @@ public class EmailService {
                         </div>
                     </body>
                     </html>
-                    """.formatted(codigo);
+                    """.formatted(LOGO_URL, codigo);
 
             helper.setText(htmlContent, true);
-            
-            ClassPathResource logo = new ClassPathResource("static/images/logo.png");
-            if (logo.exists()) {
-                helper.addInline("logoImage", logo);
-            }
             
             mailSender.send(message);
         } catch (MessagingException | MailException e) {
