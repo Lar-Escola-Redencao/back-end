@@ -51,7 +51,9 @@ public class ParceiroService {
 	public Parceiro criarParceiro(CriarParceiroDTO criarParceiroDTO) {
 		Parceiro p = new Parceiro();
 		p.setNome(criarParceiroDTO.getNome());
-		p.setLogo(arquivoService.salvarArquivo(criarParceiroDTO.getLogo(), PASTA_LOGOS));
+		if (criarParceiroDTO.getLogo() != null && !criarParceiroDTO.getLogo().isEmpty()) {
+			p.setLogo(arquivoService.salvarArquivo(criarParceiroDTO.getLogo(), PASTA_LOGOS));
+		}
 		p.setAtivo(true);
 		return parceiroRepository.save(p);
 	}
