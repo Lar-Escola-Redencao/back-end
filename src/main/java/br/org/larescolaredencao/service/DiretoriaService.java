@@ -48,12 +48,13 @@ public class DiretoriaService {
 	}
 
 	public Diretoria criar(CriarDiretoriaDTO dto) {
-		validarFoto(dto.getFoto());
-		String caminhoFoto = arquivoService.salvarArquivo(dto.getFoto(), SUBPASTA_FOTOS);
 		Diretoria diretoria = new Diretoria();
 		diretoria.setNome(dto.getNome());
 		diretoria.setCargo(dto.getCargo());
-		diretoria.setFoto(caminhoFoto);
+		if (dto.getFoto() != null && !dto.getFoto().isEmpty()) {
+			validarFoto(dto.getFoto());
+			diretoria.setFoto(arquivoService.salvarArquivo(dto.getFoto(), SUBPASTA_FOTOS));
+		}
 		diretoria.setAtivo(true);
 		return diretoriaRepository.save(diretoria);
 	}

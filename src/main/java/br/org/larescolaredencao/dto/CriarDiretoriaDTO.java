@@ -3,7 +3,6 @@ package br.org.larescolaredencao.dto;
 import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class CriarDiretoriaDTO {
@@ -16,7 +15,6 @@ public class CriarDiretoriaDTO {
 	@Size(max = 100)
 	private String cargo;
 
-	@NotNull
 	private MultipartFile foto;
 
 	public String getNome() {
