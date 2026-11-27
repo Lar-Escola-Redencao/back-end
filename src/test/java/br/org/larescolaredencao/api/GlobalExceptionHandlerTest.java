@@ -57,8 +57,31 @@ class GlobalExceptionHandlerTest {
         }).doesNotThrowAnyException();
     }
 
+    enum Formato { PDF, XLSX }
+
+    @Test
+    void deveRetornar400ParaParametroInvalido() throws Exception {
+        var mvc = MockMvcBuilders.standaloneSetup(new ControllerComErro())
+                .setControllerAdvice(new GlobalExceptionHandler()).build();
+        var enumInvalido = mvc.perform(get("/teste-params").param("formato", "CSV")).andReturn().getResponse();
+        assertThat(enumInvalido.getStatus()).isEqualTo(400);
+        assertThat(enumInvalido.getContentAsString(java.nio.charset.StandardCharsets.UTF_8))
+                .contains("formato", "PDF", "XLSX");
+        var dataInvalida = mvc.perform(get("/teste-params").param("inicio", "2026-02-30")).andReturn().getResponse();
+        assertThat(dataInvalida.getStatus()).isEqualTo(400);
+        assertThat(dataInvalida.getContentAsString(java.nio.charset.StandardCharsets.UTF_8)).contains("inicio");
+    }
+
     @RestController
     static class ControllerComErro {
+        @GetMapping("/teste-params")
+        String params(@org.springframework.web.bind.annotation.RequestParam(name = "formato", required = false) Formato formato,
+                @org.springframework.web.bind.annotation.RequestParam(name = "inicio", required = false)
+                @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                java.time.LocalDate inicio) {
+            return "ok";
+        }
+
         @GetMapping("/teste-auth")
         String auth() {
             throw new org.springframework.security.authentication.BadCredentialsException("Credenciais inválidas");

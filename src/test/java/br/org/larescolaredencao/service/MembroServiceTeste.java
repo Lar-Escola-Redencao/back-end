@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.domain.Pageable;
 
 import br.org.larescolaredencao.dto.MembroResponseDTO;
@@ -39,11 +40,13 @@ class MembroServiceTeste {
     private MembroService membroService;
 
     private Pageable pageable;
+    private Pageable paginaOrdenada;
     private Papel papel;
 
     @BeforeEach
     void setUp() {
         pageable = PageRequest.of(0, 10);
+        paginaOrdenada = PageRequest.of(0, 10, Sort.by(Sort.Order.desc("id")));
         papel = new Papel(1, "VOLUNTARIO", "Voluntário da instituição");
     }
 
@@ -52,13 +55,13 @@ class MembroServiceTeste {
         Membro membro = new Membro(1, "Maria Souza", "maria@teste.com", "senha", "12345678900", "Rua A", "999999999", papel);
 
         Page<Membro> paginaEsperada = new PageImpl<>(List.of(membro), pageable, 1);
-        when(membroRepository.findAll(pageable)).thenReturn(paginaEsperada);
+        when(membroRepository.findAll(paginaOrdenada)).thenReturn(paginaEsperada);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, null);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getNomeCompleto()).isEqualTo("Maria Souza");
-        verify(membroRepository).findAll(pageable);
+        verify(membroRepository).findAll(paginaOrdenada);
         verify(membroRepository, never()).findByPapelId(anyInt(), any());
     }
 
@@ -67,20 +70,20 @@ class MembroServiceTeste {
         Membro membro = new Membro(2, "João Lima", "joao@teste.com", "senha", "98765432100", "Rua B", "888888888", papel);
 
         Page<Membro> paginaEsperada = new PageImpl<>(List.of(membro), pageable, 1);
-        when(membroRepository.filtrar(1, null, pageable)).thenReturn(paginaEsperada);
+        when(membroRepository.filtrar(1, null, paginaOrdenada)).thenReturn(paginaEsperada);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, 1);
 
         assertThat(resultado.getTotalElements()).isEqualTo(1);
         assertThat(resultado.getContent().get(0).getIdPapel()).isEqualTo(1);
-        verify(membroRepository).filtrar(1, null, pageable);
-        verify(membroRepository, never()).findAll(pageable);
+        verify(membroRepository).filtrar(1, null, paginaOrdenada);
+        verify(membroRepository, never()).findAll(any(Pageable.class));
     }
 
     @Test
     void deveRetornarPaginaVaziaQuandoNaoHaMembros() {
         Page<Membro> paginaVazia = new PageImpl<>(List.of(), pageable, 0);
-        when(membroRepository.findAll(pageable)).thenReturn(paginaVazia);
+        when(membroRepository.findAll(paginaOrdenada)).thenReturn(paginaVazia);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, null);
 
@@ -93,21 +96,21 @@ class MembroServiceTeste {
         Membro membro = new Membro(3, "Ana Paula", "ana@teste.com", "senha", "11122233344", "Rua C", "777777777", papel);
 
         Page<Membro> paginaEsperada = new PageImpl<>(List.of(membro), pageable, 1);
-        when(membroRepository.buscar("%111.222%", "%111222%", 1, null, pageable)).thenReturn(paginaEsperada);
+        when(membroRepository.buscar("%111.222%", "%111222%", 1, null, paginaOrdenada)).thenReturn(paginaEsperada);
 
         Page<MembroResponseDTO> resultado = membroService.getAllMembros(pageable, 1, "111.222");
 
         assertThat(resultado.getContent().get(0).getNomeCompleto()).isEqualTo("Ana Paula");
-        verify(membroRepository, never()).findAll(pageable);
+        verify(membroRepository, never()).findAll(any(Pageable.class));
         verify(membroRepository, never()).findByPapelId(anyInt(), any());
     }
 
     @Test
     void deveIgnorarSearchEmBranco() {
-        when(membroRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(), pageable, 0));
+        when(membroRepository.findAll(paginaOrdenada)).thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
         membroService.getAllMembros(pageable, null, "   ");
 
-        verify(membroRepository).findAll(pageable);
+        verify(membroRepository).findAll(paginaOrdenada);
     }
 }

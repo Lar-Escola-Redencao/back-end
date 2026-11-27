@@ -153,6 +153,9 @@ public class HistoricoService {
             if ("entrevista_social".equals(evento.entidade()) && "dataRegistro".equals(campo)) {
                 nome = "Data do cadastro";
             }
+            if ("membro".equals(evento.entidade()) && "ativo".equals(campo)) {
+                nome = "Permissão de acesso";
+            }
             camposAlterados.add(new CampoAlteradoDTO(
                     campo, nome, valorAnterior, valorNovo, referenciaAnteriorDisponivel));
         }
@@ -173,7 +176,11 @@ public class HistoricoService {
                 .filter(entidade -> entidade.tabela.equals(evento.entidade()))
                 .map(entidade -> entidade.descricao)
                 .findFirst()
-                .orElse("parceiro_evento".equals(evento.entidade()) ? "Parceiros do evento" : "Vínculos de unidades");
+                .orElse(switch (evento.entidade()) {
+                    case "parceiro_evento" -> "Parceiros do evento";
+                    case "evento_categoria" -> "Categorias do evento";
+                    default -> "Vínculos de unidades";
+                });
         if ("secao".equals(evento.entidade())) {
             informacaoAlterada = switch (Objects.toString(valores.get("grupo"), "")) {
                 case "historia" -> "Marco histórico";
@@ -349,6 +356,7 @@ public class HistoricoService {
         nomes.put("composicaoFamiliar", "Composição familiar");
         nomes.put("dataEvento", "Data e hora do evento");
         nomes.put("tipoEvento", "Categoria do evento");
+        nomes.put("categorias", "Categorias do evento");
         nomes.put("ativo", "Exibição no site");
         nomes.put("url", "Endereço do link");
         nomes.put("urlLink", "Link da publicação");

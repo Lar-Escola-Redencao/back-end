@@ -38,7 +38,7 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
 
     // Listagem global (Sprint 4). Regra do fantasma: contato vinculado a usuário excluído
     // (matrícula EXCLUIDO) não aparece; contatos sem vínculo continuam visíveis.
-    @Query("SELECT c FROM Contato c WHERE (" +
+    String FILTRO_LISTAGEM = "(" +
            "   LOWER(c.nomeCompleto) LIKE :search ESCAPE '!' OR " +
            "   LOWER(c.telefone) LIKE :search ESCAPE '!' OR " +
            "   LOWER(c.email) LIKE :search ESCAPE '!' OR " +
@@ -50,6 +50,22 @@ public interface ContatoRepository extends JpaRepository<Contato, Integer> {
            ") AND NOT EXISTS (" +
            "   SELECT 1 FROM ContatoUsuario cu JOIN Matricula m ON m.usuario = cu.usuario " +
            "   WHERE cu.contato = c AND m.status = 'EXCLUIDO'" +
-           ")")
+           ")";
+
+    @Query("SELECT c FROM Contato c WHERE " + FILTRO_LISTAGEM)
     Page<Contato> buscar(@Param("search") String search, @Param("searchDigitos") String searchDigitos, Pageable pageable);
+
+    String ORDEM_VINCULOS = " ORDER BY (SELECT COUNT(cu) FROM ContatoUsuario cu WHERE cu.contato = c)";
+
+    @Query(value = "SELECT c FROM Contato c WHERE (:search IS NULL OR (" + FILTRO_LISTAGEM + "))"
+            + ORDEM_VINCULOS + " ASC, c.id DESC",
+            countQuery = "SELECT COUNT(c) FROM Contato c WHERE (:search IS NULL OR (" + FILTRO_LISTAGEM + "))")
+    Page<Contato> listarPorVinculosAsc(@Param("search") String search, @Param("searchDigitos") String searchDigitos,
+            Pageable pageable);
+
+    @Query(value = "SELECT c FROM Contato c WHERE (:search IS NULL OR (" + FILTRO_LISTAGEM + "))"
+            + ORDEM_VINCULOS + " DESC, c.id DESC",
+            countQuery = "SELECT COUNT(c) FROM Contato c WHERE (:search IS NULL OR (" + FILTRO_LISTAGEM + "))")
+    Page<Contato> listarPorVinculosDesc(@Param("search") String search, @Param("searchDigitos") String searchDigitos,
+            Pageable pageable);
 }

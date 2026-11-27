@@ -36,9 +36,9 @@ class FrequenciaAcompanhamentoServiceTest {
         return linha;
     }
 
-    @Test void usaAnoAtualEmBrasiliaEApenasMatriculasAcessiveisComTotaisConsistentes() {
+    @Test void usaAnoAtualEmBrasiliaEHistoricoCompletoDoMonitorComTotaisConsistentes() {
         var membro = membro("MONITOR");
-        when(matriculas.listarParaAcompanhamento(10, false, List.of(3))).thenReturn(List.of(matricula(7), matricula(8)));
+        when(matriculas.listarParaAcompanhamento(10, true, List.of(-1))).thenReturn(List.of(matricula(7), matricula(8)));
         var meses = List.of(mes(2025, 2, 2, 1), mes(2025, 12, 3, 0));
         when(frequencias.resumirPorMatriculasEPeriodo(List.of(7, 8), LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31)))
                 .thenReturn(meses);
@@ -74,7 +74,7 @@ class FrequenciaAcompanhamentoServiceTest {
         var membro = membro("MONITOR"); membro.setUnidades(List.of());
         var r = service.consultar(10, null, null, null, membro);
         assertThat(r.totalRegistros()).isZero(); assertThat(r.faltas()).isZero(); assertThat(r.meses()).isEmpty();
-        verifyNoInteractions(frequencias, matriculas);
+        verifyNoInteractions(frequencias);
     }
 
     @Test void rejeitaIntervaloIncompletoOuInvertido() {
@@ -93,4 +93,27 @@ class FrequenciaAcompanhamentoServiceTest {
         assertThatThrownBy(() -> service.consultar(10, null, null, null, membro)).isInstanceOf(ResponseStatusException.class);
         verifyNoInteractions(frequencias, matriculas);
     }
+    @Test void limitaPeriodoPadraoERejeitaInicioPersonalizadoAnteriorAPrimeiraMatricula() {
+        var usuario = mock(br.org.larescolaredencao.dto.UsuarioResponseDTO.class);
+        when(usuario.getDataPrimeiraMatricula()).thenReturn(LocalDateTime.of(2025, 2, 1, 8, 0));
+        when(usuarios.buscarUsuarioPorId(eq(10), any())).thenReturn(usuario);
+        var membro = membro("ADMINISTRADOR");
+        var selecao = service.selecionar(10, null, null, null, membro);
+        assertThat(selecao.intervalo().inicio()).isEqualTo(LocalDate.of(2025, 2, 1));
+        assertThatThrownBy(() -> service.selecionar(10, null, LocalDate.of(2025, 1, 31), LocalDate.of(2025, 3, 1), membro))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("primeira matrícula");
+        assertThat(service.selecionar(10, null, LocalDate.of(2025, 2, 1), LocalDate.of(2025, 2, 1), membro).intervalo().fim())
+                .isEqualTo(LocalDate.of(2025, 2, 1));
+    }
+
+    @Test void monitorConsultaESelecionaMatriculaDeOutraUnidadeDoMesmoUsuario() {
+        var monitor = membro("MONITOR");
+        var local = matricula(7);
+        var externa = matricula(8); externa.getTurma().getUnidade().setId(4);
+        when(matriculas.listarParaAcompanhamento(10, true, List.of(-1))).thenReturn(List.of(local, externa));
+        assertThat(service.matriculas(10, monitor)).extracting(m -> m.getId()).containsExactly(7, 8);
+        service.consultar(10, 8, null, null, monitor);
+        verify(frequencias).resumirPorMatriculasEPeriodo(List.of(8), LocalDate.of(2025, 1, 1), LocalDate.of(2025, 12, 31));
+    }
+
 }

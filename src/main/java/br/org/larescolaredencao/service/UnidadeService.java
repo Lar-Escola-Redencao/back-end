@@ -48,6 +48,7 @@ public class UnidadeService {
     }
 
     public Page<Unidade> getAllUnidades(Pageable pageable, String search) {
+        pageable = OrdenacaoPaginada.porCadastro(pageable);
         String termo = TermoBusca.like(search);
         if (termo != null) {
             return unidadeRepository.buscar(termo, TermoBusca.digitosLike(search), pageable);

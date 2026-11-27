@@ -1,11 +1,23 @@
 spring:
+  mail:
+    properties:
+      mail.smtp.connectiontimeout: 5000
+      mail.smtp.timeout: 5000
+      mail.smtp.writetimeout: 5000
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 55MB
 
 server:
+  forward-headers-strategy: none
   error:
     include-message: never
     include-stacktrace: never
     include-exception: false
+
+app:
+  pix:
+    captcha:
+      secret-key: ${TURNSTILE_SECRET_KEY:}
+      hostnames: ${TURNSTILE_HOSTNAMES:}

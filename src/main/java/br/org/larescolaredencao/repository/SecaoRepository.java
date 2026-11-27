@@ -22,6 +22,13 @@ public interface SecaoRepository extends JpaRepository<Secao, Long> {
     /** Seções de uma página específica, para não misturar o conteúdo de páginas diferentes. */
     List<Secao> findByPaginaIdOrderByGrupoAscOrdemAsc(Long idPagina);
 
+    List<Secao> findByPaginaIdOrderByOrdemAscIdAsc(Long idPagina);
+
+    /** Leitura atual, sem snapshot antigo após aguardar o bloqueio da página no MySQL. */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select s from Secao s where s.pagina.id = :idPagina order by s.ordem, s.id")
+    List<Secao> findByPaginaIdComBloqueio(@Param("idPagina") Long idPagina);
+
     Page<Secao> findByPaginaId(Long idPagina, Pageable pageable);
 
     Page<Secao> findByPaginaIdAndGrupo(Long idPagina, String grupo, Pageable pageable);

@@ -1,7 +1,9 @@
 package br.org.larescolaredencao.model.enums;
 
 public enum TipoEvento {
-    ARRECADACAO,
+    BENEFICENTE,
     CULTURAL,
-    COMEMORATIVO
+    COMEMORATIVO,
+    ESPORTIVO,
+    OUTRO
 }

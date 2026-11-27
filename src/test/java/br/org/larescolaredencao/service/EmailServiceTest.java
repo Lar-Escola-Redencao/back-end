@@ -37,13 +37,35 @@ class EmailServiceTest {
         assertThat(html).isNotNull();
         assertThat((String) html.getContent())
                 .contains("Obrigado pela sua doação!", "125,50", "Contribuição informada via Pix",
-                        "cid:logoImage", "não confirma o recebimento", "#2A4FCC");
+                        "https://larescolaredencao.org.br/images/logo_branca_texto.png",
+                        "não confirma o recebimento", "background-color:#3682dc")
+                .doesNotContain("cid:logoImage", "padding:6px");
         Part texto = encontrarParte(message, "text/plain");
         assertThat(texto).isNotNull();
         assertThat((String) texto.getContent()).contains("125,50", "Não confirma o recebimento");
         Part imagem = encontrarParte(message, "image/png");
-        assertThat(imagem).isNotNull();
-        assertThat(imagem.getHeader("Content-ID")).contains("<logoImage>");
+        assertThat(imagem).isNull();
+    }
+
+    @Test
+    void deveEnviarRecuperacaoComLogoRemotaECabecalhoNaCorPadrao() throws Exception {
+        JavaMailSender mailSender = mock(JavaMailSender.class);
+        MimeMessage message = new MimeMessage(Session.getInstance(new Properties()));
+        when(mailSender.createMimeMessage()).thenReturn(message);
+        EmailService service = new EmailService(mailSender);
+        ReflectionTestUtils.setField(service, "remetente", "contato@example.org");
+
+        service.enviarEmailRecuperacao("colaborador@example.org", "123456");
+        message.saveChanges();
+
+        verify(mailSender).send(message);
+        Part html = encontrarParte(message, "text/html");
+        assertThat(html).isNotNull();
+        assertThat((String) html.getContent())
+                .contains("https://larescolaredencao.org.br/images/logo_branca_texto.png",
+                        "background-color: #3682dc", "123456")
+                .doesNotContain("cid:logoImage", "padding: 6px");
+        assertThat(encontrarParte(message, "image/png")).isNull();
     }
 
     private Part encontrarParte(Part parte, String tipo) throws Exception {

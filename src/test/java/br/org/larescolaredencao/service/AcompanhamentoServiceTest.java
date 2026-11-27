@@ -81,6 +81,19 @@ class AcompanhamentoServiceTest {
         verifyNoInteractions(entrevistas);
     }
 
+    @Test void preservaParagrafosAoCadastrarEEditarEntrevista() {
+        when(entrevistas.save(any())).thenAnswer(i -> i.getArgument(0));
+        String texto = "Observações da entrevista.\n\nEncaminhamento à equipe.\nRetorno agendado.";
+        var dto = new EntrevistaDTO(dados().dataEntrevista(), texto);
+        var criada = service.salvarEntrevista(10, null, dto, membro("ADMINISTRADOR"));
+        assertThat(criada.relato()).isEqualTo(texto);
+        var existente = new EntrevistaSocial();
+        existente.setId(3); existente.setIdUsuario(10); existente.setIdMembro(7);
+        when(entrevistas.findById(3)).thenReturn(Optional.of(existente));
+        var editada = service.salvarEntrevista(10, 3, dto, membro("ADMINISTRADOR"));
+        assertThat(editada.relato()).isEqualTo(texto);
+    }
+
     EntrevistaDTO dados() { return new EntrevistaDTO(LocalDateTime.of(2026, 10, 29, 9, 30), " Relato "); }
 
     @Test void rejeitaDiaOuHorarioFuturoNoCadastroENaEdicaoParaAmbosOsPerfis() {
@@ -104,4 +117,19 @@ class AcompanhamentoServiceTest {
         var resultado = service.salvarEntrevista(10, null, new EntrevistaDTO(agora, "Relato"), membro("ADMINISTRADOR"));
         assertThat(resultado.dataEntrevista()).isEqualTo(agora);
     }
+    @Test void rejeitaEntrevistaAnteriorAPrimeiraMatriculaNoCadastroENaEdicao() {
+        var usuario = mock(br.org.larescolaredencao.dto.UsuarioResponseDTO.class);
+        when(usuario.getDataPrimeiraMatricula()).thenReturn(LocalDateTime.of(2026, 10, 29, 18, 0));
+        when(usuarios.buscarUsuarioPorId(eq(10), any())).thenReturn(usuario);
+        for (Integer id : new Integer[] {null, 3}) {
+            assertThatThrownBy(() -> service.salvarEntrevista(10, id,
+                    new EntrevistaDTO(LocalDateTime.of(2026, 10, 28, 9, 0), "Relato"), membro("ADMINISTRADOR")))
+                    .isInstanceOf(ResponseStatusException.class).hasMessageContaining("primeira matrícula");
+        }
+        verifyNoInteractions(entrevistas);
+        when(entrevistas.save(any())).thenAnswer(i -> i.getArgument(0));
+        assertThat(service.salvarEntrevista(10, null, dados(), membro("COORDENADOR")).dataEntrevista())
+                .isEqualTo(dados().dataEntrevista());
+    }
+
 }
