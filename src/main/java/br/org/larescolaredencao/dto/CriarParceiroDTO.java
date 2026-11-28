@@ -8,7 +8,7 @@ import jakarta.validation.constraints.Size;
 public class CriarParceiroDTO {
 	
 	@NotBlank
-	@Size(min = 3, max = 50)
+	@Size(min = 3, max = 255)
 	private String nome;
 	
 	private MultipartFile logo;

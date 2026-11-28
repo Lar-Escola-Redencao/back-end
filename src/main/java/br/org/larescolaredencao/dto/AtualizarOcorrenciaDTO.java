@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import jakarta.validation.constraints.Size;
+
 import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -18,6 +20,7 @@ public class AtualizarOcorrenciaDTO {
     public void setIdMatricula(Integer idMatricula) { this.idMatricula = idMatricula; }
 
     @NotBlank
+    @Size(max = 10000)
     private String descricao;
 
     @NotNull

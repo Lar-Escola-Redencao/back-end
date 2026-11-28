@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import jakarta.validation.constraints.Size;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
@@ -10,6 +12,7 @@ public class InativarUsuarioDTO {
     private LocalDate dataDesligamento;
     
     @NotBlank(message = "A justificativa do desligamento é obrigatória.")
+    @Size(max = 10000)
     private String justificativa;
 
     public LocalDate getDataDesligamento() {

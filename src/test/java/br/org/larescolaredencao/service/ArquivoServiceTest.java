@@ -18,6 +18,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 class ArquivoServiceTest {
 
@@ -37,6 +39,35 @@ class ArquivoServiceTest {
     Path pastaUploads;
 
     private ArquivoService arquivoService;
+
+    @Test
+    void exclusaoPendenteSoApagaOArquivoAposCommit() throws IOException {
+        Path foto = Files.writeString(pastaUploads.resolve("foto.jpg"), "foto");
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            arquivoService.deletarArquivoAposCommit("/uploads/foto.jpg");
+            assertThat(foto).exists();
+            for (var callback : TransactionSynchronizationManager.getSynchronizations()) callback.afterCommit();
+            assertThat(foto).doesNotExist();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
+    @Test
+    void rollbackPreservaOArquivo() throws IOException {
+        Path foto = Files.writeString(pastaUploads.resolve("foto.jpg"), "foto");
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            arquivoService.deletarArquivoAposCommit("/uploads/foto.jpg");
+            for (var callback : TransactionSynchronizationManager.getSynchronizations()) {
+                callback.afterCompletion(TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+            assertThat(foto).exists();
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
 
     @BeforeEach
     void setUp() {

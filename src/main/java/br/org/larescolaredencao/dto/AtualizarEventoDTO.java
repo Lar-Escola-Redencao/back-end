@@ -14,12 +14,18 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class AtualizarEventoDTO {
+    private boolean removerImagem;
+
+    public boolean isRemoverImagem() { return removerImagem; }
+    public void setRemoverImagem(boolean removerImagem) { this.removerImagem = removerImagem; }
+
 	
 	@NotBlank
 	@Size(max = 150, message = "O título não pode ter mais de 150 caracteres")
     private String titulo;
 	
 	@NotBlank
+    @Size(max = 10000)
     private String descricao;
 	
 	@NotNull

@@ -61,7 +61,7 @@ public class AcompanhamentoService {
     public EntrevistaResponseDTO salvarEntrevista(Integer usuario, Integer id, EntrevistaDTO dto, Membro membro) {
         var dadosUsuario = validarEntrevistas(usuario, membro);
         if (dto.dataEntrevista() == null || dto.relato() == null || dto.relato().isBlank()
-                || dto.relato().length() > 20000) {
+                || dto.relato().length() > 10000) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Informe data, horário e descrição válidos.");
         }
         LocalDateTime agora = LocalDateTime.now(relogio);

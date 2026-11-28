@@ -45,7 +45,7 @@ public class ParceiroController {
 	}
 
 	@PutMapping(value = "/{id}", consumes = "multipart/form-data")
-	public Parceiro atualizarParceiro(@PathVariable("id") Long id, @ModelAttribute AtualizarParceiroDTO atualizarParceiroDTO) {
+	public Parceiro atualizarParceiro(@PathVariable("id") Long id, @Valid @ModelAttribute AtualizarParceiroDTO atualizarParceiroDTO) {
 		return parceiroService.atualizarParceiro(id, atualizarParceiroDTO);
 	}
 

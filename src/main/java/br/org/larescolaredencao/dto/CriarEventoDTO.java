@@ -20,6 +20,7 @@ public class CriarEventoDTO {
     private String titulo;
 	
 	@NotBlank
+    @Size(max = 10000)
     private String descricao;
 	
 	@NotNull
