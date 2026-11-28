@@ -62,6 +62,9 @@ public class ParceiroService {
 		Parceiro p = getParceiroById(id);
 		String logoAntiga = p.getLogo();
 		String novaLogo = null;
+		boolean removerLogo = atualizarParceiroDTO.isRemoverLogo()
+				&& (atualizarParceiroDTO.getLogo() == null || atualizarParceiroDTO.getLogo().isEmpty());
+		if (removerLogo) p.setLogo(null);
 
 		if (atualizarParceiroDTO.getNome() != null && !atualizarParceiroDTO.getNome().isBlank()) {
 			p.setNome(atualizarParceiroDTO.getNome());
@@ -89,6 +92,7 @@ public class ParceiroService {
 		if (novaLogo != null) {
 			arquivoService.deletarArquivo(logoAntiga);
 		}
+		if (removerLogo) arquivoService.deletarArquivoAposCommit(logoAntiga);
 		return salvo;
 	}
 

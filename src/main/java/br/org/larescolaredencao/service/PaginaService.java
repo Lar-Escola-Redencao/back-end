@@ -191,6 +191,7 @@ public class PaginaService {
             return criarSecaoDeGrupo(pagina, grupoDaPagina, dto);
         }
 
+        validarTamanhoConteudo(dto.getConteudo());
         validarTamanhoTitulo(dto.getTitulo());
         validarAnoHistoria(idPagina, normalizarGrupo(dto.getGrupo()), dto.getTitulo(), null);
         Secao secao = new Secao();
@@ -247,6 +248,7 @@ public class PaginaService {
             secao.setTitulo(arquivoService.sanitizarTexto(dto.getTitulo()));
         }
         if (dto.getConteudo() != null) {
+            validarTamanhoConteudo(dto.getConteudo());
             secao.setConteudo(normalizarConteudo(dto.getConteudo()));
         }
         if (dto.getAtivo() != null) {
@@ -644,9 +646,14 @@ public class PaginaService {
         }
     }
 
-    /**
-     * O front envia string vazia quando a aba não tem texto; não faz sentido gravar "" no banco.
-     */
+    private void validarTamanhoConteudo(String conteudo) {
+        if (conteudo != null && conteudo.length() > 10000) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "A descrição deve ter no máximo 10000 caracteres.");
+        }
+    }
+
+    /** O formulário sem texto envia string vazia; nesse caso, persiste NULL. */
     private String normalizarConteudo(String conteudo) {
         if (conteudo == null || conteudo.isBlank()) {
             return null;

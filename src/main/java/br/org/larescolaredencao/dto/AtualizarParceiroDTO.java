@@ -4,9 +4,16 @@ import org.springframework.web.multipart.MultipartFile;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 
 public class AtualizarParceiroDTO {
+    private boolean removerLogo;
+
+    public boolean isRemoverLogo() { return removerLogo; }
+    public void setRemoverLogo(boolean removerLogo) { this.removerLogo = removerLogo; }
+
 	@NotBlank
+	@Size(min = 3, max = 255)
 	private String nome;
 	private MultipartFile logo;
 	@NotNull

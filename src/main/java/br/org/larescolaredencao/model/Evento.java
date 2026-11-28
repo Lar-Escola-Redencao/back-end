@@ -41,6 +41,7 @@ public class Evento {
     private String titulo;
 
     @NotBlank
+    @Size(max = 10000)
     @Column(columnDefinition = "TEXT")
     private String descricao;
 

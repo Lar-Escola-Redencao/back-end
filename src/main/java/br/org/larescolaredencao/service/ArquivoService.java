@@ -17,6 +17,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.unit.DataSize;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -79,6 +81,17 @@ public class ArquivoService {
             return "/uploads/" + subPasta + nomeArquivoUnico;
         } catch (IOException e) {
             throw new RuntimeException("Falha ao salvar o arquivo.", e);
+        }
+    }
+
+    public void deletarArquivoAposCommit(String caminho) {
+        if (caminho == null || caminho.isBlank()) return;
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override public void afterCommit() { deletarArquivo(caminho); }
+            });
+        } else {
+            deletarArquivo(caminho);
         }
     }
 

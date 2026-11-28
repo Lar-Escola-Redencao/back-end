@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import jakarta.validation.constraints.Size;
+
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.RelationTargetAuditMode;
 
@@ -34,6 +36,7 @@ public class Ocorrencia {
     private LocalDateTime dataCriacao;
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    @Size(max = 10000)
     private String descricao;
 
     @Enumerated(EnumType.STRING)

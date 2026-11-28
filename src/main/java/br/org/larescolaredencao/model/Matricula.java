@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import jakarta.validation.constraints.Size;
+
 import org.hibernate.envers.Audited;
 import org.hibernate.envers.RelationTargetAuditMode;
 
@@ -47,6 +49,7 @@ public class Matricula {
     private LocalDate dataDesligamento;
     
     @Column(name = "justificativa_egresso", columnDefinition = "TEXT")
+    @Size(max = 10000)
     private String justificativaEgresso;
 
     public Integer getId() {

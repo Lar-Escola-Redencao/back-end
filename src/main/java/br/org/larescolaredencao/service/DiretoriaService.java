@@ -66,13 +66,19 @@ public class DiretoriaService {
 		if (dto.getAtivo() != null) {
 			diretoria.setAtivo(dto.getAtivo());
 		}
-		if (dto.getFoto() != null && !dto.getFoto().isEmpty()) {
+		String fotoAnterior = diretoria.getFoto();
+		boolean removerFoto = dto.isRemoverFoto() && (dto.getFoto() == null || dto.getFoto().isEmpty());
+		if (removerFoto) {
+			diretoria.setFoto(null);
+		} else if (dto.getFoto() != null && !dto.getFoto().isEmpty()) {
 			validarFoto(dto.getFoto());
 			String fotoAntiga = diretoria.getFoto();
 			diretoria.setFoto(arquivoService.salvarArquivo(dto.getFoto(), SUBPASTA_FOTOS));
 			arquivoService.deletarArquivo(fotoAntiga);
 		}
-		return diretoriaRepository.save(diretoria);
+		Diretoria salva = diretoriaRepository.save(diretoria);
+		if (removerFoto) arquivoService.deletarArquivoAposCommit(fotoAnterior);
+		return salva;
 	}
 
 	public void remover(Long id) {

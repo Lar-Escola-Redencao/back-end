@@ -152,7 +152,11 @@ public class EventoService {
             evento.getParceiros().clear();
         }
 
-        if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
+        String imagemAnterior = evento.getImagem();
+        boolean removerImagem = dto.isRemoverImagem() && (dto.getImagem() == null || dto.getImagem().isEmpty());
+        if (removerImagem) {
+            evento.setImagem(null);
+        } else if (dto.getImagem() != null && !dto.getImagem().isEmpty()) {
             String caminhoImagemAntiga = evento.getImagem();
             String novoCaminho = arquivoService.salvarArquivo(dto.getImagem(), "eventos/");
             evento.setImagem(novoCaminho);
@@ -163,6 +167,7 @@ public class EventoService {
         }
 
         Evento salvo = eventoRepository.save(evento);
+        if (removerImagem) arquivoService.deletarArquivoAposCommit(imagemAnterior);
         return new EventoResponseDTO(salvo);
     }
 

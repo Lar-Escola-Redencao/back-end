@@ -43,6 +43,7 @@ public class Secao {
     private Integer ordem = 1;
 
     @Column(columnDefinition = "TEXT")
+    @Size(max = 10000)
     private String conteudo;
 
     private String imagem;

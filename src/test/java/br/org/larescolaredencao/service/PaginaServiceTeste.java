@@ -59,6 +59,24 @@ class PaginaServiceTeste {
     private Pagina pagina;
     private Pageable pageable;
 
+    @ParameterizedTest
+    @ValueSource(strings = {"texto-sobre", "historia"})
+    void limitaDescricaoSobreEHistoriaAntesDePersistir(String grupo) {
+        pagina.setId(2L);
+        when(paginaRepository.findById(2L)).thenReturn(Optional.of(pagina));
+        Secao secao = new Secao(); secao.setId(9L); secao.setPagina(pagina); secao.setGrupo(grupo);
+        when(secaoRepository.findByIdAndPaginaId(9L, 2L)).thenReturn(Optional.of(secao));
+        var criar = new CriarSecaoDTO();
+        criar.setGrupo(grupo); criar.setTitulo("2026"); criar.setConteudo("a".repeat(10001));
+        var editar = new br.org.larescolaredencao.dto.AtualizarSecaoDTO();
+        editar.setConteudo(criar.getConteudo());
+        assertThatThrownBy(() -> paginaService.criarSecao(2L, criar))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("10000");
+        assertThatThrownBy(() -> paginaService.atualizarSecao(2L, 9L, editar))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("10000");
+        verify(secaoRepository, never()).save(any());
+    }
+
     @BeforeEach
     void setUp() {
         pagina = new Pagina();

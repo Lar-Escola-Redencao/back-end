@@ -22,6 +22,19 @@ class AcompanhamentoServiceTest {
     final AcompanhamentoService service = new AcompanhamentoService(usuarios, ocorrencias, entrevistas, membros,
             Clock.fixed(Instant.parse("2026-10-29T15:00:00Z"), ZoneId.of("America/Sao_Paulo")));
 
+    @Test void limitaCadaRelatoDeEntrevistaADezMilCaracteres() {
+        var admin = membro("ADMINISTRADOR");
+        when(entrevistas.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(membros.findById(7)).thenReturn(Optional.of(admin));
+        var resultado = service.salvarEntrevista(10, null,
+                new EntrevistaDTO(dados().dataEntrevista(), "a".repeat(10000)), admin);
+        assertThat(resultado.relato()).hasSize(10000);
+        assertThatThrownBy(() -> service.salvarEntrevista(10, null,
+                new EntrevistaDTO(dados().dataEntrevista(), "a".repeat(10001)), admin))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("400");
+        verify(entrevistas, times(1)).save(any());
+    }
+
     Membro membro(String perfil) {
         var membro = new Membro();
         membro.setId(7);

@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.dto;
 
+import jakarta.validation.constraints.Size;
+
 import br.org.larescolaredencao.model.enums.TipoOcorrencia;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,6 +16,7 @@ public class CriarOcorrenciaDTO {
     private LocalDateTime dataOcorrencia;
 
     @NotBlank
+    @Size(max = 10000)
     private String descricao;
 
     @NotNull

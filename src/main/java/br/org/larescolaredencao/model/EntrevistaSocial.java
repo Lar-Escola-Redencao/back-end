@@ -1,5 +1,7 @@
 package br.org.larescolaredencao.model;
 
+import jakarta.validation.constraints.Size;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -28,6 +30,7 @@ public class EntrevistaSocial {
     private LocalDateTime dataEntrevista;
 
     @Column(columnDefinition = "TEXT", nullable = false)
+    @Size(max = 10000)
     private String relato;
 
     @Column(name = "data_registro")

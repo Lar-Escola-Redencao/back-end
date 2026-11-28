@@ -7,6 +7,11 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 public class AtualizarDiretoriaDTO {
+    private boolean removerFoto;
+
+    public boolean isRemoverFoto() { return removerFoto; }
+    public void setRemoverFoto(boolean removerFoto) { this.removerFoto = removerFoto; }
+
 
 	@NotBlank
 	@Size(max = 150)

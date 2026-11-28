@@ -18,7 +18,7 @@ public class Parceiro {
 	private Long id;
 	
 	@NotBlank
-    @Size(min = 3, max = 50)
+    @Size(min = 3, max = 255)
 	private String nome;
 	
 	private String logo;

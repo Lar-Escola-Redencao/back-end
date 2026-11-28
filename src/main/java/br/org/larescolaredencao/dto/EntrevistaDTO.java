@@ -6,4 +6,4 @@ import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 
 public record EntrevistaDTO(@NotNull LocalDateTime dataEntrevista,
-                           @NotBlank @Size(max = 20000) String relato) { }
+                           @NotBlank @Size(max = 10000) String relato) { }
