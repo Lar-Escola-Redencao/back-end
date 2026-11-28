@@ -15,6 +15,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import jakarta.mail.Multipart;
 import jakarta.mail.Part;
 import jakarta.mail.Session;
+import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
 class EmailServiceTest {
@@ -31,8 +32,11 @@ class EmailServiceTest {
         message.saveChanges();
 
         verify(mailSender).send(message);
+        InternetAddress remetente = (InternetAddress) message.getFrom()[0];
+        assertThat(remetente.getPersonal()).isEqualTo("Lar Escola Redenção");
+        assertThat(remetente.getAddress()).isEqualTo("contato@example.org");
         assertThat(message.getAllRecipients()[0].toString()).isEqualTo("doador@example.org");
-        assertThat(message.getSubject()).isEqualTo("Obrigado pelo apoio — Lar Escola Redenção");
+        assertThat(message.getSubject()).isEqualTo("Obrigado pelo apoio");
         Part html = encontrarParte(message, "text/html");
         assertThat(html).isNotNull();
         assertThat((String) html.getContent())
@@ -58,7 +62,11 @@ class EmailServiceTest {
         service.enviarEmailRecuperacao("colaborador@example.org", "123456");
         message.saveChanges();
 
+        assertThat(message.getSubject()).isEqualTo("Código de recuperação de senha");
         verify(mailSender).send(message);
+        InternetAddress remetente = (InternetAddress) message.getFrom()[0];
+        assertThat(remetente.getPersonal()).isEqualTo("Lar Escola Redenção");
+        assertThat(remetente.getAddress()).isEqualTo("contato@example.org");
         Part html = encontrarParte(message, "text/html");
         assertThat(html).isNotNull();
         assertThat((String) html.getContent())

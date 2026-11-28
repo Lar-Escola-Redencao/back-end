@@ -1,5 +1,6 @@
 package br.org.larescolaredencao.service;
 
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.Locale;
@@ -22,6 +23,7 @@ import jakarta.mail.internet.MimeMessage;
 public class EmailService {
     
     private static final Logger logger = LoggerFactory.getLogger(EmailService.class);
+    private static final String NOME_REMETENTE = "Lar Escola Redenção";
     private static final String LOGO_URL = "https://larescolaredencao.org.br/images/logo_branca_texto.png";
 
     private final JavaMailSender mailSender;
@@ -39,12 +41,12 @@ public class EmailService {
         try {
             MimeMessage mensagem = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mensagem, true, "UTF-8");
-            helper.setFrom(remetente);
+            helper.setFrom(remetente, NOME_REMETENTE);
             helper.setTo(destinatario);
-            helper.setSubject("Obrigado pelo apoio — Lar Escola Redenção");
+            helper.setSubject("Obrigado pelo apoio");
             helper.setText(montarTextoAgradecimento(valorFormatado), montarHtmlAgradecimento(valorFormatado));
             mailSender.send(mensagem);
-        } catch (MessagingException | MailException e) {
+        } catch (MessagingException | MailException | UnsupportedEncodingException e) {
             logger.error("Falha ao enviar agradecimento Pix", e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Não foi possível enviar o agradecimento. Tente novamente.");
@@ -108,9 +110,9 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-            helper.setFrom(remetente);
+            helper.setFrom(remetente, NOME_REMETENTE);
             helper.setTo(destinatario);
-            helper.setSubject("Código de Recuperação de Senha - Lar Escola Redenção");
+            helper.setSubject("Código de recuperação de senha");
 
             String htmlContent = """
                     <!DOCTYPE html>
@@ -171,7 +173,7 @@ public class EmailService {
             helper.setText(htmlContent, true);
             
             mailSender.send(message);
-        } catch (MessagingException | MailException e) {
+        } catch (MessagingException | MailException | UnsupportedEncodingException e) {
             logger.error("Falha ao enviar e-mail de recuperação para {}: {}", destinatario, e.getMessage(), e);
         } 
     }
